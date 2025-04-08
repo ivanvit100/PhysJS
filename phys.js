@@ -418,10 +418,8 @@
         
         if (!physObject) return;
         
-        // Обработка двойного клика для открепления
         const currentTime = new Date().getTime();
         if (currentTime - physObject.lastClickTime < 1000) {
-            // Двойной клик
             if (physObject.isAttached || physObject.attachedObjects.size > 0) {
                 if (labStepIterator && labStepIterator.getCurrentStep()) {
                     const currentStep = labStepIterator.getCurrentStep();
@@ -441,7 +439,6 @@
         
         physObject.lastClickTime = currentTime;
         
-        // Выбор элемента
         unselectElement();
         selectedObject = physObject;
         element.classList.add('selected');
@@ -879,6 +876,62 @@
             log(`Объекты ${obj1.element.id} и ${obj2.element.id} заменены на ${selectorToShow} в позиции (${minX}, ${minY})`);
 
             return this;
+        },
+
+        calculateTrajectory(v0, alpha, h, g) {
+            const sinAlpha = Math.sin(alpha);
+            const cosAlpha = Math.cos(alpha);
+    
+            const discriminant = Math.pow(v0 * sinAlpha, 2) + 2 * g * h;
+            let flightTime = (Math.abs(alpha) < 0.001 || (sinAlpha < 0 && discriminant < 0)) ?
+                Math.sqrt(2 * h / g) :
+                    sinAlpha >= 0 ?
+                    (v0 * sinAlpha + Math.sqrt(discriminant)) / g :
+                    (-v0 * sinAlpha + Math.sqrt(discriminant)) / g;
+            
+            let range = v0 * cosAlpha * flightTime;
+            
+            if (window.experimentState && window.experimentState.correctionFactor)
+                range *= window.experimentState.correctionFactor;
+            
+            return {
+                range: range,
+                flightTime: flightTime,
+                maxHeight: h + (v0 * sinAlpha) * (v0 * sinAlpha) / (2 * g)
+            };
+        },
+
+        showTrajectory(startX, startY, vx, vy, g, floorArea, id, container_id) {
+            const oldTrajectory = document.getElementById(id);
+            if (oldTrajectory) oldTrajectory.remove();
+            
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("id", id);
+            svg.setAttribute("style", "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:99;");
+            
+            document.getElementById(container_id).appendChild(svg);
+            
+            const path = document.createElementNS(svgNS, "path");
+            path.setAttribute("stroke", "rgba(255, 0, 0, 0.4)");
+            path.setAttribute("stroke-width", "2");
+            path.setAttribute("fill", "none");
+            
+            let pathData = `M ${startX} ${startY}`;
+            
+            const floorY = window.innerHeight - floorArea.offsetHeight;
+            
+            for (let t = 0.05; t < 10; t += 0.05) {
+                const x = startX + vx * t;
+                const y = startY + vy * t + 0.5 * g * t * t;
+                
+                pathData += ` L ${x} ${y}`;
+                
+                if (y > floorY) break;
+            }
+            
+            path.setAttribute("d", pathData);
+            svg.appendChild(path);
         }
     };
 })();

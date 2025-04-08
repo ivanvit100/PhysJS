@@ -71,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
         calculationPanel.style.display = 'none';
     }
 
-    // Привязка обработчиков
     checkCalculationsBtn.addEventListener('click', () => {
         experimentFunctions.checkCalculations(
             experimentState, 
@@ -90,7 +89,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     });
 
-    // Запретить нажатие Q/E для вращения объектов
     document.addEventListener('keydown', function(e) {
         if (e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'e') {
             e.stopPropagation(); 
@@ -99,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, true);
 
-    // Настройка взаимодействия с водяным контейнером
     waterContainer.addEventListener('mousedown', function(e) {
         if (e.button === 0 && waterContainer.classList.contains('phys')) { 
             draggingWaterContainer = true;
@@ -147,7 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Настройка взаимодействия с линейкой
     let draggingRuler = false;
     
     function startDragRuler(e) {
@@ -185,7 +181,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Проверка пересечения груза с водой
     setInterval(() => {
         if (experimentState.weightAttached && !experimentState.weightInWater && experimentState.step === 4) {
             const waterContainerRect = waterContainer.getBoundingClientRect();
@@ -209,7 +204,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 200);
 
-    // Обработка присоединения объектов
     physjs.onAttachment(function(sourceObject, targetObject) {
         const sourceElement = sourceObject.element;
         const targetElement = targetObject.element;
@@ -283,10 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 stepElements, currentInstructionDisplay
             });
         });
-        
-        backBtn.addEventListener('click', function() {
-            experimentFunctions.goBack();
-        });
     });
 
     function initializeExperiment() {
@@ -306,6 +296,8 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             physjs.goToStep('step1');
         }, 100);
+
+        backBtn && backBtn.addEventListener('click', experimentFunctions.goBack);
     }
 
     initializeExperiment();
