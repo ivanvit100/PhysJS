@@ -31,7 +31,7 @@ const experimentFunctions = {
     setupAttachmentPoints() {
         physjs.detachAll();
         physjs.addAttachmentPoint('#left-stand', 'dynamometer-attachment', 100, -30, ['dynamometer']);
-        physjs.addAttachmentPoint('#right-stand', 'trough-attachment', -50, 50, ['trough']);
+        physjs.addAttachmentPoint('#right-stand', 'trough-attachment', -50, 40, ['trough']);
         physjs.addAttachmentPoint('#ball', 'dynamometer-attachment', -90, -85, ['dynamometer']);
     },
     
