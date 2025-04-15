@@ -1,0 +1,192 @@
+/* Расположение штативов */
+#left-stand {
+    width: 100px;
+    height: 400px;
+    position: absolute;
+    left: 120px;
+    bottom: 50px;
+}
+
+#right-stand {
+    width: 100px;
+    height: 400px;
+    position: absolute;
+    left: 600px;
+    bottom: 50px;
+}
+
+/* Динамометр */
+#dynamometer {
+    left: 250px;
+    top: auto;
+    bottom: 20px;
+}
+
+.dynamometer-attached {
+    transform: rotate(-90deg) !important;
+    left: 220px !important;
+    bottom: 290px !important;
+    top: auto !important;
+}
+
+/* Желоб */
+#trough {
+    width: 200px;
+    height: 40px;
+    left: 400px;
+    top: 400px;
+    position: relative;
+    background: none;
+}
+
+#trough::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, #E0E0E0, #B0B0B0);
+    border-radius: 3px 3px 5px 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    border: 1px solid #909090;
+}
+
+#trough::after {
+    content: '';
+    position: absolute;
+    width: 90%;
+    height: 70%;
+    top: 0;
+    left: 5%;
+    background: linear-gradient(to bottom, 
+        #D0D0D0, 
+        #A0A0A0 40%, 
+        #808080 60%, 
+        #909090);
+    border-radius: 0 0 100px 100px;
+    box-shadow: inset 0 5px 10px rgba(0,0,0,0.4);
+}
+
+#trough .left-edge {
+    position: absolute;
+    width: 5px;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: linear-gradient(to right, #909090, #D0D0D0);
+    border-radius: 3px 0 0 5px;
+}
+
+#trough .right-edge {
+    position: absolute;
+    width: 5px;
+    height: 100%;
+    right: 0;
+    top: 0;
+    background: linear-gradient(to left, #909090, #D0D0D0);
+    border-radius: 0 3px 5px 0;
+}
+
+#trough .highlight {
+    position: absolute;
+    width: 70%;
+    height: 2px;
+    top: 10px;
+    left: 15%;
+    background: linear-gradient(to right, 
+        rgba(255,255,255,0), 
+        rgba(255,255,255,0.7), 
+        rgba(255,255,255,0));
+    border-radius: 50%;
+    z-index: 3;
+}
+
+#trough .highlight-secondary {
+    position: absolute;
+    width: 50%;
+    height: 1px;
+    top: 20px;
+    left: 25%;
+    background: linear-gradient(to right, 
+        rgba(255,255,255,0), 
+        rgba(255,255,255,0.5), 
+        rgba(255,255,255,0));
+    border-radius: 50%;
+    z-index: 3;
+}
+
+/* Шар */
+#ball {
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle at 35% 35%, #ddd 0%, #666 100%);
+    border-radius: 50%;
+    left: 500px;
+    bottom: 50px;
+    box-shadow: inset 1px 1px 3px rgba(255,255,255,0.5), inset -1px -1px 3px rgba(0,0,0,0.5);
+    z-index: 9999 !important;
+}
+
+/* Нить между динамометром и шаром */
+#string {
+    position: absolute;
+    height: 2px;
+    background-color: #333;
+    transform-origin: 0 0;
+    z-index: 0;
+}
+
+/* Весы - только позиция */
+#scale {
+    left: 720px;
+    bottom: 50px;
+    top: auto;
+}
+
+/* Отображение панелей */
+#calculation-panel .panel-content,
+.panel-content {
+    display: block;
+}
+
+#data-collection-panel {
+    display: none;
+    right: 400px;
+    top: 70px;
+}
+
+#calculation-form {
+    top: 70px;
+}
+
+/* Формулы */
+.formula {
+    font-family: 'Times New Roman', Times, serif;
+    font-style: italic;
+    margin: 10px 0;
+    padding: 5px;
+    background-color: #f9f9f9;
+    border-left: 3px solid #3498db;
+}
+
+/* Стили для таблицы результатов */
+.table-container {
+    margin-top: 20px;
+    width: 100%;
+    overflow-x: auto;
+}
+
+#results-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#results-table th, #results-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+#results-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
