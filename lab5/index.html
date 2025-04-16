@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лабораторная работа №2</title>
+    <title>Измерение атмосферного давления</title>
     <link rel="stylesheet" href="../phys.css">
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="specific.css">
@@ -18,7 +18,7 @@
 
         <div id="experiment-area">
             <!-- Основное оборудование -->
-            <div id="glass-tube" class="phys phys-fixed equipment" data-name="Стеклянная трубка" data-type="tube">
+            <div id="glass-tube" class="phys phys-fixed phys-attachable equipment" data-name="Стеклянная трубка" data-type="tube">
                 <div class="tube-body"></div>
                 <div id="tube-air" class="tube-air"></div>
                 <div id="tube-water" class="tube-water"></div>
@@ -31,14 +31,15 @@
                 </div>
             </div>
 
-            <div id="funnel" class="phys equipment" data-name="Воронка" data-type="funnel">
-                <div class="funnel-body"></div>
-                <div id="funnel-water" class="funnel-water"></div>
+            <div id="funnel" class="phys phys-attachable equipment" data-name="Стеклянная трубка" data-type="funnel">
+                <div class="tube-body"></div>
+                <div id="tube-air" class="tube-air"></div>
+                <div id="tube-water" class="tube-water"></div>
             </div>
 
             <div id="rubber-tube" class="phys phys-attachable" data-name="Резиновая трубка" data-type="tube"></div>
             
-            <div id="cork" class="phys phys-attachable" data-name="Пробка" data-type="cork"></div>
+            <div id="cork" class="phys phys-attachable equipment" data-name="Пробка" data-type="cork"></div>
             
             <div id="ruler" class="phys phys-attachable equipment" data-name="Линейка" data-type="ruler">
                 <div class="ruler-body"></div>
@@ -47,11 +48,6 @@
             <div id="barometer" class="phys-fixed equipment" data-name="Барометр" data-type="barometer">
                 <div class="barometer-body"></div>
                 <div id="barometer-display" class="digital-display">760.00</div>
-            </div>
-
-            <div id="water-container" class="phys phys-fixed equipment" data-name="Сосуд с водой" data-type="water-container">
-                <div class="container-body"></div>
-                <div id="water" class="water"></div>
             </div>
 
             <div class="tooltip" id="tooltip"></div>
@@ -127,6 +123,20 @@
             </button>
         </div>
     </div>
+
+    <svg id="svg-container" width="100%" height="100%" style="position:absolute; top:0; left:0; pointer-events:none; z-index:10; display:none;">
+        <!-- Основная резиновая трубка -->
+        <path id="rubber-tube-path" stroke="rgba(44, 62, 80, 1)" stroke-width="35" fill="none" stroke-linecap="round" 
+              filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.3))" />
+        
+        <!-- Манжеты для стеклянной трубки -->
+        <rect id="tube-connector" class="rubber-tube-connector" width="30" height="20" rx="3" ry="3" 
+              fill="rgba(44, 62, 80, 1)" filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.3))" />
+        
+        <!-- Манжеты для воронки -->
+        <rect id="funnel-connector" class="rubber-tube-connector" width="30" height="20" rx="3" ry="3" 
+              fill="rgba(44, 62, 80, 1)" filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.3))" />
+    </svg>
 
     <script src="../phys.js"></script>
     <script type="module" src="script.js"></script>

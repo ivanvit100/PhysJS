@@ -66,10 +66,10 @@
     font-family: var(--font-mono);
 }
 
-/* Funnel */
+/* Funnel - увеличиваем размер */
 #funnel {
-    width: 80px;
-    height: 120px;
+    width: 40px;  /* было 80px */
+    height: 400px; /* было 120px */
     left: 400px;
     top: 200px;
     position: relative;
@@ -100,90 +100,69 @@
     clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
 }
 
-/* Rubber tube */
+/* Rubber tube - гибкое соединение */
 #rubber-tube {
     width: 150px;
-    height: 20px;
-    left: 450px;
-    top: 350px;
-    position: relative;
-    background-color: rgba(44, 62, 80, 0.7);
-    border-radius: 10px;
+    height: 35px;
+    top: 200px;
+    left: 100px;
+    position: absolute; /* Меняем на absolute для точного позиционирования */
+    background-color: rgba(44, 62, 80, 1);
+    border-radius: 10px; /* Большой радиус для создания изгиба */
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 0 2px 5px rgba(0, 0, 0, 0.2);
     z-index: 3;
     transform-origin: left center;
-    transform: rotate(0deg);
+    transition: all 0.3s ease; /* Добавляем плавное изменение */
+}
+
+/* Стиль для соединенной трубки */
+#rubber-tube.connected {
+    background-color: rgba(44, 62, 80, 0.8);
+    height: 12px; /* Уменьшаем толщину */
+}
+
+#svg-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
 }
 
 /* Cork */
 #cork {
-    width: 25px;
-    height: 25px;
+    width: 30px;
     left: 550px;
     top: 100px;
-    position: relative;
-    background: radial-gradient(circle at center, #d35400 0%, #a04000 100%);
-    border-radius: 50%;
-    box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.3), 0 3px 5px rgba(0, 0, 0, 0.2);
-    z-index: 10;
+    /* z-index: 0 !important; */
+}
+
+#cork::before {
+    width: 38px;
+}
+
+#cork.attached {
+    z-index: 0 !important;
 }
 
 /* Ruler */
 #ruler {
-    width: 30px;
-    height: 300px;
+    height: 30px;
+    width: 300px;
     left: 600px;
     top: 150px;
+    transform: rotate(90deg);
     position: relative;
     z-index: 4;
-}
-
-.ruler-body {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to right, #ecf0f1 0%, #bdc3c7 100%);
-    border: 1px solid #95a5a6;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.ruler-body::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 5px;
-    width: 20px;
-    background: repeating-linear-gradient(
-        to bottom,
-        transparent,
-        transparent 9px,
-        #7f8c8d 9px,
-        #7f8c8d 10px
-    );
-}
-
-.ruler-body::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 5px;
-    width: 20px;
-    background: repeating-linear-gradient(
-        to bottom,
-        transparent,
-        transparent 49px,
-        #34495e 49px,
-        #34495e 51px
-    );
 }
 
 /* Barometer */
 #barometer {
     width: 120px;
     height: 120px;
-    right: 50px;
+    left: 50px;
     top: 100px;
     position: absolute;
     z-index: 4;
@@ -224,15 +203,6 @@
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* Water container adjustments */
-#water-container {
-    width: 150px;
-    height: 100px;
-    left: 100px;
-    top: 300px;
-    position: relative;
-}
-
 .container-body {
     position: absolute;
     width: 100%;
@@ -259,48 +229,31 @@
     box-shadow: inset 0 0 10px rgba(52, 152, 219, 0.5);
 }
 
-/* Pressure calculator */
-.pressure-calculator {
-    margin-top: 50px;
-    padding: var(--spacing-md);
-    border-radius: var(--radius-lg);
-    background-color: var(--transparency-light);
-    backdrop-filter: var(--blur-effect);
-    box-shadow: var(--shadow-md);
-    width: 350px;
-    transition: var(--transition-default);
+/* Стили для резиновой трубки и соединителей */
+#svg-container {
+    display: none; /* Скрыт по умолчанию - используем display вместо opacity */
+}
+
+#svg-container.connected {
+    display: block !important; /* Мгновенное отображение без анимации */
+}
+
+.rubber-tube-connector {
+    visibility: visible; /* Всегда видимы, когда контейнер видим */
+}
+
+#rubber-tube-path {
+    stroke-dasharray: none;
+    /* Убедитесь, что нет никаких transition или animation свойств */
+}
+
+/* Удалим эффект размытия при движении */
+.tube-moving #rubber-tube-path {
+    filter: none; /* Убираем размытие */
+}
+
+/* Стили для стеклянной трубки и воронки, чтобы соединения выглядели естественно */
+#glass-tube, #funnel {
     position: relative;
-    z-index: 2;
-}
-
-.pressure-calculator h3 {
-    margin: 0 0 15px 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-secondary);
-}
-
-#pressure-feedback.success {
-    display: block;
-    background-color: rgba(46, 204, 113, 0.1);
-    color: var(--color-success-dark);
-    border: 1px solid rgba(46, 204, 113, 0.3);
-    box-shadow: 0 2px 8px rgba(46, 204, 113, 0.1);
-}
-
-#pressure-feedback.error {
-    display: block;
-    background-color: rgba(231, 76, 60, 0.1);
-    color: var(--color-error-dark);
-    border: 1px solid rgba(231, 76, 60, 0.3);
-    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.1);
-}
-
-.measurement-hint {
-    font-size: 0.9rem;
-    color: var(--color-secondary-light);
-    margin-top: var(--spacing-sm);
-    padding: var(--spacing-sm);
-    background-color: rgba(52, 152, 219, 0.05);
-    border-radius: var(--radius-sm);
+    z-index: 11; /* Располагаем выше соединителей */
 }

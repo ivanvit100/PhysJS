@@ -292,11 +292,8 @@ const experimentFunctions = {
                     const stepElements = document.querySelectorAll('#status-panel ol li');
                     stepElements.forEach((el, index) => {
                         el.classList.remove('active');
-                        if (index === 4) {
-                            el.classList.add('active');
-                        } else if (index < 4) {
-                            el.classList.add('completed');
-                        }
+                        if (index === 4) el.classList.add('active');
+                        else if (index < 4) el.classList.add('completed');
                     });
                     
                     currentInstructionDisplay.textContent = "Прикрепите шар к динамометру снова для повторного эксперимента.";
@@ -365,9 +362,8 @@ const experimentFunctions = {
         
         currentInstructionDisplay.textContent = "Повторите опыт не менее 5 раз. Потом вычислите энергию и погрешности.";
         
-        if (experimentState.distanceValues.length === 0) {
+        if (experimentState.distanceValues.length === 0)
             document.getElementById('data-collection-panel').style.display = 'block';
-        }
     },
 
     updateExperimentProgress(experimentState, elements) {
@@ -377,11 +373,8 @@ const experimentFunctions = {
             
             elements.stepElements.forEach((el, index) => {
                 el.classList.remove('active');
-                if (index === 2) {
-                    el.classList.add('active');
-                } else if (index < 2) {
-                    el.classList.add('completed');
-                }
+                if (index === 2) el.classList.add('active');
+                else if (index < 2) el.classList.add('completed');
             });
             
             elements.currentInstructionDisplay.textContent = "Теперь прикрепите шар к динамометру с помощью нити.";
@@ -394,17 +387,16 @@ const experimentFunctions = {
     },
 
     checkStepCompletion(experimentState, stepElements) {
-        if (experimentState.step === 1 && experimentState.ballWeighed) {
+        if (experimentState.step === 1 && experimentState.ballWeighed)
             stepElements[0].classList.add('completed');
-        } else if (experimentState.step === 2 && experimentState.dynamometerMounted && experimentState.troughMounted) {
+        else if (experimentState.step === 2 && experimentState.dynamometerMounted && experimentState.troughMounted)
             stepElements[1].classList.add('completed');
-        } else if (experimentState.step === 3 && experimentState.ballAttached) {
+        else if (experimentState.step === 3 && experimentState.ballAttached)
             stepElements[2].classList.add('completed');
-        } else if (experimentState.step === 4 && experimentState.springExtended) {
+        else if (experimentState.step === 4 && experimentState.springExtended)
             stepElements[3].classList.add('completed');
-        } else if (experimentState.step === 5 && experimentState.distanceValues.length >= 5) {
+        else if (experimentState.step === 5 && experimentState.distanceValues.length >= 5)
             stepElements[4].classList.add('completed');
-        }
     },
 
     setupTooltips(tooltip) {
@@ -450,11 +442,9 @@ const experimentFunctions = {
         physjs.goToStep('step' + step);
 
         stepElements.forEach((el, index) => {
-            if (index + 1 === step) {
-                el.classList.add('active');
-            } else {
+            index + 1 === step ? 
+                el.classList.add('active') :
                 el.classList.remove('active');
-            }
         });
     },
 
@@ -593,11 +583,7 @@ const experimentFunctions = {
     
     showCalculationFeedback(element, type, message) {
         element.textContent = message;
-        if (type === 'success') {
-            element.className = 'feedback success';
-        } else {
-            element.className = 'feedback error';
-        }
+        element.className = type === 'success' ? 'feedback success' : 'feedback error';
     },
     
     createCalculationForm() {
@@ -653,19 +639,15 @@ const experimentFunctions = {
             
             const checkResult = experimentFunctions.checkCalculations(experimentState, formData);
             
-            if (checkResult.results.Ep) {
-                experimentFunctions.showCalculationFeedback(document.getElementById('ep-feedback'), 'success', 'Правильно!');
-            } else {
+            checkResult.results.Ep ? 
+                experimentFunctions.showCalculationFeedback(document.getElementById('ep-feedback'), 'success', 'Правильно!') :
                 experimentFunctions.showCalculationFeedback(document.getElementById('ep-feedback'), 'error', 
                     `Неверно. Правильный ответ: ${checkResult.correctValues.Ep.toFixed(3)} Дж`);
-            }
             
-            if (checkResult.results.Ek) {
-                experimentFunctions.showCalculationFeedback(document.getElementById('ek-feedback'), 'success', 'Правильно!');
-            } else {
+            checkResult.results.Ek ? 
+                experimentFunctions.showCalculationFeedback(document.getElementById('ek-feedback'), 'success', 'Правильно!') :
                 experimentFunctions.showCalculationFeedback(document.getElementById('ek-feedback'), 'error', 
                     `Неверно. Правильный ответ: ${checkResult.correctValues.Ek.toFixed(3)} Дж`);
-            }
             
             if (checkResult.results.conservationVerified) {
                 experimentFunctions.showCalculationFeedback(document.getElementById('conservation-feedback'), 'success', 'Правильно!');

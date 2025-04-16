@@ -676,3 +676,23 @@
     border-right: 7px solid transparent;
     border-bottom: 7px solid var(--color-error);
 }
+
+#cork {
+    position: absolute;    
+    width: 15px;
+    height: 20px;
+    left: 900px;
+    top: 200px;
+    background: linear-gradient(180deg,rgb(124, 86, 70) 0%, rgb(50, 34, 28) 100%);
+}
+
+#cork::before {
+    content: '';
+    position: absolute;    
+    width: 20px;
+    height: 5px;
+    left: -15%;
+    top: 0px;
+    border: 3px;
+    background: linear-gradient(180deg,rgb(124, 86, 70) 0%, rgb(50, 34, 28) 100%);
+}
