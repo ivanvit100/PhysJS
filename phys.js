@@ -1,8 +1,9 @@
-/* Phys.js v1.1.1
+/* Phys.js v1.1.2
  * Физическая библиотека для работы с объектами на веб-странице
  * 
  * GitHub: https://github.com/ivanvit100/PhysJS 
  * Issues: https://github.com/ivanvit100/PhysJS/issues
+ * Documentation: https://github.com/ivanvit100/PhysJS/README.md
  * 
  * License MIT
  * @Copyright 2025 ivanvit (Иванущенко Виталий)
@@ -25,6 +26,7 @@
             this.attachedToPoint = null;
             this.parentObject = null;
             this.lastClickTime = 0;
+            this.canRotate = true;
             
             this.initElement();
         }
@@ -105,6 +107,11 @@
                 return false;
             }
             
+            if (!triggerBeforeAttachmentEvent(this, otherObject)) {
+                log(`Прикрепление ${otherObject.element.id} к ${this.element.id} запрещено обработчиком beforeAttachment`);
+                return false;
+            }
+            
             const attachPoint = this.findCompatibleAttachmentPoint(otherObject);
             
             if (!attachPoint) {
@@ -140,6 +147,13 @@
                 return;
             }
             
+            log(`Проверка перед откреплением ${this.element.id}`);
+            
+            if (!triggerBeforeDetachmentEvent(this)) {
+                log(`Открепление ${this.element.id} запрещено обработчиком beforeDetachment`);
+                return false;
+            }
+            
             log(`Открепление ${this.element.id}`);
             
             if (this.isAttached) {
@@ -159,17 +173,21 @@
                 const attachedObjectsCopy = [...this.attachedObjects];
                 
                 attachedObjectsCopy.forEach(obj => {
-                    obj.isAttached = false;
-                    obj.element.classList.remove('attached');
-                    obj.attachedToPoint = null;
-                    obj.parentObject = null;
-                    
-                    triggerDetachmentEvent(obj);
+                    if (triggerBeforeDetachmentEvent(obj)) {
+                        obj.isAttached = false;
+                        obj.element.classList.remove('attached');
+                        obj.attachedToPoint = null;
+                        obj.parentObject = null;
+                        
+                        triggerDetachmentEvent(obj);
+                    }
                 });
                 
                 this.attachedObjects.clear();
                 this.element.classList.remove('attached');
             }
+            
+            return true;
         }
         
         getPosition() {
@@ -356,7 +374,9 @@
     
     const customEventListeners = {
         'attachment': [],
-        'detachment': []
+        'detachment': [],
+        'beforeAttachment': [],
+        'beforeDetachment': []
     };
     
     function triggerAttachmentEvent(sourceObject, targetObject) {
@@ -371,6 +391,35 @@
         });
     }
     
+    function triggerBeforeAttachmentEvent(sourceObject, targetObject) {
+        if (customEventListeners['beforeAttachment'].length === 0)
+            return true;
+        
+        for (const callback of customEventListeners['beforeAttachment']) {
+            if (callback(sourceObject, targetObject) === false) {
+                showDenyEffect(sourceObject.element);
+                showDenyEffect(targetObject.element);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    function triggerBeforeDetachmentEvent(object) {
+        if (customEventListeners['beforeDetachment'].length === 0)
+            return true;
+        
+        for (const callback of customEventListeners['beforeDetachment']) {
+            if (callback(object) === false) {
+                showDenyEffect(object.element);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     function init() {
         log("Инициализация физической библиотеки...");
         
@@ -428,6 +477,11 @@
                         log(`Открепление не разрешено для ${element.id} на текущем шаге`);
                         return;
                     }
+                }
+                
+                if (!triggerBeforeDetachmentEvent(physObject)) {
+                    log(`Открепление ${element.id} запрещено обработчиком beforeDetachment`);
+                    return;
                 }
                 
                 log(`Открепление ${element.id} по двойному клику`);
@@ -580,10 +634,17 @@
         document.removeEventListener('mousemove', dragMove);
         document.removeEventListener('mouseup', stopDrag);
         
-        // Автоматическое прикрепление при перекрытии объектов
         tryAutoAttach(draggedObject);
-        
         draggedObject = null;
+    }
+
+    function showDenyEffect(element) {
+        if (!element) return;
+        
+        element.classList.add('phys-deny');
+        setTimeout(() => {
+            element.classList.remove('phys-deny');
+        }, 1000);
     }
     
     function tryAutoAttach(physObject) {
@@ -629,12 +690,14 @@
             for (const element of overlappingElements) {
                 const targetObject = physObjects.get(element);
                 
-                if (targetObject && targetObject.attach(physObject)) {
+                if (targetObject && triggerBeforeAttachmentEvent(targetObject, physObject) && 
+                    targetObject.attach(physObject)) {
                     log(`${element.id} успешно прикреплен к ${physObject.element.id}`);
                     return;
                 }
                 
-                if (physObject.attach(targetObject)) {
+                if (triggerBeforeAttachmentEvent(physObject, targetObject) && 
+                    physObject.attach(targetObject)) {
                     log(`${physObject.element.id} успешно прикреплен к ${element.id}`);
                     return;
                 }
@@ -665,6 +728,11 @@
         
         if (selectedObject.isAttached || selectedObject.attachedObjects.size > 0) {
             log("Невозможно вращать: объект является частью прикрепленной группы");
+            return;
+        }
+        
+        if (!selectedObject.canRotate) {
+            log("Вращение отключено для этого объекта");
             return;
         }
         
@@ -711,6 +779,59 @@
                 obj.rotation = 0;
                 obj.element.style.transform = 'rotate(0deg)';
             });
+        },
+
+        disableRotation: function() {
+            physObjects.forEach(obj => {
+                obj.canRotate = false;
+            });
+            log("Вращение отключено для всех объектов");
+            return this;
+        },
+        
+        enableRotation: function() {
+            physObjects.forEach(obj => {
+                obj.canRotate = true;
+            });
+            log("Вращение включено для всех объектов");
+            return this;
+        },
+        
+        disableRotationFor: function(elements) {
+            if (!Array.isArray(elements)) {
+                elements = [elements];
+            }
+            
+            elements.forEach(element => {
+                if (typeof element === 'string')
+                    element = document.querySelector(element);
+                
+                const obj = physObjects.get(element);
+                if (obj) {
+                    obj.canRotate = false;
+                    log(`Вращение отключено для ${element.id || 'элемента'}`);
+                }
+            });
+            
+            return this;
+        },
+        
+        enableRotationFor: function(elements) {
+            if (!Array.isArray(elements))
+                elements = [elements];
+            
+            elements.forEach(element => {
+                if (typeof element === 'string')
+                    element = document.querySelector(element);
+                
+                const obj = physObjects.get(element);
+                if (obj) {
+                    obj.canRotate = true;
+                    log(`Вращение включено для ${element.id || 'элемента'}`);
+                }
+            });
+            
+            return this;
         },
         
         createStep: function(id, description, allowedAttachments = [], allowedDetachments = []) {
@@ -793,6 +914,18 @@
         onDetachment: function(callback) {
             if (typeof callback === 'function')
                 customEventListeners['detachment'].push(callback);
+            return this;
+        },
+
+        onBeforeAttachment: function(callback) {
+            if (typeof callback === 'function')
+                customEventListeners['beforeAttachment'].push(callback);
+            return this;
+        },
+
+        onBeforeDetachment: function(callback) {
+            if (typeof callback === 'function')
+                customEventListeners['beforeDetachment'].push(callback);
             return this;
         },
 
