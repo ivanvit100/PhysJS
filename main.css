@@ -58,6 +58,7 @@ header h1 {
     color: inherit;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .experiment-card:hover {
@@ -123,6 +124,16 @@ footer {
     margin-top: 50px;
     color: #95a5a6;
     font-size: 0.9rem;
+}
+
+.number {
+    color: #7f8c8d;
+    font-weight: 900;
+    font-size: 0.8rem;
+    position: absolute;
+    opacity: .6;
+    right: 30px;
+    top: 204px;
 }
 
 @media (max-width: 768px) {

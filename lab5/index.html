@@ -17,7 +17,6 @@
         </header>
 
         <div id="experiment-area">
-            <!-- Основное оборудование -->
             <div id="glass-tube" class="phys phys-fixed phys-attachable equipment" data-name="Стеклянная трубка" data-type="tube">
                 <div class="tube-body"></div>
                 <div id="tube-air" class="tube-air"></div>
@@ -46,8 +45,19 @@
             </div>
 
             <div id="barometer" class="phys-fixed equipment" data-name="Барометр" data-type="barometer">
-                <div class="barometer-body"></div>
-                <div id="barometer-display" class="digital-display">760.00</div>
+                <div class="barometer-body">
+                    <div class="barometer-scale">
+                        <div class="scale-major"></div>
+                        <div class="scale-markings"></div>
+                        <div class="barometer-needle"></div>
+                        <div class="barometer-center"></div>
+                    </div>
+                    <div class="barometer-info">
+                        <div class="barometer-title">БАРОМЕТР</div>
+                        <div class="barometer-units">мм рт. ст.</div>
+                        <div id="barometer-display" class="digital-display">760.00</div>
+                    </div>
+                </div>
             </div>
 
             <div class="tooltip" id="tooltip"></div>
@@ -59,13 +69,12 @@
             </div>
             <div class="panel-content">
                 <ol class="list-spaced">
-                    <li id="step1" class="active">Налейте воду в воронку при открытом отверстии в трубке</li>
+                    <li id="step1" class="active">Соедините сосуды резиновой трубкой</li>
                     <li id="step2">Установите начальный уровень воды и измерьте длину воздушного столба</li>
                     <li id="step3">Закройте отверстие трубки пробкой</li>
-                    <li id="step4">Опустите воронку примерно на 1 метр ниже</li>
+                    <li id="step4">Опустите воронку примерно на 30 см ниже</li>
                     <li id="step5">Измерьте новую длину воздушного столба и разность уровней</li>
                     <li id="step6">Вычислите атмосферное давление</li>
-                    <li id="step7">Сравните с показаниями барометра</li>
                 </ol>
                 <div class="info-box info-box-primary mb-0">
                     <p id="current-instruction" class="mb-0">Наполните систему водой, перемещая воронку к сосуду с водой</p>
@@ -90,10 +99,6 @@
                     <span class="measurement-label">Разность уровней воды (h):</span>
                     <span class="measurement-value"><span id="water-level-diff">-</span> см</span>
                 </div>
-                <div class="measurement-row">
-                    <span class="measurement-label">Показания барометра:</span>
-                    <span class="measurement-value"><span id="barometer-reading">760.00</span> мм рт.ст.</span>
-                </div>
                 <div class="measurement-row result">
                     <span class="measurement-label">Вычисленное давление:</span>
                     <span class="measurement-value"><span id="pressure">-</span> мм рт.ст.</span>
@@ -101,10 +106,23 @@
             </div>
         </div>
 
+        <div id="answer-form" class="ui-panel" style="display: none; width: 350px; left: 20px; top: 300px;">
+            <div class="panel-header">
+              <h3>Расчет атмосферного давления</h3>
+            </div>
+            <div class="panel-content">
+              <div class="input-group">
+                <label for="user-pressure">Введите результат расчета (мм рт.ст.):</label>
+                <input type="number" id="user-pressure" step="0.01" placeholder="Введите значение">
+              </div>
+              <button id="submit-answer" class="btn btn-primary">Проверить ответ</button>
+              <div id="answer-feedback" class="feedback"></div>
+            </div>
+          </div>
+
         <div id="help-text">
             <div class="help-item"><span class="key-indicator">ЛКМ</span> перемещать объекты</div>
             <div class="help-item"><span class="key-indicator">2х ЛКМ</span> открепить объект</div>
-            <div class="help-item"><span class="key-indicator">Q/E</span> вращать объект</div>
         </div>
 
         <div class="buttons-container">
@@ -125,15 +143,10 @@
     </div>
 
     <svg id="svg-container" width="100%" height="100%" style="position:absolute; top:0; left:0; pointer-events:none; z-index:10; display:none;">
-        <!-- Основная резиновая трубка -->
         <path id="rubber-tube-path" stroke="rgba(44, 62, 80, 1)" stroke-width="35" fill="none" stroke-linecap="round" 
               filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.3))" />
-        
-        <!-- Манжеты для стеклянной трубки -->
         <rect id="tube-connector" class="rubber-tube-connector" width="30" height="20" rx="3" ry="3" 
               fill="rgba(44, 62, 80, 1)" filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.3))" />
-        
-        <!-- Манжеты для воронки -->
         <rect id="funnel-connector" class="rubber-tube-connector" width="30" height="20" rx="3" ry="3" 
               fill="rgba(44, 62, 80, 1)" filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.3))" />
     </svg>
