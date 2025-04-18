@@ -201,9 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if (heightDifference >= 45) {
                         const heightDifferenceInCm = heightDifference * 0.11;
+                        const waterChangeInTube = heightDifferenceInCm * 0.8;
+                        const totalWaterLevelDiff = waterChangeInTube;
                         
-                        experimentState.waterLevelDifference = heightDifferenceInCm;
-                        elements.waterLevelDiffDisplay.textContent = heightDifferenceInCm.toFixed(1);
+                        experimentState.waterLevelDifference = totalWaterLevelDiff;
+                        elements.waterLevelDiffDisplay.textContent = totalWaterLevelDiff.toFixed(1);
                         
                         experimentFunctions.advanceToStep(5, elements);
                         elements.currentInstruction.textContent = 

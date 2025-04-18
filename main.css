@@ -136,6 +136,18 @@ footer {
     top: 204px;
 }
 
+.dev {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 5px 10px;
+    background-color: #ffcb00ad;
+    color: #ff5400;
+    font-size: .8rem;
+    font-weight: 700;
+    border-radius: 0 0 10px 0;
+}
+
 @media (max-width: 768px) {
     .experiments-grid {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

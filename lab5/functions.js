@@ -120,8 +120,8 @@ const experimentFunctions = {
             const initialHeight = this.experimentState.initialFunnelHeight;
             const currentHeight = this.experimentState.funnelPosition.top;
             const heightDifference = currentHeight - initialHeight;
-            const heightDifferenceInCm = heightDifference * 0.37;
-            const waterChangeRatio = 0.2; 
+            const heightDifferenceInCm = heightDifference * 0.11;
+            const waterChangeRatio = 0.8; 
             const waterLevelChangeInCm = heightDifferenceInCm * waterChangeRatio;
             const tubeHeightInCm = 100;
             const funnelHeightInCm = 100;
@@ -164,9 +164,9 @@ const experimentFunctions = {
             const initialHeight = this.experimentState.initialFunnelHeight;
             const currentHeight = this.experimentState.funnelPosition.top;
             const heightDifference = currentHeight - initialHeight;
-            const heightDifferenceInCm = heightDifference * 0.37;
+            const heightDifferenceInCm = heightDifference * 0.11;
             const initialAirColumnLength = this.experimentState.initialAirColumnLength;
-            const waterChangeRatio = 0.2;
+            const waterChangeRatio = 0.8;
             const waterLevelChange = heightDifferenceInCm * waterChangeRatio;
             return initialAirColumnLength + waterLevelChange;
         }
@@ -447,11 +447,11 @@ const experimentFunctions = {
         const h = this.experimentState.waterLevelDifference;
         
         if (l1 <= 0 || l2 <= 0 || h <= 0) return;
-
-        const volumeChange = l1 - l2;
+    
+        const volumeChange = l2 - l1;
         if (volumeChange <= 0) {
             if (elements.answerFeedback) {
-                elements.answerFeedback.textContent = "Ошибка в измерениях: воздушный столб должен уменьшиться при опускании воронки.";
+                elements.answerFeedback.textContent = "Ошибка в измерениях: воздушный столб должен увеличиться при опускании воронки.";
                 elements.answerFeedback.className = "feedback error";
             }
             return;
@@ -460,8 +460,15 @@ const experimentFunctions = {
         const waterDensity = 1000;
         const g = 9.81;
         const h_meters = h / 100;
+        
+        // Расчет давления по формуле p = плотность воды * g * h * l2 / (l2 - l1)
+        // Сначала вычисляем в Паскалях
         const waterPressurePa = waterDensity * g * h_meters;
+        
+        // Переводим в мм рт.ст.
         const waterPressureMmHg = waterPressurePa / 133.3;
+        
+        // Применяем полную формулу с учетом l2
         const calculatedPressure = (waterPressureMmHg * l2) / volumeChange;
         
         if (!elements.userPressureInput) userPressure = calculatedPressure;
@@ -489,7 +496,7 @@ const experimentFunctions = {
         } else {
             resultMessage = `Ваш ответ (${userPressure.toFixed(2)} мм рт.ст.) ` +
                             `значительно отличается от расчетного значения (${calculatedPressure.toFixed(2)} мм рт.ст.). ` +
-                            `Проверьте правильность вычислений по формуле: P_атм = (ρgh × V₂) / (V₁ - V₂)`;
+                            `Проверьте правильность вычислений по формуле: P_атм = (ρgh × l₂) / (l₂ - l₁)`;
             feedbackClass = "error";
         }
         
