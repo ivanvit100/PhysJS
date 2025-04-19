@@ -121,7 +121,7 @@ const experimentFunctions = {
             const currentHeight = this.experimentState.funnelPosition.top;
             const heightDifference = currentHeight - initialHeight;
             const heightDifferenceInCm = heightDifference * 0.11;
-            const waterChangeRatio = 0.8; 
+            const waterChangeRatio = .105782; 
             const waterLevelChangeInCm = heightDifferenceInCm * waterChangeRatio;
             const tubeHeightInCm = 100;
             const funnelHeightInCm = 100;
@@ -166,7 +166,7 @@ const experimentFunctions = {
             const heightDifference = currentHeight - initialHeight;
             const heightDifferenceInCm = heightDifference * 0.11;
             const initialAirColumnLength = this.experimentState.initialAirColumnLength;
-            const waterChangeRatio = 0.8;
+            const waterChangeRatio = .105782;
             const waterLevelChange = heightDifferenceInCm * waterChangeRatio;
             return initialAirColumnLength + waterLevelChange;
         }
@@ -386,14 +386,25 @@ const experimentFunctions = {
                 const airColumnLength = this.calculateWaterLevelInTube(elements);
                 const lengthInCm = (airColumnLength / 100) * 100;
                 
-                this.experimentState.initialAirColumnLength = lengthInCm;
-                elements.lengthDisplay1.textContent = lengthInCm.toFixed(1);
-                
-                this.experimentState.initialWaterLevelSet = true;
-                
-                this.advanceToStep(3, elements);
-                elements.currentInstruction.textContent = 
-                    "Теперь закройте отверстие трубки пробкой";
+                if (lengthInCm >= 49 && lengthInCm <= 51) {
+                    this.experimentState.initialAirColumnLength = lengthInCm;
+                    elements.lengthDisplay1.textContent = lengthInCm.toFixed(1);
+                    this.experimentState.initialWaterLevelSet = true;
+                    
+                    this.advanceToStep(3, elements);
+                    elements.currentInstruction.textContent = 
+                        "Теперь закройте отверстие трубки пробкой";
+                } else {
+                    const originalInstructionText = elements.currentInstruction.textContent;
+                    elements.currentInstruction.textContent = 
+                        `Уровень воды в трубке должен быть примерно 50 см от верхнего конца (текущий: ${lengthInCm.toFixed(1)} см)`;
+                    elements.currentInstruction.classList.add('warning');
+                    
+                    setTimeout(() => {
+                        elements.currentInstruction.classList.remove('warning');
+                        elements.currentInstruction.textContent = originalInstructionText;
+                    }, 3000);
+                }
             }
             
             if (this.experimentState.step === 5 && !this.experimentState.finalMeasurementsDone) {
@@ -451,7 +462,7 @@ const experimentFunctions = {
         const volumeChange = l2 - l1;
         if (volumeChange <= 0) {
             if (elements.answerFeedback) {
-                elements.answerFeedback.textContent = "Ошибка в измерениях: воздушный столб должен увеличиться при опускании воронки.";
+                elements.answerFeedback.textContent = "Ошибка в измерениях: воздушный столб должен уменьшиться при опускании воронки.";
                 elements.answerFeedback.className = "feedback error";
             }
             return;
@@ -460,16 +471,7 @@ const experimentFunctions = {
         const waterDensity = 1000;
         const g = 9.81;
         const h_meters = h / 100;
-        
-        // Расчет давления по формуле p = плотность воды * g * h * l2 / (l2 - l1)
-        // Сначала вычисляем в Паскалях
-        const waterPressurePa = waterDensity * g * h_meters;
-        
-        // Переводим в мм рт.ст.
-        const waterPressureMmHg = waterPressurePa / 133.3;
-        
-        // Применяем полную формулу с учетом l2
-        const calculatedPressure = (waterPressureMmHg * l2) / volumeChange;
+        const calculatedPressure = (waterDensity * g * h_meters * l2) / volumeChange / 133.3;
         
         if (!elements.userPressureInput) userPressure = calculatedPressure;
         

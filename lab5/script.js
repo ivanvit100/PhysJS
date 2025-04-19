@@ -55,9 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = object.element.id;
         
         if (id === 'funnel' && experimentState.rubberTubeConnectedToGlassTube && 
-            experimentState.rubberTubeConnectedToFunnel && !isDraggingFunnel) {
+            experimentState.rubberTubeConnectedToFunnel && !isDraggingFunnel)
             return false;
-        }
+        if (id === 'glass-tube' && experimentState.rubberTubeConnectedToGlassTube && 
+            experimentState.rubberTubeConnectedToFunnel)
+            return false;
         
         if (!experimentFunctions.isDetachmentAllowedForStep(id, experimentState.step)) {
             experimentFunctions.showDetachmentHint(id, experimentState.step, elements);
@@ -188,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (experimentState.step === 2 && !experimentState.initialWaterLevelSet) {
                     const tubeWaterLevel = experimentFunctions.calculateWaterLevelInTube(elements);
                     
-                    if (tubeWaterLevel >= 45 && tubeWaterLevel <= 55) {
+                    if (tubeWaterLevel >= 49 && tubeWaterLevel <= 51) {
                         elements.ruler.style.display = 'block';
                         elements.currentInstruction.textContent = 
                             "Используйте линейку, чтобы измерить длину воздушного столба в трубке";
@@ -197,22 +199,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (experimentState.step === 4 && experimentState.corkInserted && 
                     !experimentState.finalMeasurementsDone) {
-                    const heightDifference = experimentState.funnelPosition.top - experimentState.initialFunnelHeight;
-                    
-                    if (heightDifference >= 45) {
-                        const heightDifferenceInCm = heightDifference * 0.11;
-                        const waterChangeInTube = heightDifferenceInCm * 0.8;
-                        const totalWaterLevelDiff = waterChangeInTube;
-                        
-                        experimentState.waterLevelDifference = totalWaterLevelDiff;
-                        elements.waterLevelDiffDisplay.textContent = totalWaterLevelDiff.toFixed(1);
-                        
-                        experimentFunctions.advanceToStep(5, elements);
-                        elements.currentInstruction.textContent = 
-                            "Используйте линейку, чтобы измерить новую длину воздушного столба";
-                            
-                        elements.ruler.style.display = 'block';
-                    }
+                    const waterElements = document.querySelectorAll('.tube-water');
+                    if (waterElements.length >= 2) {
+                        const glassTubeWaterRect = document.querySelector('#glass-tube .tube-water').getBoundingClientRect();
+                        const funnelWaterRect = document.querySelector('#funnel .tube-water').getBoundingClientRect();
+                        const glassTubeWaterTop = glassTubeWaterRect.top;
+                        const funnelWaterTop = funnelWaterRect.top;
+                        const heightDifference = Math.abs(funnelWaterTop - glassTubeWaterTop);
+
+                        if (heightDifference >= 45) {
+                            const heightDifferenceInCm = heightDifference * 0.22;
+
+                            experimentState.waterLevelDifference = heightDifferenceInCm;
+                            elements.waterLevelDiffDisplay.textContent = heightDifferenceInCm.toFixed(1);
+
+                            experimentFunctions.advanceToStep(5, elements);
+                            elements.currentInstruction.textContent = 
+                                "Используйте линейку, чтобы измерить новую длину воздушного столба";
+
+                            elements.ruler.style.display = 'block';
+                        }
+                    }               
                 }
                 
                 if (experimentState.step === 1 && 
@@ -258,8 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sourceId = sourceObject.element.id;
         const targetId = targetObject.element.id;
         
-        if ((sourceId === 'rubber-tube' && targetId === 'glass-tube') || 
-            (sourceId === 'glass-tube' && targetId === 'rubber-tube')) {
+        if (sourceId === 'glass-tube' && targetId === 'rubber-tube') {
             experimentState.rubberTubeConnectedToGlassTube = true;
             
             if (experimentState.rubberTubeConnectedToFunnel) {
@@ -276,8 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
             experimentFunctions.checkFullConnection(elements);
         }
         
-        if ((sourceId === 'rubber-tube' && targetId === 'funnel') || 
-            (sourceId === 'funnel' && targetId === 'rubber-tube')) {
+        if (sourceId === 'funnel' && targetId === 'rubber-tube') {
             experimentState.rubberTubeConnectedToFunnel = true;
             
             if (experimentState.rubberTubeConnectedToGlassTube) {
