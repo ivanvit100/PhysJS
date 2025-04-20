@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изучение закона радиоактивного распада</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="specific.css">
+</head>
+<body>
+    <header>
+        <h1>Изучение закона радиоактивного распада</h1>
+    </header>
+
+    <div id="experiment-container" class="container">
+
+        <div id="experiment-area" class="experiment-area">
+            <!-- Область для монет -->
+            <div id="coin-box" class="coin-box"></div>
+            
+            <div id="help-text">
+                <div class="help-item"><span class="key-indicator">2х ЛКМ</span> бросок монет</div>
+            </div>
+        </div>
+
+        <!-- Панель измерений/теории -->
+        <div class="ui-panel" id="measurement-panel">
+            <div class="panel-header">
+                <h3>Теоретическая модель</h3>
+            </div>
+            <div class="panel-content">
+                <p class="font-bold mb-2">Закон радиоактивного распада:</p>
+                <div class="formula">
+                    N = N₀ · e<sup>-0.693t/T</sup>
+                </div>
+                <p class="mb-1">Где:</p>
+                <ul class="list-unstyled list-spaced mb-2">
+                    <li><span class="font-mono">N</span> - число нераспавшихся ядер в момент времени t</li>
+                    <li><span class="font-mono">N₀</span> - число ядер в начальный момент времени</li>
+                    <li><span class="font-mono">T</span> - период полураспада</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Панель с графиком -->
+        <div class="ui-panel" id="chart-panel">
+            <div class="panel-header">
+                <h3>График распада</h3>
+            </div>
+            <div class="panel-content">
+                <div class="chart-container">
+                    <canvas id="decay-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Панель с таблицей результатов -->
+        <div class="ui-panel" id="results-panel">
+            <div class="panel-header">
+                <h3>Таблица результатов</h3>
+            </div>
+            <div class="panel-content">
+                <div class="table-responsive">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Бросок</th>
+                                <th colspan="2">Текущая серия</th>
+                                <th rowspan="2">Теоретическое значение</th>
+                            </tr>
+                            <tr>
+                                <th>Орёл (N)</th>
+                                <th>Решка (N₀-N)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table-body">
+                            <!-- Данные будут добавлены скриптом -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки управления -->
+        <div class="buttons-container">
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+            <button id="reset-button" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
+        </div>
+    </div>
+    
+    <!-- Toast для уведомлений -->
+    <div id="toast-container" class="toast-container">
+        <div class="toast" id="toast">
+            <div class="toast-content" id="toast-content"></div>
+            <button class="toast-close" id="toast-close">&times;</button>
+        </div>
+    </div>
+    
+    <!-- Всплывающее уведомление -->
+    <div id="tooltip" class="tooltip"></div>
+
+    <script src="../phys.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
