@@ -211,7 +211,7 @@
     width: 350px;
     transition: var(--transition-default);
     position: relative;
-    z-index: 2;
+    z-index: 99;
 }
 
 .density-calculator h3 {

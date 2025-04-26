@@ -903,3 +903,101 @@
     color: #fff;
     z-index: 3;
 }
+
+#thermometer {
+    position: absolute;
+    width: 36px;
+    height: 230px;
+    top: 200px;
+    left: 610px;
+    cursor: pointer;
+    z-index: 51 !important;
+}
+
+.thermometer-body {
+    position: absolute;
+    width: 100%;
+    height: 85%;
+    background-color: #f8f8f8;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: visible;
+}
+
+.thermometer-tube {
+    position: absolute;
+    width: 6px;
+    height: 93%;
+    top: 7%;
+    left: 15px;
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-bottom: none;
+    border-radius: 2px 2px 0 0;
+    overflow: hidden;
+    z-index: 3;
+}
+
+.thermometer-neck {
+    position: absolute;
+    width: 4px;
+    height: 11px;
+    bottom: 25px;
+    left: 17px;
+    background-color: #e11d48;
+    border-left: 1px solid #be123c;
+    border-right: 1px solid #be123c;
+    border-top: none;
+    z-index: 3;
+}
+
+.thermometer-bulb {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    bottom: 15px;
+    left: 12px;
+    background: #e11d48;
+    border-radius: 50%;
+    box-shadow: inset -2px 2px 4px rgba(255, 255, 255, 0.3), inset 2px -2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 4;
+}
+
+.thermometer-mercury {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 0;
+    background-color: #e11d48;
+    transition: height 0.5s ease;
+    z-index: 2;
+}
+
+.thermometer-scale {
+    position: absolute;
+    left: 22px;
+    top: 7%;
+    height: 85%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.thermometer-scale .temp-mark {
+    font-size: 6px;
+    color: #333;
+    font-weight: 500;
+}
+
+.thermometer-markers {
+    position: absolute;
+    left: 9px;
+    top: 9%;
+    height: 81%;
+    width: 6px;
+    z-index: 4;
+    background-image: repeating-linear-gradient( to bottom, transparent, transparent 0px, #888 0px, #888 1px, transparent 1px, transparent 32px );
+}

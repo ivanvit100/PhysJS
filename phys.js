@@ -1,4 +1,4 @@
-/* Phys.js v1.1.2
+/* Phys.js v1.1.3
  * Физическая библиотека для работы с объектами на веб-странице
  * 
  * GitHub: https://github.com/ivanvit100/PhysJS 
@@ -927,6 +927,23 @@
             if (typeof callback === 'function')
                 customEventListeners['beforeDetachment'].push(callback);
             return this;
+        },
+
+        isAttached: function(element1, element2) {
+            const obj1 = this.getObject(element1);
+            const obj2 = this.getObject(element2);
+
+            if (!obj1 || !obj2) {
+                log("Один или оба объекта не найдены");
+                return false;
+            }
+
+            if (obj1.isAttached && obj1.parentObject === obj2) return true;
+            if (obj2.isAttached && obj2.parentObject === obj1) return true;
+            if (obj1.attachedObjects.has(obj2)) return true;
+            if (obj2.attachedObjects.has(obj1)) return true;
+
+            return false;
         },
 
         showTemporaryObjectAt: function(objectToHide, referenceObject, selectorToShow, offsetX, offsetY, durationMs) {
