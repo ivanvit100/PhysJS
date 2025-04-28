@@ -381,3 +381,13 @@
 #results-table tbody tr:hover {
     background-color: rgba(52, 152, 219, 0.05);
 }
+
+.formula {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    margin: 5px 0;
+    padding: 8px;
+    background-color: rgba(52, 152, 219, 0.05);
+    border-radius: var(--radius-md);
+}
