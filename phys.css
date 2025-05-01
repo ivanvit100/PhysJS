@@ -196,3 +196,29 @@
     10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) !important; }
     20%, 40%, 60%, 80% { transform: translateX(4px) !important; }
 }
+
+.phys-wire {
+    pointer-events: none;
+    z-index: 0 !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.phys-wire path {
+    stroke-width: 3.5px;
+    fill: none;
+    pointer-events: stroke;
+    transition: all 0.05s ease;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.phys-wire path:hover {
+    stroke-width: 5px;
+    cursor: pointer;
+    filter: drop-shadow(0px 2px 3px rgba(0, 0, 0, 0.5));
+}

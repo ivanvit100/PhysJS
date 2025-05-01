@@ -1,4 +1,4 @@
-/* Phys.js v1.1.3
+/* Phys.js v1.2.0
  * Физическая библиотека для работы с объектами на веб-странице
  * 
  * GitHub: https://github.com/ivanvit100/PhysJS 
@@ -376,7 +376,8 @@
         'attachment': [],
         'detachment': [],
         'beforeAttachment': [],
-        'beforeDetachment': []
+        'beforeDetachment': [],
+        'connect': []
     };
     
     function triggerAttachmentEvent(sourceObject, targetObject) {
@@ -419,6 +420,12 @@
         
         return true;
     }
+    
+    function triggerConnectEvent(fromId, toId) {
+        customEventListeners['connect'].forEach(callback => {
+            callback(fromId, toId);
+        });
+    }
 
     function init() {
         log("Инициализация физической библиотеки...");
@@ -429,7 +436,6 @@
             
             element.addEventListener('mousedown', startDrag);
             element.addEventListener('click', handleClick);
-            
         });
 
         document.querySelectorAll('.phys-fixed').forEach(element => {
@@ -469,7 +475,12 @@
         
         const currentTime = new Date().getTime();
         if (currentTime - physObject.lastClickTime < 1000) {
-            if (physObject.isAttached || physObject.attachedObjects.size > 0) {
+            if (element.classList.contains('phys-connectors') && 
+                labStepIterator && 
+                labStepIterator.getCurrentStep() && 
+                labStepIterator.currentIndex === 0) {
+            } 
+            else if (physObject.isAttached || physObject.attachedObjects.size > 0) {
                 if (labStepIterator && labStepIterator.getCurrentStep()) {
                     const currentStep = labStepIterator.getCurrentStep();
                     
@@ -626,6 +637,8 @@
             const attachedPos = initialPositions.get(obj);
             attachedPos && obj.setPosition(attachedPos.x + deltaX, attachedPos.y + deltaY);
         });
+        
+        updateAllWirePositions();
     }
     
     function stopDrag() {
@@ -751,16 +764,284 @@
         selectedObject.rotate(rotationAngle);
     }
     
-    const labStepIterator = new LabStepIterator();
+    let wireInProgress = null;
+    let connectionPoints = new Map();
+    const wires = new Map();
+    let wireIdCounter = 0;
+
+    function createWire(color = '#000000') {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("class", "phys-wire");
+        svg.setAttribute("style", 
+            "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:99;"
+        );
+        document.body.appendChild(svg);
+        
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("stroke", color);
+        path.setAttribute("stroke-width", "2");
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke-linecap", "round");
+        path.style.pointerEvents = "auto";
+        path.style.cursor = "pointer";
+        
+        svg.appendChild(path);
+        wireIdCounter++;
+        
+        const wireId = `wire-${wireIdCounter}`;
+        svg.id = wireId;
+        
+        path.addEventListener('dblclick', (e) => {
+            if (labStepIterator && labStepIterator.getCurrentStep()) {
+                const currentStep = labStepIterator.getCurrentStep();
+                if (!currentStep.isDetachmentAllowed(`#${wireId}`)) {
+                    log(`Удаление провода ${wireId} не разрешено на текущем шаге`);
+                    return;
+                }
+            }
+            
+            removeWire(wireId);
+            e.stopPropagation();
+        });
+        
+        return { svg, path, id: wireId };
+    }
+
+    function findNearestConnectionPoint(element, clientX, clientY) {
+        const elementPoints = [];
+        
+        for (const [id, data] of connectionPoints) {
+            if (data.element === element && !data.used) {
+                const rect = element.getBoundingClientRect();
+                const pointX = rect.left + data.point.x;
+                const pointY = rect.top + data.point.y;
+                
+                const distance = Math.sqrt(Math.pow(clientX - pointX, 2) + Math.pow(clientY - pointY, 2));
+                
+                elementPoints.push({
+                    id: id,
+                    x: pointX,
+                    y: pointY,
+                    distance: distance
+                });
+            }
+        }
+        
+        if (elementPoints.length === 0) return null;
+        
+        elementPoints.sort((a, b) => a.distance - b.distance);
+        const nearest = elementPoints[0];
+        
+        return {
+            id: nearest.id,
+            x: nearest.x,
+            y: nearest.y
+        };
+    }
+
+    function updateWirePath(wire, fromX, fromY, toX, toY) {
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        const curveIntensity = Math.min(distance * 0.5, 50);
+        const controlX1 = fromX + Math.sign(dx) * curveIntensity;
+        const controlY1 = fromY;
+        const controlX2 = toX - Math.sign(dx) * curveIntensity;
+        const controlY2 = toY;
+        
+        const pathData = `M ${fromX} ${fromY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${toX} ${toY}`;
+        wire.path.setAttribute("d", pathData);
+    }
+
+    function startWireConnection(element, event, color) {
+        if (wireInProgress) {
+            log("Уже есть активное соединение");
+            return;
+        }
+        
+        const nearestPoint = findNearestConnectionPoint(element, event.clientX, event.clientY);
+        
+        if (!nearestPoint) {
+            log("Нет доступных точек подключения");
+            return;
+        }
+        
+        log(`Использую точку подключения ${nearestPoint.id} с координатами (${nearestPoint.x}, ${nearestPoint.y})`);
+        
+        const wire = createWire(color);
+        document.body.appendChild(wire.svg);
+        
+        wireInProgress = {
+            wire: wire,
+            fromElement: element,
+            fromPoint: nearestPoint,
+            fromPointId: nearestPoint.id
+        };
+        
+        connectionPoints.get(nearestPoint.id).used = true;
+        
+        const moveHandler = (e) => {
+            updateWirePath(
+                wireInProgress.wire,
+                nearestPoint.x, nearestPoint.y,
+                e.clientX, e.clientY
+            );
+        };
+        
+        document.addEventListener('mousemove', moveHandler);
+        
+        wireInProgress.removeListeners = () => {
+            document.removeEventListener('mousemove', moveHandler);
+        };
+        
+        updateWirePath(wire, nearestPoint.x, nearestPoint.y, event.clientX, event.clientY);
+    }
+
+    function completeWireConnection(element, event) {
+        if (!wireInProgress) return;
+        
+        const nearestPoint = findNearestConnectionPoint(element, event.clientX, event.clientY);
+        
+        if (!nearestPoint) {
+            log("Нет доступных точек для завершения подключения");
+            return;
+        }
+        
+        connectionPoints.get(nearestPoint.id).used = true;
+        
+        updateWirePath(
+            wireInProgress.wire,
+            wireInProgress.fromPoint.x, wireInProgress.fromPoint.y,
+            nearestPoint.x, nearestPoint.y
+        );
+        
+        const wireInfo = {
+            element: wireInProgress.wire.svg,
+            path: wireInProgress.wire.path,
+            fromElement: wireInProgress.fromElement,
+            toElement: element,
+            fromPoint: wireInProgress.fromPointId,
+            toPoint: nearestPoint.id,
+            from: {x: wireInProgress.fromPoint.x, y: wireInProgress.fromPoint.y},
+            to: {x: nearestPoint.x, y: nearestPoint.y}
+        };
+        
+        wires.set(wireInProgress.wire.id, wireInfo);
+        wireInProgress.wire.path.style.pointerEvents = "auto";
+        
+        triggerConnectEvent(wireInProgress.fromPointId, nearestPoint.id);
+        
+        wireInProgress.removeListeners();
+        wireInProgress = null;
+    }
+
+    function removeWire(wireId) {
+        const wire = wires.get(wireId);
+        if (!wire) return;
+        
+        if (wire.fromPoint) {
+            const fromPointData = connectionPoints.get(wire.fromPoint);
+            if (fromPointData) fromPointData.used = false;
+        }
+        
+        if (wire.toPoint) {
+            const toPointData = connectionPoints.get(wire.toPoint);
+            if (toPointData) toPointData.used = false;
+        }
+        
+        wire.element.remove();
+        wires.delete(wireId);
+        
+        log(`Провод ${wireId} удален`);
+    }
+
+    function registerConnectionPoint(element, pointId, x, y) {
+        if (typeof element === 'string') element = document.querySelector(element);
+        if (!element) {
+            log(`Элемент не найден для точки подключения ${pointId}`);
+            return;
+        }
+        
+        if (!element.classList.contains('phys-connectors')) {
+            element.classList.add('phys-connectors');
+        }
+        
+        connectionPoints.set(pointId, {
+            element: element,
+            point: {x, y},
+            used: false
+        });
+        
+        log(`Зарегистрирована точка подключения ${pointId} для ${element.id || 'элемента'} с координатами (${x}, ${y})`);
+    }
+
+    function updateAllWirePositions() {
+        for (const [wireId, wire] of wires) {
+            const fromPointData = connectionPoints.get(wire.fromPoint);
+            const toPointData = connectionPoints.get(wire.toPoint);
+            
+            if (fromPointData && toPointData) {
+                const fromElement = fromPointData.element;
+                const toElement = toPointData.element;
+                
+                const fromRect = fromElement.getBoundingClientRect();
+                const toRect = toElement.getBoundingClientRect();
+                
+                const fromX = fromRect.left + fromPointData.point.x;
+                const fromY = fromRect.top + fromPointData.point.y;
+                const toX = toRect.left + toPointData.point.x;
+                const toY = toRect.top + toPointData.point.y;
+                
+                updateWirePath(wire, fromX, fromY, toX, toY);
+            }
+        }
+    }
+
+    function initConnectors() {
+        document.querySelectorAll('.phys-connectors').forEach(element => {
+            if (element._dblClickHandler)
+                element.removeEventListener('dblclick', element._dblClickHandler);
+            
+            element._dblClickHandler = function(e) {
+                log(`Двойной клик на элементе ${element.id || 'без ID'}`);
+                
+                if (labStepIterator && labStepIterator.getCurrentStep()) {
+                    const currentStep = labStepIterator.getCurrentStep();
+                    if (!currentStep.isAttachmentAllowed(element)) {
+                        log(`Подключение не разрешено для ${element.id} на текущем шаге`);
+                        return;
+                    }
+                }
+                
+                if (wireInProgress && wireInProgress.fromElement !== element) {
+                    log(`Завершаем соединение на элементе ${element.id || 'без ID'}`);
+                    completeWireConnection(element, e);
+                    return;
+                } else if (!wireInProgress) {
+                    const defaultColor = element.dataset.wireColor || '#000000';
+                    log(`Начинаем новое соединение от элемента ${element.id || 'без ID'} с цветом ${defaultColor}`);
+                    startWireConnection(element, e, defaultColor);
+                }
+                
+                e.stopPropagation();
+            };
+            
+            element.addEventListener('dblclick', element._dblClickHandler);
+        });
+    }
     
-    if (document.readyState === "loading")
-        document.addEventListener("DOMContentLoaded", init);
-    else
-        init();
+    window.startWireConnection = startWireConnection;
+    window.addEventListener('resize', updateAllWirePositions);
+    
+    const labStepIterator = new LabStepIterator();
     
     window.physjs = {
         init: function(options = {}) {
-            init(options);
+            debugMode = !!options.debug;
+            init();
+            initConnectors();
             return this;
         },
         
@@ -928,6 +1209,12 @@
                 customEventListeners['beforeDetachment'].push(callback);
             return this;
         },
+        
+        onConnect: function(callback) {
+            if (typeof callback === 'function')
+                customEventListeners['connect'].push(callback);
+            return this;
+        },
 
         isAttached: function(element1, element2) {
             const obj1 = this.getObject(element1);
@@ -945,143 +1232,105 @@
 
             return false;
         },
-
-        showTemporaryObjectAt: function(objectToHide, referenceObject, selectorToShow, offsetX, offsetY, durationMs) {
-            const objToHide = this.getObject(objectToHide);
-            const refObj = this.getObject(referenceObject);
-
-            if (!objToHide || !refObj) {
-                log("Один или несколько объектов не найдены");
-                return this;
-            }
-
-            const elemToShow = document.querySelector(selectorToShow);
-            if (!elemToShow) {
-                log(`Элемент с селектором ${selectorToShow} не найден`);
-                return this;
-            }
-
-            const originalStyle = {
-                visibility: objToHide.element.style.visibility,
-                display: objToHide.element.style.display
-            };
-            objToHide.element.style.visibility = 'hidden';
-
-            const refPos = refObj.getPosition();
-            elemToShow.style.position = 'absolute';
-            elemToShow.style.left = (refPos.x + offsetX) + 'px';
-            elemToShow.style.top = (refPos.y + offsetY) + 'px';
-            elemToShow.style.visibility = 'visible';
-            elemToShow.style.display = 'block';
-
-            log(`Показан временный объект ${selectorToShow} в позиции (${refPos.x + offsetX}, ${refPos.y + offsetY})`);
-
-            setTimeout(() => {
-                elemToShow.style.visibility = 'hidden';
-                elemToShow.style.display = 'none';
-
-                objToHide.element.style.visibility = originalStyle.visibility;
-                objToHide.element.style.display = originalStyle.display;
-
-                log(`Временный объект ${selectorToShow} скрыт, восстановлен ${objToHide.element.id}`);
-            }, durationMs);
-
+        
+        registerConnectionPoint: registerConnectionPoint,
+        
+        addConnectionPoint: function(elementSelector, pointId, x, y) {
+            registerConnectionPoint(elementSelector, pointId, x, y);
             return this;
         },
-
-        swapObjectsWithElement: function(object1, object2, selectorToShow) {
-            const obj1 = this.getObject(object1);
-            const obj2 = this.getObject(object2);
-
-            if (!obj1 || !obj2) {
-                log("Один или несколько объектов не найдены");
-                return this;
+        
+        createWire: function(fromPointId, toPointId, color = '#000000') {
+            const fromPointData = connectionPoints.get(fromPointId);
+            const toPointData = connectionPoints.get(toPointId);
+            
+            if (!fromPointData || !toPointData) {
+                log(`Одна или обе точки подключения не найдены: ${fromPointId}, ${toPointId}`);
+                return null;
             }
-
-            const elemToShow = document.querySelector(selectorToShow);
-            if (!elemToShow) {
-                log(`Элемент с селектором ${selectorToShow} не найден`);
-                return this;
+            
+            if (fromPointData.used || toPointData.used) {
+                log(`Одна или обе точки подключения уже используются: ${fromPointId}, ${toPointId}`);
+                return null;
             }
-
-            obj1.element.style.visibility = 'hidden';
-            obj2.element.style.visibility = 'hidden';
-
-            const pos1 = obj1.getPosition();
-            const pos2 = obj2.getPosition();
-
-            const minX = Math.min(pos1.x, pos2.x);
-            const minY = Math.min(pos1.y, pos2.y);
-
-            elemToShow.style.position = 'absolute';
-            elemToShow.style.left = minX + 'px';
-            elemToShow.style.top = minY + 'px';
-            elemToShow.style.visibility = 'visible';
-            elemToShow.style.display = 'block';
-
-            elemToShow.classList.add('phys', 'phys-attachable');
-
-            this.createObject(elemToShow);
-
-            log(`Объекты ${obj1.element.id} и ${obj2.element.id} заменены на ${selectorToShow} в позиции (${minX}, ${minY})`);
-
+            
+            const fromRect = fromPointData.element.getBoundingClientRect();
+            const toRect = toPointData.element.getBoundingClientRect();
+            
+            const fromX = fromRect.left + fromPointData.point.x;
+            const fromY = fromRect.top + fromPointData.point.y;
+            const toX = toRect.left + toPointData.point.x;
+            const toY = toRect.top + toPointData.point.y;
+            
+            const wire = createWire(color);
+            updateWirePath(wire, fromX, fromY, toX, toY);
+            
+            fromPointData.used = true;
+            toPointData.used = true;
+            
+            const wireInfo = {
+                element: wire.svg,
+                path: wire.path,
+                fromElement: fromPointData.element,
+                toElement: toPointData.element,
+                fromPoint: fromPointId,
+                toPoint: toPointId,
+                from: {x: fromX, y: fromY},
+                to: {x: toX, y: toY}
+            };
+            
+            wires.set(wire.id, wireInfo);
+            
+            triggerConnectEvent(fromPointId, toPointId);
+            
+            return wire.id;
+        },
+        
+        removeWire: function(wireId) {
+            removeWire(wireId);
             return this;
         },
-
-        calculateTrajectory(v0, alpha, h, g) {
-            const sinAlpha = Math.sin(alpha);
-            const cosAlpha = Math.cos(alpha);
-    
-            const discriminant = Math.pow(v0 * sinAlpha, 2) + 2 * g * h;
-            let flightTime = (Math.abs(alpha) < 0.001 || (sinAlpha < 0 && discriminant < 0)) ?
-                Math.sqrt(2 * h / g) :
-                    sinAlpha >= 0 ?
-                    (v0 * sinAlpha + Math.sqrt(discriminant)) / g :
-                    (-v0 * sinAlpha + Math.sqrt(discriminant)) / g;
-            
-            let range = v0 * cosAlpha * flightTime;
-            
-            if (window.experimentState && window.experimentState.correctionFactor)
-                range *= window.experimentState.correctionFactor;
-            
-            return {
-                range: range,
-                flightTime: flightTime,
-                maxHeight: h + (v0 * sinAlpha) * (v0 * sinAlpha) / (2 * g)
-            };
-        },
-
-        showTrajectory(startX, startY, vx, vy, g, floorArea, id, container_id) {
-            const oldTrajectory = document.getElementById(id);
-            if (oldTrajectory) oldTrajectory.remove();
-            
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, "svg");
-            svg.setAttribute("id", id);
-            svg.setAttribute("style", "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:99;");
-            
-            document.getElementById(container_id).appendChild(svg);
-            
-            const path = document.createElementNS(svgNS, "path");
-            path.setAttribute("stroke", "rgba(255, 0, 0, 0.4)");
-            path.setAttribute("stroke-width", "2");
-            path.setAttribute("fill", "none");
-            
-            let pathData = `M ${startX} ${startY}`;
-            
-            const floorY = window.innerHeight - floorArea.offsetHeight;
-            
-            for (let t = 0.05; t < 10; t += 0.05) {
-                const x = startX + vx * t;
-                const y = startY + vy * t + 0.5 * g * t * t;
-                
-                pathData += ` L ${x} ${y}`;
-                
-                if (y > floorY) break;
+        
+        removeAllWires: function() {
+            for (const wireId of wires.keys()) {
+                removeWire(wireId);
             }
-            
-            path.setAttribute("d", pathData);
-            svg.appendChild(path);
+            return this;
+        },
+        
+        areConnected: function(point1, point2) {
+            for (const [_, wire] of wires) {
+                if ((wire.fromPoint === point1 && wire.toPoint === point2) || 
+                    (wire.fromPoint === point2 && wire.toPoint === point1)) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        
+        getAllWires: function() {
+            return Array.from(wires.keys());
+        },
+        
+        getWireInfo: function(wireId) {
+            return wires.get(wireId);
+        },
+        
+        getConnectionState: function() {
+            const result = [];
+            for (const [wireId, wire] of wires) {
+                result.push({
+                    id: wireId,
+                    from: wire.fromPoint,
+                    to: wire.toPoint
+                });
+            }
+            return result;
+        },
+        
+        updateWirePositions: function() {
+            updateAllWirePositions();
+            return this;
         }
     };
 })();
