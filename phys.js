@@ -1,4 +1,4 @@
-/* Phys.js v1.2.0
+/* Phys.js v1.2.2
  * Физическая библиотека для работы с объектами на веб-странице
  * 
  * GitHub: https://github.com/ivanvit100/PhysJS 
@@ -110,6 +110,17 @@
             if (!triggerBeforeAttachmentEvent(this, otherObject)) {
                 log(`Прикрепление ${otherObject.element.id} к ${this.element.id} запрещено обработчиком beforeAttachment`);
                 return false;
+            }
+
+            if (labStepIterator && labStepIterator.getCurrentStep()) {
+                const currentStep = labStepIterator.getCurrentStep();
+                if (!currentStep.isAttachmentAllowed(otherObject.element) || 
+                    !currentStep.isAttachmentAllowed(this.element)) {
+                    log(`Прикрепление ${otherObject.element.id} к ${this.element.id} не разрешено на текущем шаге`);
+                    showDenyEffect(this.element);
+                    showDenyEffect(otherObject.element);
+                    return false;
+                }
             }
             
             const attachPoint = this.findCompatibleAttachmentPoint(otherObject);
@@ -381,6 +392,7 @@
     };
     
     function triggerAttachmentEvent(sourceObject, targetObject) {
+        updateAllWirePositions();
         customEventListeners['attachment'].forEach(callback => {
             callback(sourceObject, targetObject);
         });
@@ -809,35 +821,30 @@
     }
 
     function findNearestConnectionPoint(element, clientX, clientY) {
-        const elementPoints = [];
+        let minDistance = Infinity;
+        let nearestPoint = null;
         
-        for (const [id, data] of connectionPoints) {
-            if (data.element === element && !data.used) {
-                const rect = element.getBoundingClientRect();
-                const pointX = rect.left + data.point.x;
-                const pointY = rect.top + data.point.y;
+        for (const [id, point] of connectionPoints.entries()) {
+            if (point.element === element && !point.used) {
+                const x = point.x;
+                const y = point.y;
                 
-                const distance = Math.sqrt(Math.pow(clientX - pointX, 2) + Math.pow(clientY - pointY, 2));
+                const dx = x - clientX;
+                const dy = y - clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                elementPoints.push({
-                    id: id,
-                    x: pointX,
-                    y: pointY,
-                    distance: distance
-                });
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestPoint = {
+                        id: id,
+                        x: x,
+                        y: y
+                    };
+                }
             }
         }
         
-        if (elementPoints.length === 0) return null;
-        
-        elementPoints.sort((a, b) => a.distance - b.distance);
-        const nearest = elementPoints[0];
-        
-        return {
-            id: nearest.id,
-            x: nearest.x,
-            y: nearest.y
-        };
+        return nearestPoint;
     }
 
     function updateWirePath(wire, fromX, fromY, toX, toY) {
@@ -868,8 +875,6 @@
             return;
         }
         
-        log(`Использую точку подключения ${nearestPoint.id} с координатами (${nearestPoint.x}, ${nearestPoint.y})`);
-        
         const wire = createWire(color);
         document.body.appendChild(wire.svg);
         
@@ -883,11 +888,29 @@
         connectionPoints.get(nearestPoint.id).used = true;
         
         const moveHandler = (e) => {
-            updateWirePath(
-                wireInProgress.wire,
-                nearestPoint.x, nearestPoint.y,
-                e.clientX, e.clientY
-            );
+            const dx = e.clientX - nearestPoint.x;
+            const dy = e.clientY - nearestPoint.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 3) {
+                const normalizedDx = dx / distance;
+                const normalizedDy = dy / distance;
+                
+                const endX = e.clientX - normalizedDx * 3;
+                const endY = e.clientY - normalizedDy * 3;
+                
+                updateWirePath(
+                    wireInProgress.wire,
+                    nearestPoint.x, nearestPoint.y,
+                    endX, endY
+                );
+            } else {
+                updateWirePath(
+                    wireInProgress.wire,
+                    nearestPoint.x, nearestPoint.y,
+                    e.clientX, e.clientY
+                );
+            }
         };
         
         document.addEventListener('mousemove', moveHandler);
@@ -957,24 +980,53 @@
         log(`Провод ${wireId} удален`);
     }
 
-    function registerConnectionPoint(element, pointId, x, y) {
+    function registerConnectionPoint(element, pointId, xPercent, yPercent) {
         if (typeof element === 'string') element = document.querySelector(element);
         if (!element) {
             log(`Элемент не найден для точки подключения ${pointId}`);
             return;
         }
         
-        if (!element.classList.contains('phys-connectors')) {
+        if (!element.classList.contains('phys-connectors'))
             element.classList.add('phys-connectors');
+        
+        const point = {
+            element: element,
+            xPercent: xPercent,
+            yPercent: yPercent,
+            used: false
+        };
+        
+        const indicator = document.createElement('div');
+        indicator.className = 'connection-point-indicator';
+        indicator.style.left = `${xPercent}%`;
+        indicator.style.top = `${yPercent}%`;
+        element.appendChild(indicator);
+        
+        point.indicator = indicator;
+        
+        function getAbsoluteCoordinates() {
+            const rect = element.getBoundingClientRect();
+            return {
+                x: rect.left + (rect.width * xPercent / 100),
+                y: rect.top + (rect.height * yPercent / 100)
+            };
         }
         
-        connectionPoints.set(pointId, {
-            element: element,
-            point: {x, y},
-            used: false
+        Object.defineProperty(point, 'x', {
+            get: function() {
+                return getAbsoluteCoordinates().x;
+            }
         });
         
-        log(`Зарегистрирована точка подключения ${pointId} для ${element.id || 'элемента'} с координатами (${x}, ${y})`);
+        Object.defineProperty(point, 'y', {
+            get: function() {
+                return getAbsoluteCoordinates().y;
+            }
+        });
+        
+        connectionPoints.set(pointId, point);
+        log(`Зарегистрирована точка подключения ${pointId} для ${element.id || 'элемента'} с координатами (${xPercent}, ${yPercent})`);
     }
 
     function updateAllWirePositions() {
@@ -983,18 +1035,11 @@
             const toPointData = connectionPoints.get(wire.toPoint);
             
             if (fromPointData && toPointData) {
-                const fromElement = fromPointData.element;
-                const toElement = toPointData.element;
-                
-                const fromRect = fromElement.getBoundingClientRect();
-                const toRect = toElement.getBoundingClientRect();
-                
-                const fromX = fromRect.left + fromPointData.point.x;
-                const fromY = fromRect.top + fromPointData.point.y;
-                const toX = toRect.left + toPointData.point.x;
-                const toY = toRect.top + toPointData.point.y;
-                
-                updateWirePath(wire, fromX, fromY, toX, toY);
+                updateWirePath(
+                    wire, 
+                    fromPointData.x, fromPointData.y,
+                    toPointData.x, toPointData.y
+                );
             }
         }
     }
@@ -1232,9 +1277,143 @@
 
             return false;
         },
-        
-        registerConnectionPoint: registerConnectionPoint,
-        
+
+        showTemporaryObjectAt: function(objectToHide, referenceObject, selectorToShow, offsetX, offsetY, durationMs) {
+            const objToHide = this.getObject(objectToHide);
+            const refObj = this.getObject(referenceObject);
+
+            if (!objToHide || !refObj) {
+                log("Один или несколько объектов не найдены");
+                return this;
+            }
+
+            const elemToShow = document.querySelector(selectorToShow);
+            if (!elemToShow) {
+                log(`Элемент с селектором ${selectorToShow} не найден`);
+                return this;
+            }
+
+            const originalStyle = {
+                visibility: objToHide.element.style.visibility,
+                display: objToHide.element.style.display
+            };
+            objToHide.element.style.visibility = 'hidden';
+
+            const refPos = refObj.getPosition();
+            elemToShow.style.position = 'absolute';
+            elemToShow.style.left = (refPos.x + offsetX) + 'px';
+            elemToShow.style.top = (refPos.y + offsetY) + 'px';
+            elemToShow.style.visibility = 'visible';
+            elemToShow.style.display = 'block';
+
+            log(`Показан временный объект ${selectorToShow} в позиции (${refPos.x + offsetX}, ${refPos.y + offsetY})`);
+
+            setTimeout(() => {
+                elemToShow.style.visibility = 'hidden';
+                elemToShow.style.display = 'none';
+
+                objToHide.element.style.visibility = originalStyle.visibility;
+                objToHide.element.style.display = originalStyle.display;
+
+                log(`Временный объект ${selectorToShow} скрыт, восстановлен ${objToHide.element.id}`);
+            }, durationMs);
+        },
+
+        swapObjectsWithElement: function(object1, object2, selectorToShow) {
+            const obj1 = this.getObject(object1);
+            const obj2 = this.getObject(object2);
+
+            if (!obj1 || !obj2) {
+                log("Один или несколько объектов не найдены");
+                return this;
+            }
+
+            const elemToShow = document.querySelector(selectorToShow);
+            if (!elemToShow) {
+                log(`Элемент с селектором ${selectorToShow} не найден`);
+                return this;
+            }
+
+            obj1.element.style.visibility = 'hidden';
+            obj2.element.style.visibility = 'hidden';
+
+            const pos1 = obj1.getPosition();
+            const pos2 = obj2.getPosition();
+
+            const minX = Math.min(pos1.x, pos2.x);
+            const minY = Math.min(pos1.y, pos2.y);
+
+            elemToShow.style.position = 'absolute';
+            elemToShow.style.left = minX + 'px';
+            elemToShow.style.top = minY + 'px';
+            elemToShow.style.visibility = 'visible';
+            elemToShow.style.display = 'block';
+            elemToShow.classList.add('phys', 'phys-attachable');
+
+            this.createObject(elemToShow);
+            log(`Объекты ${obj1.element.id} и ${obj2.element.id} заменены на ${selectorToShow} в позиции (${minX}, ${minY})`);
+
+            return this;
+        },
+
+        calculateTrajectory(v0, alpha, h, g) {
+            const sinAlpha = Math.sin(alpha);
+            const cosAlpha = Math.cos(alpha);
+            const discriminant = Math.pow(v0 * sinAlpha, 2) + 2 * g * h;
+
+            let flightTime = (Math.abs(alpha) < 0.001 || (sinAlpha < 0 && discriminant < 0)) ?
+
+                Math.sqrt(2 * h / g) :
+                    sinAlpha >= 0 ?
+                    (v0 * sinAlpha + Math.sqrt(discriminant)) / g :
+                    (-v0 * sinAlpha + Math.sqrt(discriminant)) / g;
+                    
+            let range = v0 * cosAlpha * flightTime;
+
+            if (window.experimentState && window.experimentState.correctionFactor)
+                range *= window.experimentState.correctionFactor;
+            
+            return {
+                range: range,
+                flightTime: flightTime,
+                maxHeight: h + (v0 * sinAlpha) * (v0 * sinAlpha) / (2 * g)
+            };
+        },
+
+        showTrajectory(startX, startY, vx, vy, g, floorArea, id, container_id) {
+            const oldTrajectory = document.getElementById(id);
+            if (oldTrajectory) oldTrajectory.remove();
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+ 
+            svg.setAttribute("id", id);
+            svg.setAttribute("style", "position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:99;");
+            
+            document.getElementById(container_id).appendChild(svg);
+
+            const path = document.createElementNS(svgNS, "path");
+
+            path.setAttribute("stroke", "rgba(255, 0, 0, 0.4)");
+            path.setAttribute("stroke-width", "2");
+            path.setAttribute("fill", "none");
+
+            let pathData = `M ${startX} ${startY}`;
+            const floorY = window.innerHeight - floorArea.offsetHeight;
+
+            for (let t = 0.05; t < 10; t += 0.05) {
+                const x = startX + vx * t;
+                const y = startY + vy * t + 0.5 * g * t * t;
+
+                pathData += ` L ${x} ${y}`;
+
+                if (y > floorY) break;
+
+                path.setAttribute("d", pathData);
+                svg.appendChild(path);
+            }
+        },
+
         addConnectionPoint: function(elementSelector, pointId, x, y) {
             registerConnectionPoint(elementSelector, pointId, x, y);
             return this;
