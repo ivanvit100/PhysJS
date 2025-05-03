@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Определение температурного коэффициента сопротивления меди</title>
+    <link rel="stylesheet" href="../phys.css">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="specific.css">
+</head>
+<body>
+    <div id="experiment-container">
+        <header>
+            <h1>Определение температурного коэффициента сопротивления меди</h1>
+        </header>
+
+        <div id="experiment-area">
+            <!-- Схема цепи -->
+            <div id="power-source" class="phys phys-connectors equipment" data-name="Источник питания" data-type="power-source">
+                <div class="power-source-body">
+                    <div class="power-display">
+                        <div class="display-value" id="voltage-display">0.0 В</div>
+                    </div>
+                    <div class="power-controls">
+                        <div class="control-knob" id="voltage-knob"></div>
+                    </div>
+                    <div class="power-indicator"></div>
+                    <div class="power-terminals">
+                        <div id="power-positive" class="connector positive"></div>
+                        <div id="power-negative" class="connector negative"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="ammeter" class="phys phys-connectors equipment" data-name="Миллиамперметр" data-type="ammeter">
+                <div class="meter-body">
+                    <div class="meter-display">
+                        <div class="meter-scale"></div>
+                        <div class="meter-needle"></div>
+                        <div class="meter-value" id="current-value">0.0 мА</div>
+                    </div>
+                    <div class="meter-terminals">
+                        <div id="ammeter-input" class="connector input"></div>
+                        <div id="ammeter-output" class="connector output"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="voltmeter" class="phys phys-connectors equipment" data-name="Вольтметр" data-type="voltmeter">
+                <div class="meter-body">
+                    <div class="meter-display">
+                        <div class="meter-scale"></div>
+                        <div class="meter-needle"></div>
+                        <div class="meter-value" id="voltage-value">0.0 В</div>
+                    </div>
+                    <div class="meter-terminals">
+                        <div id="voltmeter-positive" class="connector positive"></div>
+                        <div id="voltmeter-negative" class="connector negative"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="copper-coil" class="phys phys-connectors equipment" data-name="Медная катушка" data-type="coil">
+                <div class="coil-body">
+                    <div class="coil-windings"></div>
+                    <div class="coil-terminals">
+                        <div id="copper-left" class="connector left"></div>
+                        <div id="copper-right" class="connector right"></div>
+                        <div id="copper-top" class="connector top"></div>
+                        <div id="copper-bottom" class="connector bottom"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="thermometer" class="phys phys-attachable" data-type="thermometer" data-name="Термометр">
+                <div class="thermometer-body">
+                    <div class="thermometer-scale">
+                        <span class="temp-mark">100°</span>
+                        <span class="temp-mark">80°</span>
+                        <span class="temp-mark">60°</span>
+                        <span class="temp-mark">40°</span>
+                        <span class="temp-mark">20°</span>
+                        <span class="temp-mark">0°</span>
+                    </div>
+                    <div class="thermometer-tube">
+                        <div class="thermometer-mercury"></div>
+                    </div>
+                    <div class="thermometer-markers"></div>
+                </div>
+                <div class="thermometer-neck"></div>
+                <div class="thermometer-bulb"></div>
+            </div>
+                
+            <div id="temp-control" class="control-panel">
+                <button id="heat-toggle" class="btn btn-danger">Нагреть катушку</button>
+                <div class="temp-indicator">
+                    <span>Температура: </span>
+                    <span id="temp-value">20.0 °C</span>
+                </div>
+            </div>
+            
+            <div id="help-text">
+                <div class="help-item"><span class="key-indicator">ЛКМ</span> перетащить объект</div>
+                <div class="help-item"><span class="key-indicator">2х ЛКМ</span> взаимодействие</div>
+                <div class="help-item"><span class="key-indicator">Q/E</span> регулировка напряжения</div>
+            </div>
+
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок выполнения</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step1" class="active">Соберите электрическую цепь по схеме</li>
+                    <li id="step2">Измерьте начальную температуру образца</li>
+                    <li id="step3">Включите источник питания и измерьте напряжение и ток</li>
+                    <li id="step4">Определите сопротивление образца при начальной температуре</li>
+                    <li id="step5">Нагрейте катушку и измерьте температуру, напряжение и ток</li>
+                    <li id="step6">Вычислите температурный коэффициент сопротивления меди</li>
+                </ol>
+                <div class="info-box info-box-primary mb-0">
+                    <p id="current-instruction" class="mb-0">Соберите электрическую цепь, соединив элементы согласно схеме.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel ui-panel" id="measurement-panel">
+            <div class="panel-header">
+                <h3>Результаты измерений и расчетов</h3>
+            </div>
+            <div class="panel-content">
+                <div class="measurement-row">
+                    <span class="measurement-label">Начальная температура (t₁):</span>
+                    <span class="measurement-value"><span id="initial-temp">-</span> °C</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Напряжение при t₁ (U₁):</span>
+                    <span class="measurement-value"><span id="initial-voltage">-</span> В</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Сила тока при t₁ (I₁):</span>
+                    <span class="measurement-value"><span id="initial-current">-</span> мА</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Сопротивление при t₁ (R₁):</span>
+                    <span class="measurement-value"><span id="initial-resistance">-</span> Ом</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Конечная температура (t₂):</span>
+                    <span class="measurement-value"><span id="final-temp">-</span> °C</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Напряжение при t₂ (U₂):</span>
+                    <span class="measurement-value"><span id="final-voltage">-</span> В</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Сила тока при t₂ (I₂):</span>
+                    <span class="measurement-value"><span id="final-current">-</span> мА</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Сопротивление при t₂ (R₂):</span>
+                    <span class="measurement-value"><span id="final-resistance">-</span> Ом</span>
+                </div>
+                <div class="measurement-row result">
+                    <span class="measurement-label">Температурный коэффициент (α):</span>
+                    <span class="measurement-value"><span id="temp-coefficient">-</span> 1/°C</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel ui-panel" id="theory-panel">
+            <div class="panel-header">
+                <h3>Формулы</h3>
+            </div>
+            <div class="panel-content">
+                <div class="formula">R = U / I</div>
+                <div class="formula">α = (R₂ - R₁) / (R₁ · (t₂ - t₁))</div>
+            </div>
+        </div>
+
+        <div id="graph-panel" class="panel ui-panel">
+            <div class="panel-header">
+                <h3>График зависимости сопротивления от температуры</h3>
+            </div>
+            <div class="panel-content">
+                <canvas id="resistance-graph" width="400" height="250"></canvas>
+            </div>
+        </div>
+
+        <div class="buttons-container">
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
+        </div>
+    </div>
+
+    <script src="../phys.js"></script>
+    <script type="module" src="script.js" defer></script>
+</body>
+</html>

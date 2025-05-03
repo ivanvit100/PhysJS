@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhysJS Wire Connection Test</title>
+    <link rel="stylesheet" href="../phys.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .test-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 400px;
+            max-width: 800px;
+            margin: 0 auto;
+            border: 2px dashed #ccc;
+            padding: 20px;
+            background-color: white;
+            position: relative;
+        }
+        
+        .test-block {
+            width: 150px;
+            height: 100px;
+            background-color: #e0e0e0;
+            border: 2px solid #333;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: move;
+        }
+        
+        .test-block-title {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .connector {
+            width: 12px;
+            height: 12px;
+            background-color: #3498db;
+            border: 2px solid #2980b9;
+            border-radius: 50%;
+            position: absolute;
+        }
+        
+        /* Позиционирование коннекторов */
+        .connector.left-top {
+            top: 15px;
+            left: -7px;
+        }
+        
+        .connector.left-bottom {
+            bottom: 15px;
+            left: -7px;
+        }
+        
+        .connector.right-top {
+            top: 15px;
+            right: -7px;
+        }
+        
+        .connector.right-bottom {
+            bottom: 15px;
+            right: -7px;
+        }
+        
+        .instructions {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px auto;
+            max-width: 800px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PhysJS Wire Connection Test</h1>
+    
+    <div class="instructions">
+        <h3>Инструкции:</h3>
+        <ol>
+            <li>Дважды кликните на блок, чтобы начать подключение провода от ближайшего к курсору коннектора</li>
+            <li>Кликните на другой блок, чтобы завершить подключение к ближайшему свободному коннектору</li>
+            <li>Дважды кликните на провод, чтобы удалить его</li>
+            <li>Вы можете перетаскивать блоки - провода будут перемещаться вместе с ними</li>
+        </ol>
+    </div>
+    
+    <div class="test-container" id="test-area">
+        <div id="block1" class="test-block phys phys-draggable phys-connectors" data-wire-color="#e74c3c">
+            <div class="test-block-title">Блок 1</div>
+            <div class="connector left-top" id="block1-connector1"></div>
+            <div class="connector right-bottom" id="block1-connector2"></div>
+        </div>
+        
+        <div id="block2" class="test-block phys phys-draggable phys-connectors" data-wire-color="#2ecc71">
+            <div class="test-block-title">Блок 2</div>
+            <div class="connector left-top" id="block2-connector1"></div>
+            <div class="connector right-bottom" id="block2-connector2"></div>
+        </div>
+    </div>
+    
+    <script src="../phys.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Инициализируем библиотеку
+            physjs.init({ debug: true });
+            
+            // Регистрируем точки подключения
+            physjs.addConnectionPoint('#block1', 'block1-connector1', 0, 15);
+            physjs.addConnectionPoint('#block1', 'block1-connector2', 150, 85);
+            
+            physjs.addConnectionPoint('#block2', 'block2-connector1', 0, 15);
+            physjs.addConnectionPoint('#block2', 'block2-connector2', 150, 85);
+            
+            // Создаем объекты PhysJS
+            physjs.createObject('#block1');
+            physjs.createObject('#block2');
+            
+            // Добавляем шаг для разрешения соединений
+            const step = physjs.createStep('test', 'Test Step', ['#block1', '#block2'], ['*']);
+            physjs.addStep(step);
+            physjs.goToStep('test');
+            
+            // Добавляем обработчик для логирования соединений
+            physjs.onConnect((fromId, toId) => {
+                console.log(`Соединение установлено: ${fromId} -> ${toId}`);
+            });
+        });
+    </script>
+</body>
+</html>
