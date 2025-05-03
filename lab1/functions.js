@@ -89,12 +89,20 @@ const experimentFunctions = {
         const sphereObj = physjs.getObject('#glass-sphere');
         
         if (hoseObj && sphereObj) {
-            hoseObj.detach();
-            sphereObj.detach();
+            hoseObj.detach && hoseObj.detach();
+            sphereObj.detach && sphereObj.detach();
             
-            if (!hoseObj.isAttached && !sphereObj.isAttached) {
-                hoseObj.attach(sphereObj);
-            }
+            setTimeout(() => {
+                if (window.experimentState.hoseAttachedToSphere) {
+                    let attached = false;
+                    if (hoseObj.attach)
+                        attached = hoseObj.attach(sphereObj);
+                    if (!attached && sphereObj.attach)
+                        attached = sphereObj.attach(hoseObj);
+                    
+                    window.experimentState.hoseAttachedToSphere = attached;
+                }
+            }, 200);
         }
     },
 
@@ -217,68 +225,74 @@ const experimentFunctions = {
             return;
         }
         
-        const targetX = 700;
-        const targetY = 180;
-        
-        const spherePos = sphereObj.getPosition();
-        const deltaX = targetX - spherePos.x;
-        const deltaY = targetY - spherePos.y;
-        
-        this.moveGroupByDelta(deltaX, deltaY);
         window.experimentState.animatingWaterTransfer = true;
         
-        window.sphere.style.visibility = 'hidden';
-        window.hose.style.visibility = 'hidden';
+        const overlay = document.createElement('div');
+        overlay.id = 'animation-overlay';
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.zIndex = '9999';
+        overlay.style.pointerEvents = 'none';
+        document.body.appendChild(overlay);
         
-        const cylinderRect = window.cylinder.getBoundingClientRect();
+        const sphereClone = window.sphere.cloneNode(true);
+        sphereClone.id = 'sphere-clone';
+        sphereClone.style.position = 'absolute';
+        sphereClone.style.left = window.sphere.offsetLeft + 'px';
+        sphereClone.style.top = window.sphere.offsetTop + 'px';
+        sphereClone.style.zIndex = '10000';
+        sphereClone.style.backgroundColor = 'rgba(64, 164, 223, 0.5)';
         
-        const tempContainer = document.createElement('div');
-        tempContainer.style.position = 'absolute';
-        tempContainer.style.zIndex = '1000';
-        tempContainer.style.left = cylinderRect.left + 'px';
-        tempContainer.style.top = cylinderRect.top + 'px';
-        document.body.appendChild(tempContainer);
+        const hoseClone = window.hose.cloneNode(true);
+        hoseClone.id = 'hose-clone';
+        hoseClone.style.position = 'absolute';
+        hoseClone.style.left = window.hose.offsetLeft + 'px';
+        hoseClone.style.top = window.hose.offsetTop + 'px';
+        hoseClone.style.zIndex = '10000';
         
-        const sphereTemp = document.querySelector('#glass-sphere-inv').cloneNode(true);
-        const hoseTemp = document.querySelector('#hose-inv').cloneNode(true);
+        overlay.appendChild(sphereClone);
+        overlay.appendChild(hoseClone);
         
-        sphereTemp.style.position = 'absolute';
-        sphereTemp.style.left = '0';
-        sphereTemp.style.top = '-100px';
-        sphereTemp.style.visibility = 'visible';
-        sphereTemp.style.display = 'block';
+        const targetX = 700;
+        const targetY = 180;
+        const currentX = parseInt(sphereClone.style.left);
+        const currentY = parseInt(sphereClone.style.top);
+        const deltaX = targetX - currentX;
+        const deltaY = targetY - currentY;
         
-        hoseTemp.style.position = 'absolute';
-        hoseTemp.style.left = '40px';
-        hoseTemp.style.top = '-30px';
-        hoseTemp.style.visibility = 'visible';
-        hoseTemp.style.display = 'block';
-        
-        tempContainer.appendChild(sphereTemp);
-        tempContainer.appendChild(hoseTemp);
-        
-        window.cylinderWater.style.transition = 'height 1.5s ease-in-out';
-        window.cylinderWater.style.height = '135px';
+        sphereClone.style.transition = 'all 1s ease';
+        hoseClone.style.transition = 'all 1s ease';
         
         setTimeout(() => {
-            document.body.removeChild(tempContainer);
+            sphereClone.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            hoseClone.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        }, 50);
+        
+        setTimeout(() => {
+            window.cylinderWater.style.transition = 'height 1.5s ease-in-out';
+            window.cylinderWater.style.height = '135px';
             
-            window.sphere.style.visibility = 'visible';
-            window.hose.style.visibility = 'visible';
-            window.sphere.style.backgroundColor = 'rgba(200, 230, 255, 0.6)';
-            
-            this.restoreAttachment();
-            
-            window.volumeDisplay.textContent = window.experimentState.airVolume.toString();
-            window.experimentState.waterInCylinder = true;
-            window.experimentState.animatingWaterTransfer = false;
-            
-            this.advanceToStep(8);
-            this.showDensityCalculator();
-            this.updateInstructions("Теперь рассчитайте плотность воздуха и введите результат для проверки");
-            
-            window.cylinderWater.style.transition = '';
-        }, 2000);
+            setTimeout(() => {
+                document.body.removeChild(overlay);
+                window.sphere.style.backgroundColor = 'rgba(200, 230, 255, 0.6)';
+                window.volumeDisplay.textContent = window.experimentState.airVolume.toString();
+                window.experimentState.waterInCylinder = true;
+                window.experimentState.animatingWaterTransfer = false;
+                
+                window.experimentState.hoseAttachedToSphere = 
+                    (sphereObj.attachedObjects && sphereObj.attachedObjects.has(hoseObj)) || 
+                    (hoseObj.attachedObjects && hoseObj.attachedObjects.has(sphereObj));
+                    
+                this.advanceToStep(8);
+                this.showDensityCalculator();
+                this.updateInstructions("Теперь рассчитайте плотность воздуха и введите результат для проверки");
+                
+                window.cylinderWater.style.transition = '';
+            }, 2000);
+        }, 1200);
     },
 
     processWeighing() {
@@ -325,9 +339,9 @@ const experimentFunctions = {
         const step3 = physjs.createStep('step3', 'Подсоедините шланг к насосу', ['#pump', '#hose']);
         const step4 = physjs.createStep('step4', 'Закройте шланг зажимом', ['#clamp', '#hose'], ['#pump']);
         const step5 = physjs.createStep('step5', 'Повторно взвесьте сферу');
-        const step6 = physjs.createStep('step6', 'Поместите шланг в контейнер с водой', [], ['#clamp']);
-        const step7 = physjs.createStep('step7', 'Перелейте воду в цилиндр', []);
-        const step8 = physjs.createStep('step8', 'Рассчитайте плотность воздуха');
+        const step6 = physjs.createStep('step6', 'Поместите шланг в контейнер с водой', ['#hose', '#glass-sphere'], ['#water-container', '#clamp']);
+        const step7 = physjs.createStep('step7', 'Перелейте воду в цилиндр', ['#hose', '#glass-sphere'], ['#water-container']);
+        const step8 = physjs.createStep('step8', 'Рассчитайте плотность воздуха', ['#hose', '#glass-sphere'], ['#water-container']);
         
         physjs.addStep(step1).addStep(step2).addStep(step3).addStep(step4)
               .addStep(step5).addStep(step6).addStep(step7).addStep(step8);
@@ -386,7 +400,7 @@ const experimentFunctions = {
         
         if (!window.experimentState.hoseAttachedToSphere) return;
         
-        const experimentFuncs = experimentFunctions; // Сохраняем ссылку для использования внутри функции
+        const experimentFuncs = experimentFunctions;
         
         if ((window.experimentState.step === 2 || window.experimentState.step === 5) && 
             !window.experimentState.animatingWaterFill) {

@@ -35,7 +35,7 @@ const experimentFunctions = {
             if (!physjs.getObject(obj.selector)) physjs.createObject(obj.selector);
         });
     
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= 6; i++) {
             const selector = `#ice${i}`;
             const element = document.querySelector(selector);
             if (!element) continue;
@@ -270,7 +270,8 @@ const experimentFunctions = {
         const step2 = physjs.createStep('step2', 'Наполнение цилиндра водой и измерение температуры', 
             ['#cylinder', '#thermometer']);
         const step3 = physjs.createStep('step3', 'Перемещение воды в калориметр');
-        const step4 = physjs.createStep('step4', 'Добавление льда в калориметр');
+        const step4 = physjs.createStep('step4', 'Добавление льда в калориметр', 
+            ['#calorimeter', '#thermometer']);
         const step5 = physjs.createStep('step5', 'Измерение конечного объема воды');
         
         physjs.addStep(step1)
@@ -385,7 +386,6 @@ const experimentFunctions = {
         const iceCubes = document.querySelectorAll('.ice-cube');
         
         iceCubes.forEach((cube, index) => {
-            cube.classList.add('phys-draggable');
             cube.style.cursor = 'move';
             cube.setAttribute('data-ice-id', `ice-${index}`);
             

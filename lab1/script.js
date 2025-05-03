@@ -83,6 +83,28 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeExperiment() {
+    physjs.init({ debug: true });
+    
+    const draggableElements = [
+        '#glass-sphere', '#hose', '#clamp', '#pump', '#thermometer'
+    ];
+    
+    draggableElements.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+            element.classList.add('phys');
+            physjs.createObject(selector);
+        }
+    });
+    
+    ['#scale', '#water-container', '#cylinder'].forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+            element.classList.add('phys-fixed');
+            physjs.createObject(selector);
+        }
+    });
+
     document.addEventListener('keydown', function(e) {
         if (e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'e') {
             e.stopPropagation();
@@ -91,25 +113,15 @@ function initializeExperiment() {
         }
     }, true);
 
-    // Создаем необходимые компоненты UI
     experimentFunctions.createDensityCalculator();
-    
-    // Настраиваем подсказки
     experimentFunctions.setupTooltips();
-    
-    // Настраиваем этапы и точки крепления
     experimentFunctions.setupLabSteps();
     experimentFunctions.setupAttachmentPoints();
-    
-    // Устанавливаем интерактивность элементов
     experimentFunctions.setupScaleInteraction();
     experimentFunctions.setupWaterContainerInteraction();
     experimentFunctions.setupCylinderInteraction();
-    
-    // Инициализируем основные обработчики событий
     experimentFunctions.initExperiment();
     
-    // Активируем первый шаг
     setTimeout(() => {
         physjs.goToStep('step1');
     }, 100);

@@ -116,11 +116,10 @@ const experimentFunctions = {
                 e.preventDefault();
                 
                 if (this.experimentState.step === 3 && this.experimentState.powerOn) {
-                    if (e.key.toLowerCase() === 'q') {
+                    if (e.key.toLowerCase() === 'q')
                         this.adjustVoltage(-this.experimentState.voltageStep);
-                    } else if (e.key.toLowerCase() === 'e') {
+                    else if (e.key.toLowerCase() === 'e')
                         this.adjustVoltage(this.experimentState.voltageStep);
-                    }
                 }
                 
                 return false;
@@ -147,11 +146,9 @@ const experimentFunctions = {
                 this.experimentState.thermometerAttached = false;
                 
                 if (this.experimentState.step === 2) {
-                    setTimeout(() => this.forceSetStep(3), 1000);
+                    setTimeout(() => this.forceSetStep(3), 100);
                 } else if (this.experimentState.step === 5) {
-                    if (this.experimentState.isHeating) {
-                        this.toggleHeating();
-                    }
+                    this.experimentState.isHeating && this.toggleHeating();
                     document.getElementById('current-instruction').textContent = "Прикрепите термометр к катушке для измерения температуры.";
                 }
             }
@@ -238,13 +235,11 @@ const experimentFunctions = {
                     <input type="number" id="alpha-input" step="0.0001" min="0" max="0.01" style="width: 80px;">
                     <span> K⁻¹</span>
                 </div>
-                <p style="font-size: 12px; color: #666;">Введите значение в формате 0.0043</p>
                 <button id="submit-alpha" class="btn btn-primary">Проверить</button>
                 <p id="alpha-feedback" style="margin-top: 10px; color: red;"></p>
             `;
             
             document.body.appendChild(panel);
-            
             document.getElementById('submit-alpha').addEventListener('click', () => {
                 this.checkAlpha();
             });
@@ -273,20 +268,16 @@ const experimentFunctions = {
         if (Math.abs(userValue - correctAlpha) <= tolerance) {
             this.experimentState.tempCoefficient = correctAlpha;
             document.getElementById('temp-coefficient').textContent = "4.300·10⁻³";
-            
             document.getElementById('alpha-input-panel').style.display = 'none';
-            
             document.getElementById('current-instruction').textContent = "Правильно! Эксперимент успешно завершен.";
-            
             this.experimentState.experimentComplete = true;
         } else {
             this.experimentState.wrongAttempts++;
             
-            if (this.experimentState.wrongAttempts >= 3) {
+            if (this.experimentState.wrongAttempts >= 3)
                 feedbackElement.textContent = `Неверно. Правильный ответ: ${correctAlpha.toFixed(4)} K⁻¹`;
-            } else {
+            else
                 feedbackElement.textContent = 'Неверное значение. Проверьте расчеты и попробуйте еще раз.';
-            }
             
             document.getElementById('current-instruction').textContent = `Для вычисления температурного коэффициента используйте формулу: α = (R₂ - R₁) / (R₁ · (t₂ - t₁))`;
         }
@@ -311,11 +302,9 @@ const experimentFunctions = {
         if (Math.abs(userValue - correctResistance) <= tolerance) {
             this.experimentState.initialResistance = correctResistance;
             document.getElementById('initial-resistance').textContent = correctResistance.toFixed(1);
-            
             document.getElementById('resistance-input-panel').style.display = 'none';
             
             this.experimentState.resistanceCalculated = true;
-            
             document.getElementById('current-instruction').textContent = "Ответ верный! Теперь прикрепите термометр к катушке для нагревания.";
             
             this.experimentState.graphPoints = [{
@@ -329,11 +318,10 @@ const experimentFunctions = {
         } else {
             this.experimentState.wrongAttempts++;
             
-            if (this.experimentState.wrongAttempts >= 3) {
+            if (this.experimentState.wrongAttempts >= 3)
                 feedbackElement.textContent = `Неверно. Правильный ответ: ${correctResistance.toFixed(1)} Ом`;
-            } else {
+            else
                 feedbackElement.textContent = 'Неверное значение. Проверьте расчеты и попробуйте еще раз.';
-            }
             
             document.getElementById('current-instruction').textContent = `Вычислите сопротивление по закону Ома: R = U / I (U=${voltage.toFixed(1)} В, I=${this.experimentState.initialCurrent.toFixed(1)} мА)`;
         }
@@ -350,7 +338,7 @@ const experimentFunctions = {
         const instructions = [
             "Соберите электрическую цепь, соединив элементы согласно схеме.",
             "Поместите термометр на катушку, чтобы измерить начальную температуру.",
-            "Включите источник питания двойным щелчком и установите ток в диапазоне 30-40 мА (клавиши Q/E).",
+            "Включите источник питания двойным щелчком и установите ток в 40 мА (клавиши Q/E).",
             "Вычислите сопротивление по закону Ома: R = U / I",
             "Прикрепите термометр к катушке и нагрейте её для измерения изменения сопротивления.",
             "Вычислите температурный коэффициент сопротивления меди."
@@ -776,13 +764,10 @@ const experimentFunctions = {
         const coilPoints = ['coil-left', 'coil-right', 'coil-top', 'coil-bottom'];
         
         let voltmeterToCoilConnections = 0;
-        for (const vPoint of voltmeterPoints) {
-            for (const cPoint of coilPoints) {
-                if (physjs.areConnected(vPoint, cPoint)) {
+        for (const vPoint of voltmeterPoints)
+            for (const cPoint of coilPoints)
+                if (physjs.areConnected(vPoint, cPoint))
                     voltmeterToCoilConnections++;
-                }
-            }
-        }
         
         let ammeterToCoilConnected = false;
         for (const aPoint of ammeterPoints) {

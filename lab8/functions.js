@@ -664,15 +664,17 @@ const experimentFunctions = {
         document.getElementById('heater')?.addEventListener('dragend', () => this.checkHeaterPosition());
         document.getElementById('cylinder')?.addEventListener('dblclick', () => this.fillCylinder());
         
-        const steps = [
-            { id: 'step1', title: 'Налейте воду в цилиндр и измерьте температуру' },
-            { id: 'step2', title: 'Соедините цилиндр с кипятильником', requiredObjects: ['#heater'] },
-            { id: 'step3', title: 'Включите кипятильник' },
-            { id: 'step4', title: 'Дайте воде покипеть' },
-            { id: 'step5', title: 'Расчет удельной теплоты парообразования' }
-        ];
+        const step1 = physjs.createStep('step1', 'Налейте воду в цилиндр и измерьте температуру', ['#cylinder', '#thermometer']);
+        const step2 = physjs.createStep('step2', 'Соедините цилиндр с кипятильником', ['#heater', '#cylinder']);
+        const step3 = physjs.createStep('step3', 'Включите кипятильник');
+        const step4 = physjs.createStep('step4', 'Дайте воде покипеть');
+        const step5 = physjs.createStep('step5', 'Расчет удельной теплоты парообразования');
         
-        steps.forEach(step => physjs.addStep(physjs.createStep(step.id, step.title, step.requiredObjects)));
+        physjs.addStep(step1)
+            .addStep(step2)
+            .addStep(step3)
+            .addStep(step4)
+            .addStep(step5); 
         
         this._isInStepChangeHandler = false;
         physjs.goToStep('step1');
