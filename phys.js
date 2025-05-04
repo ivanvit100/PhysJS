@@ -1,4 +1,4 @@
-/* Phys.js v1.2.2
+/* Phys.js v1.2.3
  * Физическая библиотека для работы с объектами на веб-странице
  * 
  * GitHub: https://github.com/ivanvit100/PhysJS 
@@ -11,6 +11,7 @@
 
 (function() {
     let debugMode = false;
+    let rotationKeysEnabled = true;
 
     function log(...args) {
         debugMode && console.log(...args);
@@ -750,6 +751,7 @@
     function handleKeyPress(e) {
         if (draggedObject) return;
         if (!selectedObject) return;
+        if (!rotationKeysEnabled) return;
         
         if (selectedObject.isAttached || selectedObject.attachedObjects.size > 0) {
             log("Невозможно вращать: объект является частью прикрепленной группы");
@@ -1510,6 +1512,16 @@
         updateWirePositions: function() {
             updateAllWirePositions();
             return this;
-        }
+        },
+
+        setRotationKeysEnabled: function(enabled) {
+            rotationKeysEnabled = !!enabled;
+            log(`Клавиши вращения (Q/E) ${enabled ? 'включены' : 'отключены'}`);
+            return this;
+        },
+        
+        areRotationKeysEnabled: function() {
+            return rotationKeysEnabled;
+        },
     };
 })();
