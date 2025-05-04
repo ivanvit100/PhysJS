@@ -1,4 +1,4 @@
-/* Phys.js v1.2.3
+/* Phys.js v1.2.4
  * Физическая библиотека для работы с объектами на веб-странице
  * 
  * GitHub: https://github.com/ivanvit100/PhysJS 
@@ -965,20 +965,36 @@
     function removeWire(wireId) {
         const wire = wires.get(wireId);
         if (!wire) return;
-        
+
+        if (labStepIterator && labStepIterator.getCurrentStep()) {
+            const currentStep = labStepIterator.getCurrentStep();
+            const allowedDetachments = currentStep.allowedDetachments || [];
+
+            const wiresAllowed = 
+                allowedDetachments.includes('*') || 
+                allowedDetachments.includes('wire') || 
+                allowedDetachments.includes('#wire');
+
+            if (!wiresAllowed) {
+                log("Отсоединение проводов запрещено на текущем шаге");
+                showDenyEffect(wire.element);
+                return;
+            }
+        }
+
         if (wire.fromPoint) {
             const fromPointData = connectionPoints.get(wire.fromPoint);
             if (fromPointData) fromPointData.used = false;
         }
-        
+
         if (wire.toPoint) {
             const toPointData = connectionPoints.get(wire.toPoint);
             if (toPointData) toPointData.used = false;
         }
-        
+
         wire.element.remove();
         wires.delete(wireId);
-        
+
         log(`Провод ${wireId} удален`);
     }
 
