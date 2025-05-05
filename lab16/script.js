@@ -1,0 +1,61 @@
+import experimentFunctions from './functions.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    physjs.init({ debug: false });
+    
+    const elements = [
+        '#power-source', 
+        '#ammeter', 
+        '#voltmeter', 
+        '#switch'
+    ];
+    
+    elements.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+            element.classList.add('phys', 'phys-draggable', 'phys-connectors');
+            physjs.createObject(selector);
+        }
+    });
+    
+    document.querySelector('#power-source').dataset.wireColor = '#e74c3c';
+    document.querySelector('#ammeter').dataset.wireColor = '#3498db';
+    document.querySelector('#voltmeter').dataset.wireColor = '#2ecc71';
+    document.querySelector('#switch').dataset.wireColor = '#95a5a6';
+    
+    const step1 = physjs.createStep('step1', 'Соберите электрическую схему', 
+        ['#power-source', '#ammeter', '#voltmeter', '#switch'], ['*']);
+    const step2 = physjs.createStep('step2', 'Измерьте ЭДС источника тока', ['#switch'], []);
+    const step3 = physjs.createStep('step3', 'Снимите показания при замкнутом ключе', ['#switch'], []);
+    const step4 = physjs.createStep('step4', 'Вычислите внутреннее сопротивление', [], []);
+    const step5 = physjs.createStep('step5', 'Вычислите погрешности измерения ЭДС', [], []);
+    
+    physjs.addStep(step1)
+        .addStep(step2)
+        .addStep(step3)
+        .addStep(step4)
+        .addStep(step5);
+    
+    physjs.goToStep('step1');
+        
+    document.querySelectorAll('.phys').forEach(element => {
+        element.addEventListener('mouseenter', (e) => {
+            const tooltip = document.getElementById('tooltip');
+            if (tooltip && element.dataset.name) {
+                tooltip.textContent = element.dataset.name;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY + 10) + 'px';
+            }
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            const tooltip = document.getElementById('tooltip');
+            if (tooltip) {
+                tooltip.style.display = 'none';
+            }
+        });
+    });
+    
+    experimentFunctions.initializeExperiment();
+});
