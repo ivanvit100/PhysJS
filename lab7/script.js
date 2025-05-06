@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cylinder) {
         cylinder.ondblclick = function(event) {
             if (experimentFunctions.experimentState.step === 2 && !experimentFunctions.experimentState.waterInCylinder) {
-                experimentFunctions.updateWaterLevel('#cylinder .water-level', 140);
+                experimentFunctions.updateWaterLevel('#cylinder .water-level', experimentFunctions.experimentState.initialVolume * 0.8);
                 
                 experimentFunctions.experimentState.waterInCylinder = true;
                 document.getElementById('initial-volume').textContent = experimentFunctions.experimentState.initialVolume.toFixed(1);

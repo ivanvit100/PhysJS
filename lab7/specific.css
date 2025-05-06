@@ -1,6 +1,6 @@
 #ice-container {
     position: absolute;
-    width: 180px;
+    width: 120px;
     height: 120px;
     top: 200px;
     left: 200px;
@@ -9,7 +9,7 @@
     background-color: #dbeafe;
     overflow: visible;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     grid-template-rows: repeat(2, 1fr);
     gap: 5px;
     padding: 5px;
@@ -126,6 +126,7 @@
     background: #64748b;
     border: 1px solid #475569;
     border-radius: 4px;
+    display: none;
 }
 
 .calorimeter-handle-left {
@@ -139,8 +140,8 @@
 .calorimeter-inner {
     position: absolute;
     width: 80%;
-    height: 80%;
-    top: 10%;
+    height: 90%;
+    top: 0%;
     left: 10%;
     background: linear-gradient(145deg, #cbd5e1, #b7c4d1);
     border-radius: 8px;

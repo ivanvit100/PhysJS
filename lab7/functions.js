@@ -12,8 +12,8 @@ const experimentFunctions = {
         roomTemp: 20,
         currentTemp: 50,
         visualTemp: 50,
-        initialVolume: 150,
-        finalVolume: 0,
+        initialVolume: 120,
+        finalVolume: 200,
         meltedIceCount: 0,
         
         SPECIFIC_HEAT: 4200
@@ -35,7 +35,7 @@ const experimentFunctions = {
             if (!physjs.getObject(obj.selector)) physjs.createObject(obj.selector);
         });
     
-        for (let i = 1; i <= 6; i++) {
+        for (let i = 1; i <= 4; i++) {
             const selector = `#ice${i}`;
             const element = document.querySelector(selector);
             if (!element) continue;
@@ -222,11 +222,10 @@ const experimentFunctions = {
     measureFinalVolume() {
         if (this.experimentState.step !== 5) return;
 
-        this.experimentState.finalVolume = this.experimentState.initialVolume + 56;
         this.updateWaterLevel('#calorimeter-inner .water-in-calorimeter', 0);
 
         setTimeout(() => {
-            this.updateWaterLevel('#cylinder .water-level', 186);
+            this.updateWaterLevel('#cylinder .water-level', this.experimentState.finalVolume * 0.8);
             document.getElementById('final-volume').textContent = this.experimentState.finalVolume.toFixed(1);
             const deltaVolume = this.experimentState.finalVolume - this.experimentState.initialVolume;
             document.getElementById('volume-change').textContent = deltaVolume.toFixed(1);
@@ -270,8 +269,9 @@ const experimentFunctions = {
         const step2 = physjs.createStep('step2', 'Наполнение цилиндра водой и измерение температуры', 
             ['#cylinder', '#thermometer']);
         const step3 = physjs.createStep('step3', 'Перемещение воды в калориметр');
-        const step4 = physjs.createStep('step4', 'Добавление льда в калориметр', 
-            ['#calorimeter', '#thermometer']);
+        const step4 = physjs.createStep('step4', 'Добавление льда в калориметр',
+            ['#calorimeter', '#thermometer']
+        );
         const step5 = physjs.createStep('step5', 'Измерение конечного объема воды');
         
         physjs.addStep(step1)
@@ -305,17 +305,15 @@ const experimentFunctions = {
     
         const containerPos = containerObj.getPosition();
         const containerRect = iceContainer.getBoundingClientRect();
-        const cellWidth = containerRect.width / 3;
+        const cellWidth = containerRect.width / 2;
         const cellHeight = containerRect.height / 2;
         
         const cellPositions = [
             { x: 0, y: 0 },
-            { x: cellWidth - 3, y: 0 },
-            { x: cellWidth * 2 - 6, y: 0 },
+            { x: cellWidth - 5, y: 0 },
 
             { x: 0, y: cellHeight - 5},
-            { x: cellWidth - 3, y: cellHeight - 5},
-            { x: cellWidth * 2 - 6, y: cellHeight- 5 }
+            { x: cellWidth - 5, y: cellHeight - 5},
         ];
     
         iceCubes.forEach((cube, index) => {
@@ -386,6 +384,7 @@ const experimentFunctions = {
         const iceCubes = document.querySelectorAll('.ice-cube');
         
         iceCubes.forEach((cube, index) => {
+            cube.classList.add('phys-draggable');
             cube.style.cursor = 'move';
             cube.setAttribute('data-ice-id', `ice-${index}`);
             
