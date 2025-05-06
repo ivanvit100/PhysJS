@@ -42,7 +42,7 @@ const experimentFunctions = {
             if (!physjs.getObject(selector)) physjs.createObject(selector);
         }
     
-        physjs.addAttachmentPoint('#calorimeter', 'thermometer-attachment', 50, -110, ['thermometer']);
+        physjs.addAttachmentPoint('#calorimeter', 'thermometer-attachment', 80, -110, ['thermometer']);
     },
     
     forceSetStep(stepNumber) {
