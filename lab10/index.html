@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Определение длины световой волны</title>
+    <link rel="stylesheet" href="../phys.css">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="specific.css">
+</head>
+<body>
+    <div id="experiment-container">
+        <header>
+            <h1>Определение длины световой волны</h1>
+        </header>
+
+        <div id="experiment-area">
+            <!-- Источник света -->
+            <div id="light-source" class="phys phys-attachable" data-name="Источник света">
+                <div class="source-body">
+                    <div class="control-panel">
+                        <div class="control-knob"></div>
+                        <div class="control-knob"></div>
+                    </div>
+                    <div class="slide-slot"></div>
+                    <div class="device-label">LIGHT SOURCE</div>
+                    <div class="source-indicator"></div>
+                    <div class="connection-line"></div>
+                </div>
+                <div class="source-extension"></div>
+                <div class="source-window"></div>
+                <div class="laser-opening"></div>
+            </div>
+            
+            <!-- Диапозитивная рамка со щелью -->
+            <div id="slide-frame" class="phys phys-attachable" data-name="Диапозитивная рамка" data-type="slide-frame">
+                <div class="frame-body">
+                    <div class="slit"></div>
+                    <div class="connection-indicator"></div>
+                    <div class="frame-label">SLIDE</div>
+                </div>
+            </div>
+            
+            <!-- Дифракционная решетка -->
+            <div id="diffraction-grating" class="phys phys-attachable equipment" data-name="Дифракционная решетка" data-type="diffraction-grating">
+                <div class="grating-body"></div>
+                <div class="grating-holder"></div>
+            </div>
+            
+            <!-- Линза -->
+            <div id="lens" class="phys phys-attachable equipment" data-name="Линза" data-type="lens">
+                <div class="lens-body"></div>
+                <div class="lens-holder"></div>
+            </div>
+            
+            <!-- Экран -->
+            <div id="screen" class="phys phys-attachable equipment" data-name="Экран" data-type="screen">
+                <div class="screen-body">
+                    <div class="spectrum-display">
+                        <div class="central-line"></div>
+                        <div class="spectrum left-spectrum">
+                            <div class="red-edge"></div>
+                            <div class="blue-edge"></div>
+                        </div>
+                        <div class="spectrum right-spectrum">
+                            <div class="red-edge"></div>
+                            <div class="blue-edge"></div>
+                        </div>
+                        <div class="measurement-marker red-marker left-red"></div>
+                        <div class="measurement-marker blue-marker left-blue"></div>
+                        <div class="measurement-marker red-marker right-red"></div>
+                        <div class="measurement-marker blue-marker right-blue"></div>
+                    </div>
+                    <div class="screen-scale"></div>
+                </div>
+            </div>
+            
+            <!-- Линейка для измерений -->
+            <div id="ruler" class="phys phys-attachable equipment" data-name="Линейка" data-type="ruler">
+                <div class="ruler-body">
+                    <div class="ruler-scale"></div>
+                </div>
+            </div>
+
+            <!-- Добавьте в HTML внутри #experiment-area -->
+            <div class="light-beam" id="light-beam"></div>
+            <div class="light-impact" id="light-impact"></div>
+
+            <div id="help-text">
+                <div class="help-item"><span class="key-indicator">ЛКМ</span> перетащить объект</div>
+                <div class="help-item"><span class="key-indicator">2х ЛКМ</span> взаимодействие</div>
+            </div>
+
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок выполнения</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step1" class="active">Установите диапозитивную рамку со щелью в окно источника света и включите его</li>
+                    <li id="step2">Расположите дифракционную решетку, линзу и экран в правильном порядке</li>
+                    <li id="step3">Отрегулируйте положение экрана для получения четкого изображения дифракционных спектров</li>
+                    <li id="step4">Измерьте расстояние от центра до красного края спектра и вычислите длину волны красного света</li>
+                    <li id="step5">Измерьте расстояние от центра до синего края спектра и вычислите длину волны синего света</li>
+                </ol>
+                <div class="info-box info-box-primary mb-0">
+                    <p id="current-instruction" class="mb-0">Установите диапозитивную рамку со щелью в окно источника света и включите его.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel ui-panel" id="measurement-panel">
+            <div class="panel-header">
+                <h3>Результаты измерений и расчетов</h3>
+            </div>
+            <div class="panel-content">
+                <div class="measurement-row">
+                    <span class="measurement-label">Расстояние от линзы до экрана (b):</span>
+                    <span class="measurement-value"><span id="screen-distance">-</span> мм</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Постоянная решетки (d):</span>
+                    <span class="measurement-value"><span id="grating-constant">0.01</span> мм</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Расстояние до красного края спектра (a₁):</span>
+                    <span class="measurement-value"><span id="red-edge-distance">-</span> мм</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Расстояние до синего края спектра (a₂):</span>
+                    <span class="measurement-value"><span id="blue-edge-distance">-</span> мм</span>
+                </div>
+                <div class="measurement-row result">
+                    <span class="measurement-label">Длина волны красного света (λ₁):</span>
+                    <span class="measurement-value"><span id="red-wavelength">-</span> нм</span>
+                </div>
+                <div class="measurement-row result">
+                    <span class="measurement-label">Длина волны синего света (λ₂):</span>
+                    <span class="measurement-value"><span id="blue-wavelength">-</span> нм</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel ui-panel" id="theory-panel">
+            <div class="panel-header">
+                <h3>Формулы</h3>
+            </div>
+            <div class="panel-content">
+                <div class="formula">λ = d·a/b</div>
+            </div>
+        </div>
+        
+        <div id="wavelength-calculator" class="panel ui-panel" style="display: none;">
+            <div class="panel-header">
+                <h3>Расчет длины волны</h3>
+            </div>
+            <div class="panel-content">
+                <div class="calculator-form">
+                    <div class="form-group">
+                        <label for="red-wavelength-input">Длина волны красного света (нм):</label>
+                        <input type="number" id="red-wavelength-input" step="0.1" min="500" max="800">
+                    </div>
+                    <div class="form-group">
+                        <label for="blue-wavelength-input">Длина волны синего света (нм):</label>
+                        <input type="number" id="blue-wavelength-input" step="0.1" min="400" max="500">
+                    </div>
+                    <button id="check-wavelength" class="btn btn-primary">Проверить</button>
+                    <div id="wavelength-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons-container">
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
+        </div>
+    </div>
+
+    <script src="../phys.js"></script>
+    <script type="module" src="script.js" defer></script>
+</body>
+</html>
