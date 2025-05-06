@@ -8,10 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ballAttached: false,
         springExtended: false,
         ballReleased: false,
-        force: 2.0,
-        deformation: 0.05,
-        ballMass: 0.4,
-        height: 1.2,
         distanceValues: [],
         distanceAvg: 0,
         distanceStdDev: 0,
@@ -20,7 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
         potentialEnergyError: 0,
         kineticEnergyError: 0,
         ballOnScale: false,
-        ballWeighed: false
+        ballWeighed: false,
+        
+        // CONFIG
+        force: 2.0,
+        deformation: 0.05,
+        ballMass: 0.4,
+        height: 1.2,
     };
 
     const experimentState = window.experimentState;

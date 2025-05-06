@@ -123,8 +123,7 @@ const experimentFunctions = {
         const flightTime = Math.sqrt(2 * experimentState.height / g);
         
         const baseDistance = initialVelocity * flightTime;
-        const randomFactor = 1 + (Math.random() - 0.5) * 0.2;
-        return baseDistance * randomFactor;
+        return baseDistance;
     },
     
     releaseBall(experimentState, elements) {
@@ -166,10 +165,10 @@ const experimentFunctions = {
         const startY = parseInt(ball.style.top || '175') + ballRect.height/2;
         
         const v0 = Math.sqrt((2 * experimentState.force * experimentState.deformation) / experimentState.ballMass);
-        const visualScale = 60;
+        const visualScale = 150;
         const vx = -v0 * visualScale;
-        const vy = -5;
-        const g = 0.005;
+        const vy = -8;
+        const g = 0.003;
         
         physjs.calculateTrajectory(
             Math.sqrt(vx*vx + vy*vy),
@@ -183,7 +182,7 @@ const experimentFunctions = {
         
         const self = this;
         
-        const animationDuration = 1500;
+        const animationDuration = 1600;
         let startTime = null;
         
         const animateTrajectory = (timestamp) => {
