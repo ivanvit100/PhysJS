@@ -1,5 +1,6 @@
 const experimentFunctions = {
     PIXELS_PER_METER: 22,
+    ballMass: 1.5,
 
     initExperiment(state, elements) {
         physjs.setDebugMode(false);
@@ -37,8 +38,9 @@ const experimentFunctions = {
         this.createResultsTable();
         
         state.currentResultAdded = false;
-        state.correctionFactor = 0.88;
         
+        const baseCorrectionFactor = 0.88;
+        state.correctionFactor = baseCorrectionFactor * (1 + 0.1 * Math.log(this.ballMass / 0.5));
         state.rulerBottomY = 50;
     },
 
@@ -284,28 +286,47 @@ const experimentFunctions = {
     },
     
     getBarrelEndPosition(pistol) {
-        const barrelElem = pistol.querySelector('.cannon-barrel');
+        const muzzleElem = pistol.querySelector('.cannon-muzzle');
         
+        if (!muzzleElem) {
+            const barrelElem = pistol.querySelector('.cannon-barrel');
+            
+            let barrelAngle = 0;
+            const currentTransform = barrelElem.style.transform || '';
+            const rotateMatch = currentTransform.match(/rotate\(([-\d.]+)deg\)/);
+            if(rotateMatch) barrelAngle = parseFloat(rotateMatch[1]);
+    
+            const barrelAngleRad = barrelAngle * (Math.PI / 180);
+            const barrelRect = barrelElem.getBoundingClientRect();
+            const pivotX = barrelRect.left;
+            const pivotY = barrelRect.top + barrelRect.height / 2;
+            const barrelLength = barrelRect.width + 10;
+            const verticalOffset = 5;
+            const endX = pivotX + barrelLength * Math.cos(barrelAngleRad);
+            const endY = pivotY + barrelLength * Math.sin(barrelAngleRad) + verticalOffset;
+            
+            return {
+                x: endX,
+                y: endY,
+                angle: barrelAngle,
+                angleRad: barrelAngleRad
+            };
+        }
+        
+        const muzzleRect = muzzleElem.getBoundingClientRect();
+        const centerX = muzzleRect.left + muzzleRect.width / 2;
+        const centerY = muzzleRect.top + muzzleRect.height / 2;
+        
+        const barrelElem = pistol.querySelector('.cannon-barrel');
         let barrelAngle = 0;
         const currentTransform = barrelElem.style.transform || '';
         const rotateMatch = currentTransform.match(/rotate\(([-\d.]+)deg\)/);
         if(rotateMatch) barrelAngle = parseFloat(rotateMatch[1]);
-
         const barrelAngleRad = barrelAngle * (Math.PI / 180);
-        const barrelRect = barrelElem.getBoundingClientRect();
-        
-        const pivotX = barrelRect.left;
-        const pivotY = barrelRect.top + barrelRect.height / 2;
-        
-        const barrelLength = barrelRect.width + 10;
-        const verticalOffset = 5;
-        
-        const endX = pivotX + barrelLength * Math.cos(barrelAngleRad);
-        const endY = pivotY + barrelLength * Math.sin(barrelAngleRad) + verticalOffset;
         
         return {
-            x: endX,
-            y: endY,
+            x: centerX,
+            y: centerY,
             angle: barrelAngle,
             angleRad: barrelAngleRad
         };
@@ -436,7 +457,8 @@ const experimentFunctions = {
     
         let startTime = null;
         const g_px = state.g * this.PIXELS_PER_METER;
-        const floorY = window.innerHeight - floorArea.offsetHeight;
+        const floorRect = floorArea.getBoundingClientRect();
+        const floorY = floorRect.top;
         let hasHitFloor = false;
         const self = this;
         const MAX_ANIMATION_TIME = 30;
@@ -459,13 +481,15 @@ const experimentFunctions = {
             const currentX_px = startX_px + vx_px * elapsedTime_s;
             const currentY_px = startY_px + vy_initial_px * elapsedTime_s + 0.5 * g_px * elapsedTime_s * elapsedTime_s;
             
-            if (currentY_px >= floorY - projectile.offsetHeight) {
+            const projectileBottom = currentY_px + projectile.offsetHeight / 2;
+            
+            if (projectileBottom >= floorY) {
                 if (!hasHitFloor) {
                     hasHitFloor = true;
                     
                     const a = 0.5 * g_px;
                     const b = vy_initial_px;
-                    const c = startY_px - (floorY - projectile.offsetHeight);
+                    const c = startY_px - (floorY - projectile.offsetHeight / 2);
                     
                     const discriminant = b*b - 4*a*c;
                     
@@ -588,55 +612,7 @@ const experimentFunctions = {
     },
 
     resetExperiment(state, elements) {
-        state.step = 1;
-        state.s = 0;
-        state.alpha_deg = 0;
-        state.alpha_rad = 0;
-        state.l_calc = 0;
-        state.l_exp = 0;
-        state.v0_calculated = false;
-        state.horizontalShotDone = false;
-        state.animation_in_progress = false;
-        state.currentResultAdded = false;
-    
-        const barrelElem = elements.pistol.querySelector('.cannon-barrel');
-        if (barrelElem) {
-            barrelElem.style.transform = 'rotate(0deg)';
-        }
-    
-        elements.heightDisplay.textContent = state.h.toFixed(2);
-        elements.rangeSDisplay.textContent = '-';
-        elements.v0Display.textContent = '-';
-        elements.alphaDisplay.textContent = '0';
-        elements.rangeLExpDisplay.textContent = '-';
-        elements.rangeLCalcDisplay.textContent = '-';
-        
-        this.updateAngleDisplay(0, elements.angleDisplay);
-        
-        this.resetProjectilePosition(state, elements.pistol, elements.projectile);
-        this.clearLandingMarks(elements.floorArea);
-        
-        const self = this;
-        setTimeout(function() {
-            const barrelEnd = self.getBarrelEndPosition(elements.pistol);
-            self.createMeasuringTools(elements.floorArea, barrelEnd.x);
-        }, 50);
-        
-        document.getElementById('user-measurement-panel').style.display = 'none';
-        
-        document.querySelector('#results-table tbody').innerHTML = '';
-        document.getElementById('optimal-angle-result').textContent = '';
-    
-        this.advanceToStep(state, 1);
-        const step1Element = document.getElementById('step1');
-        if (step1Element) step1Element.classList.add('active');
-    
-        this.updateUIButtons(state, false);
-    
-        this.updateInstructions("Произведите горизонтальный выстрел для определения начальной скорости.");
-    
-        physjs.resetLab();
-        physjs.goToStep('step1');
+        location.reload();
     },
 
     goBack() {
