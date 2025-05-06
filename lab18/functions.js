@@ -82,6 +82,13 @@ const experimentFunctions = {
                 this.updateTable(state, elements);
                 this.drawChart(state, elements);
 
+                const chartContainer = elements.canvas.parentElement.parentElement.parentElement;
+                if (state.remainingCoins == 0) {
+                    chartContainer.classList.add('chart-container-zoomed');
+                } else {
+                    chartContainer.classList.remove('chart-container-zoomed');
+                }
+
                 elements.resetButton.disabled = false;
                 state.isShaking = false;
             }, 2000);
@@ -91,6 +98,9 @@ const experimentFunctions = {
     resetExperiment(state, elements) {
         state.remainingCoins = state.INITIAL_COINS;
         state.currentTrial = [];
+
+        const chartContainer = elements.canvas.parentElement.parentElement.parentElement;
+        chartContainer.classList.remove('chart-container-zoomed');
 
         this.updateCoinBox(state, elements);
         this.updateTable(state, elements);
