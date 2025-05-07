@@ -17,15 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
         kineticEnergyError: 0,
         ballOnScale: false,
         ballWeighed: false,
+        ballLeft: 0,
+        deformation: 0.15,
+        force: 2.0,
         
         // CONFIG
-        force: 2.0,
-        deformation: 0.05,
-        ballMass: 0.4,
+        springStiffness: 50,
+        ballMass: .4,
         height: 1.2,
     };
 
     const experimentState = window.experimentState;
+
+    document.getElementById('spring-stiffness').textContent = experimentState.springStiffness.toString();
 
     const elements = {
         dynamometer: document.getElementById('dynamometer'),

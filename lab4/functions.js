@@ -107,18 +107,23 @@ const experimentFunctions = {
         elements.springEnd.style.top = `${160 + (newHeight - baseSpringHeight)}px`;
         elements.pointer.style.top = `${165 + (newHeight - baseSpringHeight)}px`;
         
-        const maxForce = 3.0;
-        const currentForce = extensionRatio * maxForce;
-        elements.forceValue.textContent = currentForce.toFixed(1);
+        const deformationInMeters = currentExtension / 1000;
+        const currentForce = experimentState.springStiffness * deformationInMeters;
         
-        const deformationInMeters = (currentExtension / 1000).toFixed(3);
-        elements.deformationDisplay.textContent = deformationInMeters;
-        experimentState.deformation = parseFloat(deformationInMeters);
+        elements.forceValue.textContent = currentForce.toFixed(1);
+        elements.deformationDisplay.textContent = deformationInMeters.toFixed(3);
+        
+        experimentState.deformation = deformationInMeters;
         experimentState.force = currentForce;
     },
     
     calculateDistanceValue(experimentState) {
-        const initialVelocity = Math.sqrt(experimentState.force * experimentState.deformation / experimentState.ballMass);
+        // Use spring stiffness (k) and deformation (x) to calculate initial velocity
+        // Physics: E_potential = (1/2)kx² -> E_kinetic = (1/2)mv²
+        // v = sqrt(k·x²/m)
+        const initialVelocity = Math.sqrt(experimentState.springStiffness * 
+                                         Math.pow(experimentState.deformation, 2) / 
+                                         experimentState.ballMass);
         const g = 9.8;
         const flightTime = Math.sqrt(2 * experimentState.height / g);
         
@@ -151,23 +156,23 @@ const experimentFunctions = {
         spring.style.transition = "height 0.3s ease-out";
         springEnd.style.transition = "top 0.3s ease-out";
         pointer.style.transition = "top 0.3s ease-out";
-        
         spring.style.height = "100px";
         springEnd.style.top = "160px";
         pointer.style.top = "165px";
         
         const distance = this.calculateDistanceValue(experimentState);
-        
         const ballRect = ball.getBoundingClientRect();
         const floorRect = floorArea.getBoundingClientRect();
-        
         const startX = parseInt(ball.style.left || '350') + ballRect.width/2;
         const startY = parseInt(ball.style.top || '175') + ballRect.height/2;
         
-        const v0 = Math.sqrt((2 * experimentState.force * experimentState.deformation) / experimentState.ballMass);
-        const visualScale = 150;
-        const vx = -v0 * visualScale;
-        const vy = -8;
+        const v0 = Math.sqrt((experimentState.springStiffness * Math.pow(experimentState.deformation, 2)) / experimentState.ballMass);
+        const visualScale = 250;
+        
+        const launchAngle = -Math.PI / 6;
+        const vx = -v0 * Math.cos(launchAngle) * visualScale;
+        const vy = v0 * Math.sin(launchAngle) * visualScale * 0.3;
+        
         const g = 0.003;
         
         physjs.calculateTrajectory(
@@ -179,181 +184,53 @@ const experimentFunctions = {
         
         const landingX = startX - distance * visualScale;
         const landingY = floorRect.top - ballRect.height/2;
-        
         const self = this;
-        
-        const animationDuration = 1600;
+        const animationDuration = 1600 * (150/visualScale);
         let startTime = null;
+        let landed = false;
+        let finalLeft, finalTop;
         
         const animateTrajectory = (timestamp) => {
             if (!startTime) startTime = timestamp;
             const elapsedTime = timestamp - startTime;
             const progress = Math.min(elapsedTime / animationDuration, 1);
-            
-            if (progress < 1) {
+    
+            if (progress < 1 && !landed) {
                 const t = progress * animationDuration / 1000;
                 const currentX = startX + vx * t;
                 const currentY = startY + vy * t + 0.5 * g * Math.pow(t * 1000, 2);
-                const finalY = Math.min(currentY, landingY);
+                experimentState.ballLeft = currentX;
+                
+                if (currentY >= landingY) {
+                    landed = true;
+                    
+                    finalLeft = landingX - ballRect.width/2;
+                    finalTop = landingY - ballRect.height/2;
+                    
+                    ball.style.left = `${finalLeft}px`;
+                    ball.style.top = `${finalTop}px`;
+                    
+                    self.recordMeasurement(experimentState, distance);
+                    
+                    const marker = document.createElement('div');
+                    marker.className = 'landing-marker';
+                    marker.style.position = 'absolute';
+                    marker.style.left = `${experimentState.ballLeft + 5}px`;
+                    marker.style.top = `${landingY - 5}px`;
+                    marker.style.width = '10px';
+                    marker.style.height = '10px';
+                    marker.style.borderRadius = '50%';
+                    marker.style.backgroundColor = 'red';
+                    document.getElementById('experiment-container').appendChild(marker);
+                    
+                    makePhysical(finalLeft, finalTop);
+                    return;
+                }
                 
                 ball.style.left = `${currentX - ballRect.width/2}px`;
-                ball.style.top = `${finalY - ballRect.height/2}px`;
+                ball.style.top = `${currentY - ballRect.height/2}px`;
                 
                 requestAnimationFrame(animateTrajectory);
-            } else {
-                self.recordMeasurement(experimentState, distance);
-                
-                const marker = document.createElement('div');
-                marker.className = 'landing-marker';
-                marker.style.position = 'absolute';
-                marker.style.left = `${landingX - 5}px`;
-                marker.style.top = `${landingY - 5}px`;
-                marker.style.width = '10px';
-                marker.style.height = '10px';
-                marker.style.borderRadius = '50%';
-                marker.style.backgroundColor = 'red';
-                document.getElementById('experiment-container').appendChild(marker);
-                
-                let isCheckingBoundaries = true;
-                
-                const checkBoundaries = () => {
-                    if (!isCheckingBoundaries) return;
-                    
-                    const currentBallRect = ball.getBoundingClientRect();
-                    const experimentContainer = document.getElementById('experiment-container');
-                    const containerRect = experimentContainer.getBoundingClientRect();
-                    
-                    if (currentBallRect.left <= containerRect.left) {
-                        ball.style.left = `${containerRect.left}px`;
-                        isCheckingBoundaries = false;
-                        makePhysical();
-                        return;
-                    }
-                    
-                    if (ball.getBoundingClientRect().left === previousLeft) {
-                        ballStoppedCount++;
-                        if (ballStoppedCount > 10) {
-                            isCheckingBoundaries = false;
-                            makePhysical();
-                            return;
-                        }
-                    } else {
-                        ballStoppedCount = 0;
-                    }
-                    previousLeft = ball.getBoundingClientRect().left;
-                    
-                    requestAnimationFrame(checkBoundaries);
-                };
-                
-                let previousLeft = ball.getBoundingClientRect().left;
-                let ballStoppedCount = 0;
-                
-                requestAnimationFrame(checkBoundaries);
-                
-                function makePhysical() {
-                    experimentState.ballReleased = false;
-                    experimentState.ballAttached = false;
-                    
-                    const currentBall = ball;
-                    const ballRect = currentBall.getBoundingClientRect();
-                    const ballStyle = window.getComputedStyle(currentBall);
-                    const ballLeft = currentBall.style.left || (ballRect.left + 'px');
-                    const ballTop = currentBall.style.top || (ballRect.top + 'px');
-                    
-                    const newBall = document.createElement('div');
-                    newBall.id = 'ball';
-                    newBall.className = 'phys phys-attachable equipment';
-                    newBall.style.position = 'absolute';
-                    newBall.style.left = ballLeft;
-                    newBall.style.top = ballTop;
-                    newBall.style.width = ballRect.width + 'px';
-                    newBall.style.height = ballRect.height + 'px';
-                    newBall.style.borderRadius = '50%';
-                    newBall.style.backgroundColor = ballStyle.backgroundColor;
-                    newBall.dataset.type = 'ball';
-                    newBall.dataset.name = 'Шар';
-                    
-                    currentBall.parentNode.insertBefore(newBall, currentBall);
-                    currentBall.parentNode.removeChild(currentBall);
-                    
-                    elements.ball = newBall;
-                    
-                    const trajectoryPath = document.getElementById('trajectory-path');
-                    if (trajectoryPath) trajectoryPath.remove();
-                    
-                    self.initializePhysicsObject('#ball', 'ball', false);
-                    
-                    physjs.addAttachmentPoint('#ball', 'dynamometer-attachment', -90, -85, ['dynamometer']);
-                    
-                    physjs.goToStep('step5');
-                    experimentState.step = 5;
-                    
-                    const stepElements = document.querySelectorAll('#status-panel ol li');
-                    stepElements.forEach((el, index) => {
-                        el.classList.remove('active');
-                        if (index === 4) el.classList.add('active');
-                        else if (index < 4) el.classList.add('completed');
-                    });
-                    
-                    currentInstructionDisplay.textContent = "Прикрепите шар к динамометру снова для повторного эксперимента.";
-                    
-                    newBall.addEventListener('mousedown', (e) => {
-                        if (e.button !== 0) return;
-                        e.preventDefault();
-                        
-                        if (experimentState.ballAttached) {
-                            let draggingActive = true;
-                            
-                            const moveHandler = (moveEvent) => {
-                                if (!draggingActive) return;
-                                self.dragBall(moveEvent, experimentState, elements);
-                            };
-                            
-                            const upHandler = () => {
-                                draggingActive = false;
-                                document.removeEventListener('mousemove', moveHandler);
-                                document.removeEventListener('mouseup', upHandler);
-                                
-                                if (parseFloat(elements.forceValue.textContent) >= 1.95) {
-                                    self.releaseBall(experimentState, elements);
-                                }
-                            };
-                            
-                            document.addEventListener('mousemove', moveHandler);
-                            document.addEventListener('mouseup', upHandler);
-                        } else {
-                            const startX = e.clientX;
-                            const startY = e.clientY;
-                            const ballRect = newBall.getBoundingClientRect();
-                            const initialLeft = ballRect.left;
-                            const initialTop = ballRect.top;
-                            
-                            let dragging = true;
-                            
-                            const handleMove = (moveEvent) => {
-                                if (!dragging) return;
-                                const deltaX = moveEvent.clientX - startX;
-                                const deltaY = moveEvent.clientY - startY;
-                                newBall.style.left = `${initialLeft + deltaX}px`;
-                                newBall.style.top = `${initialTop + deltaY}px`;
-                            };
-                            
-                            const handleUp = () => {
-                                dragging = false;
-                                document.removeEventListener('mousemove', handleMove);
-                                document.removeEventListener('mouseup', handleUp);
-                                
-                                if (self.elementsOverlap(newBall, elements.dynamometer, 30)) {
-                                    experimentState.ballAttached = true;
-                                    self.updateStringPosition(newBall, elements.string, elements.springEnd, experimentState);
-                                }
-                            };
-                            
-                            document.addEventListener('mousemove', handleMove);
-                            document.addEventListener('mouseup', handleUp);
-                        }
-                    });
-                }
             }
         };
         
@@ -363,6 +240,111 @@ const experimentFunctions = {
         
         if (experimentState.distanceValues.length === 0)
             document.getElementById('data-collection-panel').style.display = 'block';
+            
+        function makePhysical(exactLeft, exactTop) {
+            experimentState.ballReleased = false;
+            experimentState.ballAttached = false;
+            
+            const currentBall = ball;
+            const ballRect = currentBall.getBoundingClientRect();
+            const ballStyle = window.getComputedStyle(currentBall);
+            currentBall.remove();
+            
+            const newBall = document.createElement('div');
+            newBall.id = 'ball';
+            newBall.className = 'phys phys-attachable equipment';
+            newBall.style.position = 'absolute';
+            
+            newBall.style.left = `${experimentState.ballLeft}px`;
+            newBall.style.top = `${exactTop}px`;
+            
+            newBall.style.width = ballRect.width + 'px';
+            newBall.style.height = ballRect.height + 'px';
+            newBall.style.borderRadius = '50%';
+            newBall.style.backgroundColor = ballStyle.backgroundColor;
+            newBall.dataset.type = 'ball';
+            newBall.dataset.name = 'Шар';
+    
+            document.getElementById('experiment-container').appendChild(newBall);
+            
+            elements.ball = newBall;
+            
+            const trajectoryPath = document.getElementById('trajectory-path');
+            if (trajectoryPath) trajectoryPath.remove();
+            
+            self.initializePhysicsObject('#ball', 'ball', false);
+            
+            physjs.addAttachmentPoint('#ball', 'dynamometer-attachment', -90, -85, ['dynamometer']);
+            
+            physjs.goToStep('step5');
+            experimentState.step = 5;
+            
+            const stepElements = document.querySelectorAll('#status-panel ol li');
+            stepElements.forEach((el, index) => {
+                el.classList.remove('active');
+                if (index === 4) el.classList.add('active');
+                else if (index < 4) el.classList.add('completed');
+            });
+            
+            currentInstructionDisplay.textContent = "Прикрепите шар к динамометру снова для повторного эксперимента.";
+            
+            newBall.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                
+                if (experimentState.ballAttached) {
+                    let draggingActive = true;
+                    
+                    const moveHandler = (moveEvent) => {
+                        if (!draggingActive) return;
+                        self.dragBall(moveEvent, experimentState, elements);
+                    };
+                    
+                    const upHandler = () => {
+                        draggingActive = false;
+                        document.removeEventListener('mousemove', moveHandler);
+                        document.removeEventListener('mouseup', upHandler);
+                        
+                        if (parseFloat(elements.forceValue.textContent) >= 1.95) {
+                            self.releaseBall(experimentState, elements);
+                        }
+                    };
+                    
+                    document.addEventListener('mousemove', moveHandler);
+                    document.addEventListener('mouseup', upHandler);
+                } else {
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const ballRect = newBall.getBoundingClientRect();
+                    const initialLeft = ballRect.left;
+                    const initialTop = ballRect.top;
+                    
+                    let dragging = true;
+                    
+                    const handleMove = (moveEvent) => {
+                        if (!dragging) return;
+                        const deltaX = moveEvent.clientX - startX;
+                        const deltaY = moveEvent.clientY - startY;
+                        newBall.style.left = `${initialLeft + deltaX}px`;
+                        newBall.style.top = `${initialTop + deltaY}px`;
+                    };
+                    
+                    const handleUp = () => {
+                        dragging = false;
+                        document.removeEventListener('mousemove', handleMove);
+                        document.removeEventListener('mouseup', handleUp);
+                        
+                        if (self.elementsOverlap(newBall, elements.dynamometer, 30)) {
+                            experimentState.ballAttached = true;
+                            self.updateStringPosition(newBall, elements.string, elements.springEnd, experimentState);
+                        }
+                    };
+                    
+                    document.addEventListener('mousemove', handleMove);
+                    document.addEventListener('mouseup', handleUp);
+                }
+            });
+        }
     },
 
     updateExperimentProgress(experimentState, elements) {
