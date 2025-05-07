@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лабораторная работа: Скорость света в веществах</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="lab-container">
+        <h1>Лабораторная работа: Определение скорости света в различных веществах с помощью сферических линз</h1>
+
+        <div class="theory">
+            <h2>Теоретическая часть</h2>
+            <p>Скорость света в веществе (v) связана со скоростью света в вакууме (c ≈ 3·10<sup>8</sup> м/с) и показателем преломления среды (n) формулой: <strong>v = c / n</strong>.</p>
+            <p>Моделируя сферическую линзу круглодонной колбой с жидкостью, можно определить показатель преломления (n) по формуле тонкой линзы в данном приближении: <strong>n = R / (2 * F) + 1</strong> (Формула 1), где R - радиус кривизны колбы, F - фокусное расстояние.</p>
+            <p>Радиус кривизны (R) можно найти, измерив длину окружности (l) колбы: <strong>R = l / (2 * π)</strong>.</p>
+            <p>Итоговая скорость света (v) рассчитывается по формуле: <strong>v = c / n</strong> (Формула 2).</p>
+        </div>
+
+        <div class="controls">
+            <label for="substance-select">Выберите вещество:</label>
+            <select id="substance-select">
+                <option value="water">Вода (n ≈ 1.33)</option>
+                <option value="glycerin">Глицерин (n ≈ 1.47)</option>
+                <option value="oil">Растительное масло (n ≈ 1.47)</option>
+                <option value="ethylene_glycol">Этиленгликоль (n ≈ 1.43)</option>
+                <option value="gelatin">Желатин (n ≈ 1.53)</option>
+                <option value="silicone_oil">Силиконовое масло (n ≈ 1.41)</option>
+                <option value="air">Воздух (n ≈ 1.0003)</option>
+            </select>
+             <button id="reset-button">Сбросить измерения</button>
+        </div>
+
+        <div class="simulation-area">
+            <canvas id="simulationCanvas" width="800" height="400">
+                Ваш браузер не поддерживает Canvas.
+            </canvas>
+            <div id="ruler-container">
+                 <div id="ruler-l">
+                    <div class="ruler-line-l"></div>
+                    <span class="ruler-label-l">Измерьте L ≈ <span id="l-value">?</span> см</span>
+                 </div>
+                <div id="ruler-f">
+                    <div class="ruler-line-f"></div>
+                     <span class="ruler-label-f">F = <span id="f-value">?</span> см</span>
+                </div>
+            </div>
+            <div id="measurement-info">
+                 <p>Радиус колбы (R): <strong id="radius-display">?</strong> см</p>
+                 <p>Длина окружности (l) = 2πR: <strong id="circumference-display">?</strong> см</p>
+                 <p>Фокусное расстояние (F): <strong id="focus-display">?</strong> см</p>
+                 <p>Инструкция: Перемещайте <strong>экран</strong> (правая вертикальная линия) мышью, чтобы лучи сходились в точку на нем. Измерьте фокусное расстояние F (от центра колбы до экрана). Длина окружности L измеряется "гибкой" линейкой вокруг колбы.</p>
+            </div>
+        </div>
+
+
+        <div class="results-area">
+            <h2>Результаты измерений и расчетов</h2>
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>Вещество</th>
+                        <th>F (пикс.)</th>
+                        <th>l (пикс.)</th>
+                        <th>R (пикс.)</th>
+                        <th>n (расч.)</th>
+                        <th>v (расч., *10<sup>8</sup> м/с)</th>
+                        <th>v (теор., *10<sup>8</sup> м/с)</th>
+                        <th>Погрешность n (%)</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    <!-- Результаты будут добавлены сюда -->
+                </tbody>
+            </table>
+             <button id="calculate-button">Рассчитать и добавить в таблицу</button>
+             <div id="error-info"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
