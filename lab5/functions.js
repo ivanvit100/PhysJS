@@ -28,7 +28,9 @@ const experimentFunctions = {
         initialFunnelWaterLevel: 0,
         initialAirVolume: 0,
         initialBarometerReading: 0,
-        currentBarometerReading: 0
+        currentBarometerReading: 0,
+
+        airLevel: 30
     },
     
     setupPhysicsObjects() {
@@ -99,86 +101,81 @@ const experimentFunctions = {
         
         const tubeHeight = tubeRect.height;
         const funnelHeight = funnelRect.height;
-        const tubeBottom = tubeRect.bottom;
-        const funnelBottom = funnelRect.bottom;
+        const tubeTop = tubeRect.top;
+        const funnelTop = funnelRect.top;
+        
+        const areOnSameHeight = Math.abs(tubeTop - funnelTop) < 5;
         
         if (!this.experimentState.corkInserted) {
-            const totalWaterVolume = tubeHeight * 0.5 + funnelHeight * 0.5;
-            const absoluteWaterLevel = (tubeBottom + funnelBottom - totalWaterVolume) / 2;
-            const tubeWaterHeightPx = tubeBottom - absoluteWaterLevel;
-            const tubeWaterPercent = (tubeWaterHeightPx / tubeHeight) * 100;
-            const funnelWaterHeightPx = funnelBottom - absoluteWaterLevel;
-            const funnelWaterPercent = (funnelWaterHeightPx / funnelHeight) * 100;
+            const baseWaterLevel = 100 - (this.experimentState.airLevel || 50);
             
-            tubeWater.style.height = `${Math.max(0, Math.min(100, tubeWaterPercent))}%`;
-            tubeAir.style.height = `${Math.max(0, Math.min(100, 100 - tubeWaterPercent))}%`;
-            funnelWater.style.height = `${Math.max(0, Math.min(100, funnelWaterPercent))}%`;
-            funnelAir.style.height = `${Math.max(0, Math.min(100, 100 - funnelWaterPercent))}%`;
+            if (areOnSameHeight) {
+                tubeWater.style.height = `${baseWaterLevel}%`;
+                funnelWater.style.height = `${baseWaterLevel}%`;
+                tubeAir.style.height = `${100 - baseWaterLevel}%`;
+                funnelAir.style.height = `${100 - baseWaterLevel}%`;
+                
+                this.experimentState.airLevel = 100 - baseWaterLevel;
+            } else {
+                const heightDifference = tubeTop - funnelTop;
+                const heightDiffPercentTube = (heightDifference / tubeHeight) * 50;
+                const heightDiffPercentFunnel = (heightDifference / funnelHeight) * 50;
+                const tubeWaterPercent = baseWaterLevel + heightDiffPercentTube;
+                const funnelWaterPercent = baseWaterLevel - heightDiffPercentFunnel;
+                
+                tubeWater.style.height = `${Math.max(0, Math.min(100, tubeWaterPercent))}%`;
+                tubeAir.style.height = `${Math.max(0, Math.min(100, 100 - tubeWaterPercent))}%`;
+                funnelWater.style.height = `${Math.max(0, Math.min(100, funnelWaterPercent))}%`;
+                funnelAir.style.height = `${Math.max(0, Math.min(100, 100 - funnelWaterPercent))}%`;
+            }
             
-            if (this.experimentState.step === 2 && this.experimentState.initialWaterLevelSet) this.experimentState.initialAirColumnLength = 100 - tubeWaterPercent;
+            if (this.experimentState.step === 2 && this.experimentState.initialWaterLevelSet)
+                this.experimentState.initialAirColumnLength = 100 - baseWaterLevel;
         } else {
-            const initialHeight = this.experimentState.initialFunnelHeight;
-            const currentHeight = this.experimentState.funnelPosition.top;
-            const heightDifference = currentHeight - initialHeight;
-            const heightDifferenceInCm = heightDifference * 0.11;
-            const waterChangeRatio = .105782; 
-            const waterLevelChangeInCm = heightDifferenceInCm * waterChangeRatio;
-            const tubeHeightInCm = 100;
-            const funnelHeightInCm = 100;
-            const waterLevelChangeInPercentTube = (waterLevelChangeInCm / tubeHeightInCm) * 100;
-            const waterLevelChangeInPercentFunnel = (waterLevelChangeInCm / funnelHeightInCm) * 100;
-            const initialTubeWaterLevel = this.experimentState.initialTubeWaterLevel || 50;
-            const initialFunnelWaterLevel = this.experimentState.initialFunnelWaterLevel || 50;
-            const tubeWaterPercent = initialTubeWaterLevel - waterLevelChangeInPercentTube;
-            const funnelWaterPercent = initialFunnelWaterLevel + waterLevelChangeInPercentFunnel;
+            if (!this.experimentState.initialRelativePosition) {
+                this.experimentState.initialRelativePosition = (funnelTop - tubeTop) / tubeHeight * 100;
+                this.experimentState.initialTubeWaterLevel = parseFloat(tubeWater.style.height || (100 - this.experimentState.airLevel));
+            }
+            
+            const currentRelativePosition = (funnelTop - tubeTop) / tubeHeight * 100;
+            const positionChangeInCm = currentRelativePosition - (this.experimentState.initialRelativePosition || 0);
+            const currentTubeWaterLevel = parseFloat(tubeWater.style.height || (100 - this.experimentState.airLevel));
+            const tubeWaterChangeInPercent = (this.experimentState.initialTubeWaterLevel || currentTubeWaterLevel) - currentTubeWaterLevel;
+            const heightDiffInCm = positionChangeInCm - 2 * tubeWaterChangeInPercent;
+            
+            this.experimentState.waterLevelDifference = heightDiffInCm;
+            
+            const initialAirColumnLength = this.experimentState.initialAirColumnLength;
+            const waterDensity = 1000;
+            const g = 9.81;
+            const atmPressure = 101325;
+            const heightInM = heightDiffInCm / 100;
+            const initialColumnLengthM = initialAirColumnLength / 100;
+            const waterPressure = waterDensity * g * heightInM;
+            const columnChange = (waterPressure * initialColumnLengthM) / (atmPressure - waterPressure);
+            const columnChangeInCm = columnChange * 100;
+            const finalAirColumnLength = initialAirColumnLength + columnChangeInCm;
+            this.experimentState.finalAirColumnLength = finalAirColumnLength;
+            
+            const baseWaterLevel = 100 - (this.experimentState.airLevel || 50);
+            const visualScalingFactor = 0.5; // Увеличен для более заметного эффекта
+            const visualColumnChangePercent = (columnChangeInCm / initialAirColumnLength) * 100 * visualScalingFactor;
+            const tubeWaterPercent = baseWaterLevel - visualColumnChangePercent;
+            const funnelWaterPercent = baseWaterLevel + visualColumnChangePercent;
             
             tubeWater.style.height = `${Math.max(10, Math.min(90, tubeWaterPercent))}%`;
             tubeAir.style.height = `${Math.max(10, Math.min(90, 100 - tubeWaterPercent))}%`;
             funnelWater.style.height = `${Math.max(10, Math.min(90, funnelWaterPercent))}%`;
             funnelAir.style.height = `${100 - Math.max(10, Math.min(90, funnelWaterPercent))}%`;
-            
-            if (this.experimentState.step >= 4) this.experimentState.finalAirColumnLength = 100 - tubeWaterPercent;
         }
         funnelWater.style.display = 'block';
     },
     
-    calculateWaterLevelInTube() {
-        if (!this.experimentState.waterInTube) return 0;
-        
-        const glassTube = document.getElementById('glass-tube');
-        const funnel = document.getElementById('funnel');
-        const tubeRect = glassTube.getBoundingClientRect();
-        const funnelRect = funnel.getBoundingClientRect();
-        
-        if (!this.experimentState.corkInserted) {
-            const tubeHeight = tubeRect.height;
-            const funnelHeight = funnelRect.height;
-            const tubeBottom = tubeRect.bottom;
-            const funnelBottom = funnelRect.bottom;
-            const tubeTop = tubeRect.top;
-            const totalWaterVolume = tubeHeight * 0.5 + funnelHeight * 0.5;
-            const absoluteWaterLevel = (tubeBottom + funnelBottom - totalWaterVolume) / 2;
-            const airHeight = absoluteWaterLevel - tubeTop;
-            return (airHeight / tubeHeight) * 100;
-        } else {
-            const initialHeight = this.experimentState.initialFunnelHeight;
-            const currentHeight = this.experimentState.funnelPosition.top;
-            const heightDifference = currentHeight - initialHeight;
-            const heightDifferenceInCm = heightDifference * 0.11;
-            const initialAirColumnLength = this.experimentState.initialAirColumnLength;
-            const waterChangeRatio = .105782;
-            const waterLevelChange = heightDifferenceInCm * waterChangeRatio;
-            return initialAirColumnLength + waterLevelChange;
-        }
-    },
-    
     limitFunnelMovement(funnelElement) {
         if (!funnelElement) return;
-        
         if (!this.experimentState.rubberTubeConnectedToGlassTube || 
-            !this.experimentState.rubberTubeConnectedToFunnel) {
+            !this.experimentState.rubberTubeConnectedToFunnel)
             return;
-        }
         
         const funnelTop = parseInt(funnelElement.style.top || '100');
         const tube = document.getElementById('glass-tube');
@@ -190,74 +187,161 @@ const experimentFunctions = {
         const funnelWaterHeight = parseFloat(funnelWater.style.height || '0');
         
         let minTop, maxTop;
+        let movementBlocked;
         
         if (this.experimentState.corkInserted) {
-            minTop = this.experimentState.initialFunnelHeight;
-            maxTop = minTop + 135;
+            if (!this.experimentState.initialFunnelHeight || this.experimentState.initialFunnelHeight <= 0)
+                this.experimentState.initialFunnelHeight = funnelTop;
+            
+            minTop = this.experimentState.initialFunnelHeight - 10;
+            maxTop = this.experimentState.initialFunnelHeight + 200;
         } else {
-            let baseMinTop = tubeTop - 50;
-            let baseMaxTop = tubeTop + tubeHeight - 50;
-
-            if (tubeWaterHeight > 90) baseMaxTop = funnelTop;
-            if (funnelWaterHeight < 10) baseMinTop = funnelTop;
+            const baseMinTop = tubeTop - 50;
+            const baseMaxTop = tubeTop + tubeHeight - 50;
             
             minTop = baseMinTop;
             maxTop = baseMaxTop;
+            
+            if (!this.experimentState.lastValidFunnelTop)
+                this.experimentState.lastValidFunnelTop = funnelTop;
+            
+            if (tubeWaterHeight >= 85) {
+                if (funnelTop < this.experimentState.lastValidFunnelTop) {
+                    funnelElement.style.top = `${this.experimentState.lastValidFunnelTop}px`;
+                    movementBlocked = true;
+                }
+            } else if (funnelWaterHeight >= 85) {
+                if (funnelTop > this.experimentState.lastValidFunnelTop) {
+                    funnelElement.style.top = `${this.experimentState.lastValidFunnelTop}px`;
+                    movementBlocked = true;
+                }
+            } else if (tubeWaterHeight <= 15) {
+                if (funnelTop > this.experimentState.lastValidFunnelTop) {
+                    funnelElement.style.top = `${this.experimentState.lastValidFunnelTop}px`;
+                    movementBlocked = true;
+                }
+            } else if (funnelWaterHeight <= 15) {
+                if (funnelTop < this.experimentState.lastValidFunnelTop) {
+                    funnelElement.style.top = `${this.experimentState.lastValidFunnelTop}px`;
+                    movementBlocked = true;
+                }
+            } else {
+                this.experimentState.lastValidFunnelTop = funnelTop;
+            }
         }
         
-        if (funnelTop < minTop) {
-            funnelElement.style.top = `${minTop}px`;
-            this.experimentState.funnelPosition.top = minTop;
-        } else if (funnelTop > maxTop) {
-            funnelElement.style.top = `${maxTop}px`;
-            this.experimentState.funnelPosition.top = maxTop;
+        if (!movementBlocked) {
+            if (funnelTop < minTop) {
+                funnelElement.style.top = `${minTop}px`;
+                this.experimentState.funnelPosition.top = minTop;
+            } else if (funnelTop > maxTop) {
+                funnelElement.style.top = `${maxTop}px`;
+                this.experimentState.funnelPosition.top = maxTop;
+            } else {
+                this.experimentState.funnelPosition.top = funnelTop;
+            }
+        } else {
+            this.experimentState.funnelPosition.top = this.experimentState.lastValidFunnelTop;
+            funnelElement.style.top = `${this.experimentState.lastValidFunnelTop}px`;
+            funnelElement.classList.add('movement-blocked');
+            setTimeout(() => {
+                funnelElement.classList.remove('movement-blocked');
+            }, 500);
         }
-        
         this.updateWaterLevels();
     },
     
     updateRubberTubePosition() {
         const isConnected = this.experimentState.rubberTubeConnectedToGlassTube && 
-                            this.experimentState.rubberTubeConnectedToFunnel;
-
+                           this.experimentState.rubberTubeConnectedToFunnel;
+        
         const svgContainer = document.getElementById('svg-container');
         const rubberTube = document.getElementById('rubber-tube');
-
+        
         if (!isConnected) {
             svgContainer.classList.remove('connected');
             rubberTube.style.display = 'block';
             return;
         }
-
+        
         svgContainer.classList.add('connected');
         rubberTube.style.display = 'none';
-
+        
         const glassTube = document.getElementById('glass-tube');
         const funnel = document.getElementById('funnel');
         const path = document.getElementById('rubber-tube-path');
         const tubeConnector = document.getElementById('tube-connector');
         const funnelConnector = document.getElementById('funnel-connector');
-
+        
         const tubeRect = glassTube.getBoundingClientRect();
         const tubeX = tubeRect.left + tubeRect.width / 2;
         const tubeY = tubeRect.bottom - 5;
         const tubeWidth = tubeRect.width + 10;
-
+        
         const funnelRect = funnel.getBoundingClientRect();
         const funnelX = funnelRect.left + funnelRect.width / 2;
         const funnelY = funnelRect.bottom - 5;
         const funnelWidth = funnelRect.width + 10;
-
-        const centerX = (tubeX + funnelX) / 2;
-        const maxY = Math.max(tubeY, funnelY) + 80;
-
-        path.setAttribute('d', `M ${tubeX} ${tubeY + 5} Q ${centerX} ${maxY}, ${funnelX} ${funnelY + 5}`);
-
+        
+        // Рассчитываем начальную оптимальную длину трубки, если её нет
+        if (!this.experimentState.optimalTubeLength) {
+            const initHorizDist = Math.abs(funnelX - tubeX);
+            const initVertDist = 150; // Начальная глубина колена
+            // Приблизительная длина трубки как сумма вертикальных и горизонтальных отрезков
+            this.experimentState.optimalTubeLength = initHorizDist + initVertDist * 2;
+        }
+        
+        // Горизонтальное расстояние между сосудами
+        const horizDistance = Math.abs(funnelX - tubeX);
+        
+        // Направление (влево или вправо)
+        const direction = funnelX > tubeX ? 1 : -1;
+        
+        // Рассчитываем глубину колена так, чтобы общая длина оставалась постоянной
+        // Общая длина = 2 * глубина колена + горизонтальное расстояние
+        let kneeDepth = (this.experimentState.optimalTubeLength - horizDistance) / 2;
+        
+        // Минимальная глубина колена для эстетики
+        kneeDepth = Math.max(kneeDepth, 70);
+        
+        // Позиция Y для колена
+        const avgY = (tubeY + funnelY) / 2;
+        const kneeY = avgY + kneeDepth;
+        
+        // Радиус закругления колена
+        const radius = Math.min(horizDistance / 3, 40);
+        
+        // Создаем путь с полукруглым коленом
+        let pathData;
+        
+        if (horizDistance > 20) {
+            // Полукруглое колено для нормального расстояния
+            pathData = `
+                M ${tubeX} ${tubeY + 5}
+                L ${tubeX} ${kneeY - radius}
+                Q ${tubeX} ${kneeY}, ${tubeX + radius * direction} ${kneeY}
+                L ${funnelX - radius * direction} ${kneeY}
+                Q ${funnelX} ${kneeY}, ${funnelX} ${kneeY - radius}
+                L ${funnelX} ${funnelY + 5}
+            `;
+        } else {
+            // Для близких сосудов - более простая форма
+            pathData = `
+                M ${tubeX} ${tubeY + 5}
+                L ${tubeX} ${kneeY}
+                L ${funnelX} ${kneeY}
+                L ${funnelX} ${funnelY + 5}
+            `;
+        }
+        
+        path.setAttribute('d', pathData);
+        
+        // Соединители для сосудов
         tubeConnector.setAttribute('x', tubeX - tubeWidth / 2);
         tubeConnector.setAttribute('y', tubeY - 15);
         tubeConnector.setAttribute('width', tubeWidth);
         tubeConnector.setAttribute('height', 25);
-
+        
         funnelConnector.setAttribute('x', funnelX - funnelWidth / 2);
         funnelConnector.setAttribute('y', funnelY - 15);
         funnelConnector.setAttribute('width', funnelWidth);
@@ -314,7 +398,6 @@ const experimentFunctions = {
     
     isDetachmentAllowedForStep(elementId, step) {
         if (elementId === 'rubber-tube' && step !== 1) return false;
-        if (elementId === 'cork' && step < 6) return false;
         return true;
     },
     
@@ -382,13 +465,15 @@ const experimentFunctions = {
         const glassTube = elements.glassTube;
         
         if (this.elementsOverlap(ruler, glassTube, 20)) {
+            const lengthInCm1 = 100 - parseFloat(document.querySelector('#glass-tube .tube-water').style.height);
+            
             if (this.experimentState.step === 2 && !this.experimentState.initialWaterLevelSet) {
-                const airColumnLength = this.calculateWaterLevelInTube(elements);
-                const lengthInCm = (airColumnLength / 100) * 100;
+                const lengthInCm2 = 100 - parseFloat(document.querySelector('#funnel .tube-water').style.height);
+                const diff = Math.abs(lengthInCm1 - lengthInCm2);
                 
-                if (lengthInCm >= 49 && lengthInCm <= 51) {
-                    this.experimentState.initialAirColumnLength = lengthInCm;
-                    elements.lengthDisplay1.textContent = lengthInCm.toFixed(1);
+                if (diff <= 5) {
+                    this.experimentState.initialAirColumnLength = lengthInCm1;
+                    elements.lengthDisplay1.textContent = lengthInCm1.toFixed(1);
                     this.experimentState.initialWaterLevelSet = true;
                     
                     this.advanceToStep(3, elements);
@@ -397,7 +482,7 @@ const experimentFunctions = {
                 } else {
                     const originalInstructionText = elements.currentInstruction.textContent;
                     elements.currentInstruction.textContent = 
-                        `Уровень воды в трубке должен быть примерно 50 см от верхнего конца (текущий: ${lengthInCm.toFixed(1)} см)`;
+                        `Некорректный уровень воды в трубке: ${lengthInCm1.toFixed(1)} см.`;
                     elements.currentInstruction.classList.add('warning');
                     
                     setTimeout(() => {
@@ -408,11 +493,8 @@ const experimentFunctions = {
             }
             
             if (this.experimentState.step === 5 && !this.experimentState.finalMeasurementsDone) {
-                const airColumnLength = this.calculateWaterLevelInTube(elements);
-                const lengthInCm = (airColumnLength / 100) * 100;
-                
-                this.experimentState.finalAirColumnLength = lengthInCm;
-                elements.lengthDisplay2.textContent = lengthInCm.toFixed(1);
+                this.experimentState.finalAirColumnLength = lengthInCm1;
+                elements.lengthDisplay2.textContent = lengthInCm1.toFixed(1);
                 
                 this.experimentState.finalMeasurementsDone = true;
                 
@@ -525,13 +607,19 @@ const experimentFunctions = {
     updateBarometerReadingBasedOnWaterLevel(elements) {
         if (!this.experimentState.corkInserted) return;
         
+        if (!this.experimentState.initialBarometerReading) {
+            this.experimentState.initialBarometerReading = 760;
+            this.experimentState.initialAirVolume = 100 - parseFloat(elements.tubeWater.style.height || '0');
+        }
+        
         const airHeight = 100 - parseFloat(elements.tubeWater.style.height || '0');
         const volumeRatio = this.experimentState.initialAirVolume / airHeight;
-        const newBarometerReading = Math.round(this.experimentState.initialBarometerReading * volumeRatio);
-
-        this.experimentState.currentBarometerReading = newBarometerReading;
-        elements.barometerDisplay.textContent = newBarometerReading.toFixed(0);
-        this.updateBarometerNeedle(newBarometerReading);
+        const newBarometerReading = Math.round(760 * volumeRatio);
+        const finalReading = Math.max(newBarometerReading, 710);
+        
+        this.experimentState.currentBarometerReading = finalReading;
+        elements.barometerDisplay.textContent = finalReading.toFixed(0);
+        this.updateBarometerNeedle(finalReading);
     },
     
     checkFullConnection(elements) {
@@ -551,7 +639,7 @@ const experimentFunctions = {
                 
                 this.advanceToStep(2, elements);
                 elements.currentInstruction.textContent = 
-                    "Теперь установите воронку так, чтобы уровень воды в трубке был на 50 см от верхнего конца";
+                    "Установите воронку на один уровень с трубкой.";
             }   
             return true;
         }

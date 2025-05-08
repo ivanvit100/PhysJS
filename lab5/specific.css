@@ -198,3 +198,8 @@
     position: relative;
     z-index: 11;
 }
+
+.movement-blocked {
+    outline: 2px solid red;
+    transition: outline 0.2s;
+}
