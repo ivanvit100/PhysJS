@@ -54,7 +54,6 @@ window.addEventListener('DOMContentLoaded', () => {
     function setupEventListeners() {
         substanceSelect.addEventListener('change', handleSubstanceChange);
         calculateButton.addEventListener('click', handleCalculation);
-        resetButton.addEventListener('click', resetMeasurements);
 
         canvas.addEventListener('mousedown', handleMouseDown);
         canvas.addEventListener('mousemove', handleMouseMove);
@@ -65,8 +64,14 @@ window.addEventListener('DOMContentLoaded', () => {
         
         window.addEventListener('mousemove', handleRulerLMouseMove);
         window.addEventListener('mouseup', handleRulerLMouseUp);
-    }
 
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            resetMeasurements();
+        });
+        document.getElementById('back-btn').addEventListener('click', () => {
+            window.location.href = '../index.html';
+        });
+    }
     
     function handleSubstanceChange() {
         currentSubstanceId = substanceSelect.value;
@@ -79,7 +84,6 @@ window.addEventListener('DOMContentLoaded', () => {
         calculatedResults = {};
         resultsBody.innerHTML = '';
         resetMeasurementsForCurrentSubstance();
-        errorInfo.textContent = 'Все результаты сброшены.';
     }
 
     function resetMeasurementsForCurrentSubstance() {
