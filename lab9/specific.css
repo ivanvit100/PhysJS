@@ -13,6 +13,12 @@
     justify-content: center;
 }
 
+#metal-selector {
+    width: 280px;
+    bottom: 80px;
+    left: 320px;
+}
+
 /* Ammeter and Voltmeter */
 #ammeter {
     top: 120px;
@@ -36,7 +42,6 @@
 .coil-body {
     width: 100%;
     height: 100%;
-    background-color: rgba(184, 115, 51, 0.2);
     border-radius: 8px;
     display: flex;
     flex-direction: column;

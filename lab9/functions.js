@@ -32,7 +32,18 @@ const experimentFunctions = {
         thermometerAttached: false,
         graphPoints: [],
         
-        copperAlpha: 0.0043,
+        metals: [
+            { id: 'copper', name: 'Медь', alpha: 0.0043, color: '#b8733355' },
+            { id: 'aluminum', name: 'Алюминий', alpha: 0.0039, color: '#a8a8a855' },
+            { id: 'iron', name: 'Железо', alpha: 0.0065, color: '#71797E55' },
+            { id: 'gold', name: 'Золото', alpha: 0.004, color: '#FFD70055' },
+            { id: 'tungsten', name: 'Вольфрам', alpha: 0.0041, color: '#36454F55' }
+        ],
+        selectedMetalIndex: 0,
+        
+        get currentMetal() {
+            return this.metals[this.selectedMetalIndex];
+        },
         
         graph: null
     },
@@ -82,6 +93,90 @@ const experimentFunctions = {
         physjs.addAttachmentPoint('#thermometer', 'thermometer-attachment', -20, 175, ['coil']);
     },
     
+    createMetalSelector() {
+        const panel = document.createElement('div');
+        panel.id = 'metal-selector';
+        panel.className = 'ui-panel';
+
+        
+        const header = document.createElement('div');
+        header.className = 'panel-header';
+        const title = document.createElement('h3');
+        title.textContent = 'Выбор материала';
+        header.appendChild(title);
+        panel.appendChild(header);
+        
+        const content = document.createElement('div');
+        content.className = 'panel-content';
+        const formGroup = document.createElement('div');
+        formGroup.className = 'input-group';
+        const label = document.createElement('label');
+        label.textContent = 'Выберите материал катушки:';
+        label.setAttribute('for', 'metal-select');
+        
+        const select = document.createElement('select');
+        select.id = 'metal-select';
+        select.style.width = '100%';
+        
+        this.experimentState.metals.forEach((metal, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = metal.name;
+            select.appendChild(option);
+        });
+        
+        select.addEventListener('change', (e) => {
+            this.setSelectedMetal(parseInt(e.target.value));
+        });
+        
+        formGroup.appendChild(label);
+        formGroup.appendChild(select);
+        content.appendChild(formGroup);
+        panel.appendChild(content);
+        
+        document.body.appendChild(panel);
+    },
+    
+    setSelectedMetal(index) {
+        if (index >= 0 && index < this.experimentState.metals.length) {
+            this.experimentState.selectedMetalIndex = index;
+            this.updateCoilColor();
+        }
+    },
+    
+    updateCoilColor() {
+        const coil = document.getElementById('copper-coil');
+        const coilWindings = document.querySelector('.coil-windings');
+        
+        if (coil && coilWindings) {
+            const metal = this.experimentState.currentMetal;
+            coil.style.backgroundColor = metal.color;
+            
+            let gradient;
+            switch(metal.id) {
+                case 'copper':
+                    gradient = `repeating-linear-gradient(90deg, #d35400, #e67e22 2px, #d35400 4px)`;
+                    break;
+                case 'aluminum':
+                    gradient = `repeating-linear-gradient(90deg, #7f8c8d, #bdc3c7 2px, #7f8c8d 4px)`;
+                    break;
+                case 'iron':
+                    gradient = `repeating-linear-gradient(90deg, #5d6d7e, #7f8c8d 2px, #5d6d7e 4px)`;
+                    break;
+                case 'gold':
+                    gradient = `repeating-linear-gradient(90deg, #d4af37, #ffd700 2px, #d4af37 4px)`;
+                    break;
+                case 'tungsten':
+                    gradient = `repeating-linear-gradient(90deg, #2c3e50, #34495e 2px, #2c3e50 4px)`;
+                    break;
+                default:
+                    gradient = `repeating-linear-gradient(90deg, #d35400, #e67e22 2px, #d35400 4px)`;
+            }
+            
+            coilWindings.style.background = gradient;
+        }
+    },
+    
     initializeExperiment() {
         this.setupPhysicsObjects();
         
@@ -96,6 +191,7 @@ const experimentFunctions = {
         
         this.createResistanceInputForm();
         this.createAlphaInputForm();
+        this.createMetalSelector();
         
         document.getElementById('reset-btn')?.addEventListener('click', () => this.resetExperiment());
         document.getElementById('back-btn')?.addEventListener('click', () => this.backToMainPage());
@@ -165,6 +261,7 @@ const experimentFunctions = {
         physjs.goToStep('step1');
         
         this.setupGraph();
+        this.updateCoilColor();
     },
     
     createResistanceInputForm() {
@@ -229,7 +326,7 @@ const experimentFunctions = {
             
             panel.innerHTML = `
                 <h4>Температурный коэффициент сопротивления</h4>
-                <p>Определите температурный коэффициент сопротивления меди:</p>
+                <p>Определите температурный коэффициент сопротивления <span id="metal-name-in-form">меди</span>:</p>
                 <div style="margin: 15px 0;">
                     <label for="alpha-input">α = </label>
                     <input type="number" id="alpha-input" step="0.0001" min="0" max="0.01" style="width: 80px;">
@@ -262,14 +359,16 @@ const experimentFunctions = {
             return;
         }
         
-        const correctAlpha = 0.0043;
+        const correctAlpha = this.experimentState.currentMetal.alpha;
         const tolerance = correctAlpha * 0.05;
         
         if (Math.abs(userValue - correctAlpha) <= tolerance) {
             this.experimentState.tempCoefficient = correctAlpha;
-            document.getElementById('temp-coefficient').textContent = "4.300·10⁻³";
+            const formattedAlpha = (correctAlpha * 1000).toFixed(3) + '·10⁻³';
+            document.getElementById('temp-coefficient').textContent = formattedAlpha;
             document.getElementById('alpha-input-panel').style.display = 'none';
-            document.getElementById('current-instruction').textContent = "Правильно! Эксперимент успешно завершен.";
+            document.getElementById('current-instruction').textContent = 
+                `Правильно! Эксперимент успешно завершен. Температурный коэффициент ${this.experimentState.currentMetal.name} равен ${formattedAlpha} K⁻¹`;
             this.experimentState.experimentComplete = true;
         } else {
             this.experimentState.wrongAttempts++;
@@ -341,7 +440,7 @@ const experimentFunctions = {
             "Включите источник питания двойным щелчком и установите ток в 40 мА (клавиши Q/E).",
             "Вычислите сопротивление по закону Ома: R = U / I",
             "Прикрепите термометр к катушке и нагрейте её для измерения изменения сопротивления.",
-            "Вычислите температурный коэффициент сопротивления меди."
+            "Вычислите температурный коэффициент сопротивления материала."
         ];
         
         const instructionElement = document.getElementById('current-instruction');
@@ -362,6 +461,9 @@ const experimentFunctions = {
             case 2:
                 document.getElementById('temp-control').style.display = 'none';
                 this.experimentState.circuitAssembled = true;
+
+                const metalSelector = document.getElementById('metal-selector');
+                metalSelector && metalSelector.remove();
                 break;
             case 3:
                 document.getElementById('temp-control').style.display = 'none';
@@ -373,6 +475,11 @@ const experimentFunctions = {
                 break;
             case 6:
                 document.getElementById('temp-control').style.display = 'none';
+                
+                const metalNameInForm = document.getElementById('metal-name-in-form');
+                if (metalNameInForm)
+                    metalNameInForm.textContent = this.experimentState.currentMetal.name.toLowerCase();
+                
                 document.getElementById('alpha-input-panel').style.display = 'block';
                 break;
         }
@@ -461,7 +568,7 @@ const experimentFunctions = {
             resistance = 100;
         } else {
             const tempChange = this.experimentState.currentTemperature - this.experimentState.initialTemperature;
-            resistance = 100 * (1 + this.experimentState.copperAlpha * tempChange);
+            resistance = 100 * (1 + this.experimentState.currentMetal.alpha * tempChange);
         }
         
         const current = (voltage / resistance) * 1000;
@@ -540,7 +647,7 @@ const experimentFunctions = {
                     const voltage = this.experimentState.currentVoltage;
                     const tempChange = this.experimentState.currentTemperature - this.experimentState.initialTemperature;
                     const newResistance = this.experimentState.initialResistance * 
-                        (1 + this.experimentState.copperAlpha * tempChange);
+                        (1 + this.experimentState.currentMetal.alpha * tempChange);
                     
                     this.experimentState.graphPoints.push({
                         temperature: this.experimentState.currentTemperature,
