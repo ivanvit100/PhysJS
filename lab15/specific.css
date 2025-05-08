@@ -1,0 +1,365 @@
+/* Specific styles for speed of light experiment */
+
+/* Canvas area styling */
+#simulationCanvas {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    background-color: #f5f7fa;
+    margin: 70px auto 0; /* Increased top margin to accommodate rulers */
+    display: block;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    position: absolute;
+}
+
+/* Ruler container and measurements - redesigned */
+#ruler-container {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 80px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-radius: var(--radius-lg);
+    padding: 10px;
+    z-index: 10;
+}
+
+#ruler-l, #ruler-f {
+    position: relative;
+    cursor: grab;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: var(--radius-md);
+    padding: 15px 10px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 250px;
+}
+
+#ruler-l:active, #ruler-f:active {
+    cursor: grabbing;
+    transform: scale(1.02);
+    box-shadow: var(--shadow-md);
+}
+
+.ruler-line-l, .ruler-line-f {
+    position: relative;
+    height: 6px;
+    width: 100%;
+    background: linear-gradient(to right, var(--color-primary), var(--color-primary-dark));
+    border-radius: 3px;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Tick marks along ruler */
+.ruler-line-l::after, .ruler-line-f::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 15px;
+    width: 4px;
+    background-color: var(--color-primary-dark);
+    border-radius: 2px;
+}
+
+.ruler-line-l::before, .ruler-line-f::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 15px;
+    width: 4px;
+    background-color: var(--color-primary-dark);
+    border-radius: 2px;
+}
+
+/* Add tick marks in the middle */
+.ruler-line-l::after, .ruler-line-f::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 15px;
+    width: 4px;
+    background-color: var(--color-primary-dark);
+    border-radius: 2px;
+}
+
+/* Measurement labels */
+.ruler-label-l, .ruler-label-f {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-secondary);
+    margin-bottom: 5px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#l-value, #f-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-inset);
+}
+
+/* Add subtle measurement markers */
+.ruler-line-l::after, .ruler-line-f::after {
+    content: '';
+    width: 100%;
+    position: absolute;
+    height: 6px;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 9px,
+        rgba(44, 62, 80, 0.4) 9px,
+        rgba(44, 62, 80, 0.4) 10px
+    );
+    border-radius: 0;
+    top: 0;
+    left: 0;
+}
+
+/* Results panel styling */
+#results-panel {
+    position: absolute;
+    left: 20px;
+    top: 70px;
+    width: 500px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin-bottom: var(--spacing-sm);
+}
+
+#results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+#results-table th {
+    position: sticky;
+    top: 0;
+    background-color: rgba(52, 152, 219, 0.1);
+    z-index: 1;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 8px 5px;
+}
+
+#results-table td {
+    padding: 6px 5px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+#results-table tr:nth-child(even) {
+    background-color: rgba(236, 240, 241, 0.5);
+}
+
+#error-info {
+    margin-top: var(--spacing-sm);
+    color: var(--color-error);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+/* Flask visualization styles */
+.flask {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-color: rgba(200, 230, 255, 0.2);
+    border: 2px solid rgba(189, 195, 199, 0.5);
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.4), 
+                inset 0 0 10px rgba(70, 130, 180, 0.2);
+    overflow: hidden;
+    transition: background-color 0.5s;
+}
+
+.flask-liquid {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: background-color 0.5s;
+}
+
+.flask-liquid.water {
+    background-color: rgba(52, 152, 219, 0.3);
+}
+
+.flask-liquid.glycerin {
+    background-color: rgba(241, 196, 15, 0.3);
+}
+
+.flask-liquid.oil {
+    background-color: rgba(230, 126, 34, 0.2);
+}
+
+.flask-liquid.ethylene_glycol {
+    background-color: rgba(155, 89, 182, 0.2);
+}
+
+.flask-liquid.gelatin {
+    background-color: rgba(46, 204, 113, 0.2);
+}
+
+.flask-liquid.silicone_oil {
+    background-color: rgba(189, 195, 199, 0.3);
+}
+
+.flask-liquid.air {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Light ray visualization */
+.light-ray {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(to right, 
+                rgba(241, 196, 15, 0.7), 
+                rgba(230, 126, 34, 0.7));
+    transform-origin: 0 0;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.light-ray.refracted {
+    background: linear-gradient(to right, 
+                rgba(52, 152, 219, 0.7),
+                rgba(41, 128, 185, 0.7));
+}
+
+.focal-point {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: rgba(231, 76, 60, 0.8);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.6);
+    z-index: 4;
+    pointer-events: none;
+}
+
+/* Custom select dropdown styling */
+.controls {
+    margin-bottom: 20px;
+}
+
+.controls label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--color-secondary);
+}
+
+#substance-select {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid var(--color-gray-light);
+    border-radius: var(--radius-md);
+    background-color: white;
+    color: var(--color-secondary);
+    font-size: 0.95rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%232c3e50' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+}
+
+#substance-select:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+}
+
+#substance-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+}
+
+/* Style for dropdown options */
+#substance-select option {
+    padding: 10px;
+    background-color: white;
+    color: var(--color-secondary);
+}
+
+/* Add a subtle highlight to the selected option */
+#substance-select option:checked {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: var(--color-primary-dark);
+    font-weight: 500;
+}
+
+/* Add visual feedback when dropdown is open */
+#substance-select:focus-within {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+#calculate-button, #reset-button {
+    margin-right: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 1200px) {
+    #results-panel {
+        width: calc(100% - 390px);
+    }
+    
+    #simulationCanvas {
+        width: 700px;
+    }
+}
+
+@media screen and (max-width: 992px) {
+    #results-panel {
+        position: static;
+        width: 95%;
+        margin: 10px auto;
+    }
+    
+    #measurement-panel, #status-panel {
+        position: static;
+        width: 95%;
+        margin: 10px auto;
+    }
+    
+    #simulationCanvas {
+        width: 600px;
+        height: 350px;
+    }
+}
