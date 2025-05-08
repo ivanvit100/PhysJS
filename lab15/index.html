@@ -36,15 +36,12 @@
             </div>
             <div class="panel-content">
                 <ol class="list-spaced">
-                    <li id="step1" class="active">Выберите вещество для эксперимента</li>
+                    <li id="step1">Выберите вещество для эксперимента</li>
                     <li id="step2">Измерьте длину окружности колбы (l)</li>
                     <li id="step3">Найдите фокусное расстояние линзы (F)</li>
                     <li id="step4">Рассчитайте показатель преломления и скорость света</li>
                     <li id="step5">Сравните с теоретическими значениями</li>
                 </ol>
-                <div class="info-box info-box-primary mb-0">
-                    <p id="current-instruction" class="mb-0">Выберите вещество из списка и приступайте к измерениям</p>
-                </div>
             </div>
         </div>
 
@@ -82,7 +79,7 @@
             </div>
         </div>
 
-        <div id="results-panel" class="panel ui-panel">
+        <div id="results-panel" class="panel ui-panel" style="width:600px">
             <div class="panel-header">
                 <h3>Результаты измерений</h3>
             </div>
@@ -96,9 +93,10 @@
                                 <th>l (см)</th>
                                 <th>R (см)</th>
                                 <th>n (расч.)</th>
-                                <th>v (расч., *10<sup>8</sup> м/с)</th>
-                                <th>v (теор., *10<sup>8</sup> м/с)</th>
+                                <th>v расч. (*10<sup>8</sup> м/с)</th>
+                                <th>v теор. (*10<sup>8</sup> м/с)</th>
                                 <th>Погрешность (%)</th>
+                                <th>Действие</th>
                             </tr>
                         </thead>
                         <tbody id="results-body">
