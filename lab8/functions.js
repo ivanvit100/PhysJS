@@ -9,7 +9,7 @@ const experimentFunctions = {
         
         initialTemperature: 20,
         finalTemperature: 100,
-        initialWaterLevel: 150,
+        initialWaterLevel: 120,
         finalWaterLevel: 0,
         heatingTime: 0,
         boilingTime: 0,
@@ -66,7 +66,7 @@ const experimentFunctions = {
             if (index + 1 === stepNumber) li.classList.add('active');
             if (index + 1 < stepNumber) li.classList.add('completed');
         });
-    
+
         switch(stepNumber) {
             case 2:
                 this.experimentState.waterInCylinder = true;
@@ -76,7 +76,15 @@ const experimentFunctions = {
                 
             case 3:
                 this.experimentState.heaterInWater = true;
-                document.getElementById('heater-control').style.display = 'flex';
+                const heaterControl = document.getElementById('heater-control');
+                if (heaterControl) {
+                    heaterControl.style.display = 'flex';
+                    setTimeout(() => {
+                        if (this.experimentState.step === 3 && heaterControl.style.display !== 'flex') {
+                            heaterControl.style.display = 'flex';
+                        }
+                    }, 100);
+                }
                 break;
                 
             case 4:
@@ -112,7 +120,8 @@ const experimentFunctions = {
         
         const waterLevel = document.querySelector('.water-level');
         if (waterLevel) {
-            waterLevel.style.height = '180px';
+            const heightInPixels = this.experimentState.initialWaterLevel * 1.2;
+            waterLevel.style.height = `${heightInPixels}px`;
             
             const thermometerObj = physjs.getObject('#thermometer');
             const cylinderObj = physjs.getObject('#cylinder');
@@ -129,9 +138,7 @@ const experimentFunctions = {
     
     updateThermometer(temperature) {
         const thermometerMercury = document.querySelector('.thermometer-mercury');
-        if (thermometerMercury) {
-            thermometerMercury.style.height = `${3 + (temperature / 100) * 96}%`;
-        }
+        if (thermometerMercury) thermometerMercury.style.height = `${3 + (temperature / 100) * 96}%`;
     },
     
     toggleHeater() {
@@ -266,12 +273,14 @@ const experimentFunctions = {
         const waterLevel = document.querySelector('.water-level');
         if (!waterLevel) return;
         
-        const currentHeight = parseFloat(waterLevel.style.height);
-        const newHeight = currentHeight - 0.0005;
+        const evaporationRateFactor = this.experimentState.initialWaterLevel / 175;
+        const baseRate = 0.0005;
+        const scaledRate = baseRate * evaporationRateFactor;
         
-        if (newHeight > 0) {
-            waterLevel.style.height = `${newHeight}px`;
-        }
+        const currentHeight = parseFloat(waterLevel.style.height);
+        const newHeight = currentHeight - scaledRate;
+        
+        if (newHeight > 0) waterLevel.style.height = `${newHeight}px`;
     },
     
     activateBoilingEffects() {
@@ -495,30 +504,49 @@ const experimentFunctions = {
         if (!waterLevel) return;
         
         const initialHeight = parseFloat(waterLevel.style.height);
-        const finalHeight = initialHeight * 0.8;
+        const state = this.experimentState;
+        const h1 = state.initialWaterLevel;
+        const t1 = state.initialTemperature;
+        const t2 = state.finalTemperature;
+        const time1 = state.heatingTime;
+        const time2 = state.boilingTime || 20;
+        const c = 4200;
+        const L = 2260000;
+        const h2 = h1 - (c * h1 * (t2 - t1) * time2) / (L * time1);
+        const minLevel = h1 * 0.4;
+        const finalWaterLevel = Math.max(h2, minLevel);
+        const finalHeight = (finalWaterLevel / h1) * initialHeight;
         
         this.experimentState.evaporationInterval = setInterval(() => {
             const currentHeight = parseFloat(waterLevel.style.height);
             if (currentHeight > finalHeight) {
-                waterLevel.style.height = `${currentHeight - 0.1}px`;
+                const totalTime = 40;
+                const step = (initialHeight - finalHeight) / totalTime / 10;
+                waterLevel.style.height = `${Math.max(currentHeight - step, finalHeight)}px`;
                 
                 const steamParticles = document.querySelector('.steam-particles');
-                if (steamParticles && steamParticles.classList.contains('active')) {
-                    this.updateSteamPosition(waterLevel, steamParticles);
-                }
+                steamParticles && steamParticles.classList.contains('active') && this.updateSteamPosition(waterLevel, steamParticles);
+            } 
+            else {
+                clearInterval(this.experimentState.evaporationInterval);
             }
-            else clearInterval(this.experimentState.evaporationInterval);
         }, 100);
     },
     
     calculateFinalWaterLevel() {
         const state = this.experimentState;
         const actualBoilingTime = state.boilingTime;
-        const dropRatePerSecond = 0.743;
-        const waterLevelDrop = actualBoilingTime * dropRatePerSecond;
-        
-        state.finalWaterLevel = Math.max(state.initialWaterLevel - waterLevelDrop, 100);
-        
+        const h1 = state.initialWaterLevel;
+        const t1 = state.initialTemperature;
+        const t2 = state.finalTemperature;
+        const time1 = state.heatingTime;
+        const time2 = actualBoilingTime;
+        const c = 4200;
+        const L = 2260000;
+        const h2 = h1 - (c * h1 * (t2 - t1) * time2) / (L * time1);
+        const minLevel = h1 * 0.4;
+
+        state.finalWaterLevel = Math.max(h2, minLevel);
         document.getElementById('final-level').textContent = state.finalWaterLevel.toFixed(1);
     },
     
@@ -559,8 +587,11 @@ const experimentFunctions = {
         const time1 = state.heatingTime;
         const time2 = state.boilingTime;
         
-        let L = (c * h1 * (t2 - t1) / (h1 - h2)) * (time2 / time1);
-        return (!isFinite(L) || isNaN(L) || h1 <= h2) ? 2260000 : L;
+        if (!isFinite(h1) || !isFinite(h2) || isNaN(h1) || isNaN(h2) || h1 <= h2) return 2260000;
+        
+        const calculatedL = (c * h1 * (t2 - t1) / (h1 - h2)) * (time2 / time1);
+        
+        return calculatedL;
     },
     
     checkVaporizationCalculation() {
@@ -612,35 +643,6 @@ const experimentFunctions = {
         }
     },
     
-    checkHeaterPosition() {
-        const heater = document.getElementById('heater');
-        const cylinder = document.getElementById('cylinder');
-        const waterLevel = document.querySelector('.water-level');
-        
-        if (!heater || !cylinder || !waterLevel) return;
-        
-        const heaterRect = heater.getBoundingClientRect();
-        const waterRect = waterLevel.getBoundingClientRect();
-        const cylinderRect = cylinder.getBoundingClientRect();
-        
-        if (this.checkIntersection(heaterRect, waterRect) && this.experimentState.step === 2 && 
-            !physjs.isAttached(heater, cylinder)) {
-            
-            const heaterObj = physjs.getObject('#heater');
-            const cylinderObj = physjs.getObject('#cylinder');
-            
-            if (heaterObj && cylinderObj) {
-                heaterObj.setPosition(
-                    cylinderRect.left + cylinderRect.width/2 - heaterRect.width/2,
-                    waterRect.top + 20
-                );
-                cylinderObj.attach(heaterObj);
-                this.experimentState.heaterInWater = true;
-                setTimeout(() => this.forceSetStep(3), 500);
-            }
-        }
-    },
-    
     initializeExperiment() {
         this.setupPhysicsObjects();
 
@@ -661,7 +663,6 @@ const experimentFunctions = {
         document.getElementById('heater-control').style.display = 'none';
         
         document.getElementById('thermometer')?.addEventListener('dragend', () => this.checkThermometerPosition());
-        document.getElementById('heater')?.addEventListener('dragend', () => this.checkHeaterPosition());
         document.getElementById('cylinder')?.addEventListener('dblclick', () => this.fillCylinder());
         
         const step1 = physjs.createStep('step1', 'Налейте воду в цилиндр и измерьте температуру', ['#cylinder', '#thermometer']);

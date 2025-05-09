@@ -17,17 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     
-    const thermometer = document.getElementById('thermometer');
-    if (thermometer) {
-        thermometer.addEventListener('mouseup', () => experimentFunctions.checkThermometerPosition());
-        thermometer.addEventListener('dragend', () => experimentFunctions.checkThermometerPosition());
-    }
-    
-    const heater = document.getElementById('heater');
-    if (heater) {
-        heater.addEventListener('mouseup', () => experimentFunctions.checkHeaterPosition());
-        heater.addEventListener('dragend', () => experimentFunctions.checkHeaterPosition());
-    }
+    physjs.onAttachment((sourceObj, targetObj) => {
+        if ((sourceObj.element.id === 'heater' && targetObj.element.id === 'cylinder' ||
+            sourceObj.element.id === 'cylinder' && targetObj.element.id === 'heater') && 
+            experimentFunctions.experimentState.step == 2) {
+            
+            experimentFunctions.experimentState.heaterInWater = true;
+            
+            const heaterControl = document.getElementById('heater-control');
+            if (heaterControl) heaterControl.style.display = 'flex';
+            
+            setTimeout(() => experimentFunctions.forceSetStep(3), 100);
+        }
+    });
     
     const createTooltip = (element, text) => {
         if (element) {
@@ -43,9 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             element.addEventListener('mouseout', () => {
                 const tooltip = document.getElementById('tooltip');
-                if (tooltip) {
-                    tooltip.style.display = 'none';
-                }
+                if (tooltip) tooltip.style.display = 'none';
             });
         }
     };
