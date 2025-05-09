@@ -7,9 +7,16 @@ const experimentFunctions = {
         closedMeasurementsComplete: false,
         resistanceCalculated: false,
         errorsCalculated: false,
+
+        voltmeterMeasured: false,
+        ammeterMeasured: false,
         
-        trueEmf: 1.5,
-        internalResistance: 2.0,
+        trueEmf: 1.5,              // π - электродвижущая сила
+        internalResistance: 2.0,   // r - внутреннее сопротивление
+        rheostatResistance: 8.0,   // R - сопротивление реостата
+        minResistance: 1.0,        // Минимальное сопротивление реостата
+        maxResistance: 20.0,       // Максимальное сопротивление реостата
+        resistanceStep: 0.5,       // Шаг изменения сопротивления
         
         measuredEmf: 0,
         closedCircuitVoltage: 0,
@@ -24,6 +31,16 @@ const experimentFunctions = {
         this.setupPhysicsObjects();
         physjs.setRotationKeysEnabled(false);
         document.getElementById('theoretical-emf').textContent = this.experimentState.trueEmf.toFixed(2);
+        document.getElementById('rheostat-resistance').textContent = this.experimentState.rheostatResistance.toFixed(1);
+        
+        document.addEventListener('keydown', (e) => {
+            if (!this.experimentState.circuitAssembled) return;
+            
+            if (e.key === 'q' || e.key === 'Q')
+                this.adjustRheostatResistance(-this.experimentState.resistanceStep);
+            else if (e.key === 'e' || e.key === 'E')
+                this.adjustRheostatResistance(this.experimentState.resistanceStep);
+        });
         
         physjs.onConnect((fromId, toId) => {
             this.checkCircuitConnections();
@@ -74,6 +91,37 @@ const experimentFunctions = {
         this.updateMeterReadings();
     },
     
+    adjustRheostatResistance(delta) {
+        if (this.experimentState.switchClosed && 
+            (this.experimentState.voltmeterMeasured ^ this.experimentState.ammeterMeasured)) {
+            document.getElementById('current-instruction').textContent = 
+                "Необходимо снять показания со второго прибора при том же сопротивлении реостата.";
+            return;
+        }
+
+        const newResistance = Math.min(
+            Math.max(
+                this.experimentState.rheostatResistance + delta,
+                this.experimentState.minResistance
+            ),
+            this.experimentState.maxResistance
+        );
+        
+        if (newResistance !== this.experimentState.rheostatResistance) {
+            this.experimentState.rheostatResistance = newResistance;
+            document.getElementById('rheostat-resistance').textContent = newResistance.toFixed(1);
+            
+            const slider = document.querySelector('.rheostat-slider');
+            if (slider) {
+                const percent = ((newResistance - this.experimentState.minResistance) / 
+                               (this.experimentState.maxResistance - this.experimentState.minResistance)) * 100;
+                slider.style.left = `${percent}%`;
+            }
+            
+            this.experimentState.switchClosed && this.updateClosedCircuitReadings();
+        }
+    },
+    
     setupPhysicsObjects() {
         physjs.detachAll();
         
@@ -81,7 +129,8 @@ const experimentFunctions = {
             { selector: '#power-source', type: 'power-source' },
             { selector: '#ammeter', type: 'ammeter' },
             { selector: '#voltmeter', type: 'voltmeter' },
-            { selector: '#switch', type: 'switch' }
+            { selector: '#switch', type: 'switch' },
+            { selector: '#rheostat', type: 'rheostat' }
         ];
         
         objects.forEach(obj => {
@@ -95,6 +144,7 @@ const experimentFunctions = {
             else if (obj.type === 'voltmeter') element.dataset.wireColor = '#2ecc71';
             else if (obj.type === 'ammeter') element.dataset.wireColor = '#3498db';
             else if (obj.type === 'switch') element.dataset.wireColor = '#95a5a6';
+            else if (obj.type === 'rheostat') element.dataset.wireColor = '#f39c12';
         });
         
         physjs.addConnectionPoint('#power-source', 'power-positive', 80, 85);
@@ -110,6 +160,9 @@ const experimentFunctions = {
         
         physjs.addConnectionPoint('#switch', 'switch-input', 10, 50);
         physjs.addConnectionPoint('#switch', 'switch-output', 90, 50);
+        
+        physjs.addConnectionPoint('#rheostat', 'rheostat-input', 10, 50);
+        physjs.addConnectionPoint('#rheostat', 'rheostat-output', 90, 50);
     },
 
     recordEmfMeasurement() {
@@ -138,6 +191,7 @@ const experimentFunctions = {
         ammeter.classList.add('reading-taken');
         setTimeout(() => ammeter.classList.remove('reading-taken'), 500);
         
+        this.experimentState.ammeterMeasured = true;
         this.checkBothReadings();
     },
     
@@ -152,6 +206,7 @@ const experimentFunctions = {
         voltmeter.classList.add('reading-taken');
         setTimeout(() => voltmeter.classList.remove('reading-taken'), 500);
         
+        this.experimentState.voltmeterMeasured = true;
         this.checkBothReadings();
     },
     
@@ -164,7 +219,10 @@ const experimentFunctions = {
             document.getElementById('current-instruction').textContent = 
                 "Показания сняты. Теперь рассчитайте внутреннее сопротивление источника.";
             document.getElementById('calculator-panel').style.display = 'block';
+            document.getElementById('circuit-resistance').textContent = this.experimentState.rheostatResistance.toFixed(1);
             this.updateExperimentStep(4);
+            this.experimentState.voltmeterMeasured = false;
+            this.experimentState.ammeterMeasured = false;
         }
     },
     
@@ -181,35 +239,67 @@ const experimentFunctions = {
                     voltmeterConnections++;
         
         const voltmeterCorrect = voltmeterConnections === 2;
+        
         const switchPoints = ['switch-input', 'switch-output'];
         const ammeterPoints = ['ammeter-input', 'ammeter-output'];
-        const circuitConnections = [];
+        const rheostatPoints = ['rheostat-input', 'rheostat-output'];
+        const powerCircuitPoints = ['power-positive', 'power-negative', 'power-volt1', 'power-volt2'];
         
-        for (const powerPoint of powerPoints)
-            for (const switchPoint of switchPoints)
-                if (physjs.areConnected(powerPoint, switchPoint))
-                    circuitConnections.push(`${powerPoint} -> ${switchPoint}`);
+        const deviceConnections = {
+            'power': { points: powerCircuitPoints, connections: [] },
+            'switch': { points: switchPoints, connections: [] },
+            'ammeter': { points: ammeterPoints, connections: [] },
+            'rheostat': { points: rheostatPoints, connections: [] }
+        };
         
-        for (const switchPoint of switchPoints)
-            for (const ammeterPoint of ammeterPoints)
-                if (physjs.areConnected(switchPoint, ammeterPoint))
-                    circuitConnections.push(`${switchPoint} -> ${ammeterPoint}`);
+        for (const device1 in deviceConnections) {
+            for (const point1 of deviceConnections[device1].points) {
+                for (const device2 in deviceConnections) {
+                    if (device1 === device2) continue;
+                    
+                    for (const point2 of deviceConnections[device2].points) {
+                        if (physjs.areConnected(point1, point2)) {
+                            deviceConnections[device1].connections.push({
+                                point: point1,
+                                connectedTo: { device: device2, point: point2 }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        let allDevicesConnected = true;
+        let noInvalidConnections = true;
         
-        for (const ammeterPoint of ammeterPoints)
-            for (const powerPoint of powerPoints)
-                if (physjs.areConnected(ammeterPoint, powerPoint))
-                    circuitConnections.push(`${ammeterPoint} -> ${powerPoint}`);
+        for (const device in deviceConnections) {
+            const connections = deviceConnections[device].connections;
+            
+            if (connections.length !== 2) {
+                allDevicesConnected = false;
+                break;
+            }
+            
+            const connectedDevices = connections.map(conn => conn.connectedTo.device);
+            const uniqueConnectedDevices = [...new Set(connectedDevices)];
+            
+            if (uniqueConnectedDevices.length !== connectedDevices.length) {
+                noInvalidConnections = false;
+                break;
+            }
+        }
         
-        const ampermetrCircuitCorrect = circuitConnections.length >= 3;
+        const circuitCorrect = allDevicesConnected && noInvalidConnections;
         
-        if (voltmeterCorrect && ampermetrCircuitCorrect) {
+        if (voltmeterCorrect && circuitCorrect) {
             this.experimentState.circuitAssembled = true;
             this.updateExperimentStep(2);
             this.updateMeterReadings();
             this.experimentState.measuredEmf = this.getEmfWithError();
             this.updateMeterReadings();
             document.getElementById('current-instruction').textContent = 
-                "Схема собрана правильно! Дважды щелкните по вольтметру для снятия показаний";
+                "Схема собрана правильно! Используйте клавиши Q/E для уменьшения/увеличения сопротивления реостата. " +
+                "Дважды щелкните по вольтметру для снятия показаний.";
         }
     },
     
@@ -217,6 +307,11 @@ const experimentFunctions = {
         if (!this.experimentState.circuitAssembled) return;
         
         this.experimentState.switchClosed = !this.experimentState.switchClosed;
+
+        if (!this.experimentState.switchClosed) {
+            this.experimentState.voltmeterMeasured = false;
+            this.experimentState.ammeterMeasured = false;
+        }
         
         const switchElement = document.getElementById('switch');
         const switchLever = switchElement.querySelector('.switch-lever');
@@ -226,7 +321,8 @@ const experimentFunctions = {
             
             if (this.experimentState.emfMeasured) {
                 document.getElementById('current-instruction').textContent = 
-                    "Щёлкните на амперметр и вольтметр, чтобы снять показания при замкнутой цепи.";
+                    "Щёлкните на амперметр и вольтметр, чтобы снять показания при замкнутой цепи. " +
+                    "Используйте клавиши Q/E для изменения сопротивления реостата.";
                 this.updateClosedCircuitReadings();
                 setTimeout(() => {
                     this.updateClosedCircuitReadings();
@@ -267,11 +363,12 @@ const experimentFunctions = {
     updateClosedCircuitReadings() {
         if (!this.experimentState.switchClosed) return;
         
-        const resistance = this.experimentState.internalResistance;
+        const r = this.experimentState.internalResistance;
         const emf = this.experimentState.measuredEmf;
-        const externalResistance = 8;
-        const current = emf / (resistance + externalResistance);
-        const voltageDrop = current * resistance;
+        const R = this.experimentState.rheostatResistance;
+        
+        const current = emf / (r + R);
+        const voltageDrop = current * r;
         const terminalVoltage = emf - voltageDrop;
         
         this.experimentState.current = current;

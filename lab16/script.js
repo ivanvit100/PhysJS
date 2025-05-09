@@ -7,13 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
         '#power-source', 
         '#ammeter', 
         '#voltmeter', 
-        '#switch'
+        '#switch',
+        '#rheostat'
     ];
     
     elements.forEach(selector => {
         const element = document.querySelector(selector);
         if (element) {
-            element.classList.add('phys', 'phys-draggable', 'phys-connectors');
+            element.classList.add('phys', 'phys-connectors');
             physjs.createObject(selector);
         }
     });
@@ -22,9 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#ammeter').dataset.wireColor = '#3498db';
     document.querySelector('#voltmeter').dataset.wireColor = '#2ecc71';
     document.querySelector('#switch').dataset.wireColor = '#95a5a6';
+    document.querySelector('#rheostat').dataset.wireColor = '#f39c12';
     
     const step1 = physjs.createStep('step1', 'Соберите электрическую схему', 
-        ['#power-source', '#ammeter', '#voltmeter', '#switch'], ['*']);
+        ['#power-source', '#ammeter', '#voltmeter', '#switch', '#rheostat'], ['*']);
     const step2 = physjs.createStep('step2', 'Измерьте ЭДС источника тока', ['#switch'], []);
     const step3 = physjs.createStep('step3', 'Снимите показания при замкнутом ключе', ['#switch'], []);
     const step4 = physjs.createStep('step4', 'Вычислите внутреннее сопротивление', [], []);
@@ -51,9 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         element.addEventListener('mouseleave', () => {
             const tooltip = document.getElementById('tooltip');
-            if (tooltip) {
-                tooltip.style.display = 'none';
-            }
+            if (tooltip) tooltip.style.display = 'none';
         });
     });
     

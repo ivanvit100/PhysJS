@@ -73,6 +73,17 @@
                 </div>
             </div>
 
+            <div id="rheostat" class="phys phys-draggable phys-connectors" data-wire-color="#f39c12">
+                <div class="rheostat-body">
+                    <div class="rheostat-value" id="rheostat-resistance">8.0 Ом</div>
+                    <div class="rheostat-track">
+                        <div class="rheostat-slider"></div>
+                    </div>
+                    <div class="rheostat-label">Реостат</div>
+                    <div class="rheostat-terminals"></div>
+                </div>
+            </div>
+
             <div id="help-text">
                 <div class="help-item"><span class="key-indicator">ЛКМ</span> перетащить объект</div>
                 <div class="help-item"><span class="key-indicator">2х ЛКМ</span> взаимодействие с ключом</div>
@@ -129,6 +140,10 @@
                     <span class="measurement-value"><span id="circuit-current">-</span> А</span>
                 </div>
                 <div class="measurement-row">
+                    <span class="measurement-label">Сопротивление цепи (R):</span>
+                    <span class="measurement-value"><span id="circuit-resistance">-</span> Ом</span>
+                </div>
+                <div class="measurement-row">
                     <span class="measurement-label">Внутреннее сопротивление (r<sub>вн</sub>):</span>
                     <span class="measurement-value"><span id="internal-resistance">-</span> Ом</span>
                 </div>
@@ -181,10 +196,6 @@
                     <div id="error-calculation-result" class="mt-2"></div>
                 </div>
             </div>
-        </div>
-
-        <div class="circuit-diagram">
-            <img src="circuit.png" alt="Схема электрической цепи" style="display: none;">
         </div>
 
         <div class="buttons-container">
