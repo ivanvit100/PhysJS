@@ -38,7 +38,6 @@ const experimentFunctions = {
         state.rulerBottomY = 50;
     },
 
-    // Fixed tower height adjustment function
     adjustTowerHeight(state, elements) {
         const castleTower = document.querySelector('.castle-tower');
         const towerBase = document.querySelector('.tower-base');
@@ -307,6 +306,8 @@ const experimentFunctions = {
                 state.alpha_deg = newAngle;
                 state.alpha_rad = newAngle * (Math.PI / 180);
             }
+
+            this.clearLandingMarks(document.getElementById('floor-area'));
             
             const barrelEnd = this.getBarrelEndPosition(pistolElem);
             this.createMeasuringTools(document.getElementById('floor-area'), barrelEnd.x);
