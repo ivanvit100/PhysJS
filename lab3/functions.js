@@ -1,5 +1,5 @@
 const experimentFunctions = {
-    PIXELS_PER_METER: 22,
+    PIXELS_PER_METER: 14.2,
     ballMass: 1.5,
 
     initExperiment(state, elements) {
@@ -278,7 +278,7 @@ const experimentFunctions = {
         const barrelElem = pistolElem.querySelector('.cannon-barrel');
         if (!barrelElem) return;
 
-        const rotationStep = 5;
+        const rotationStep = 1;
         let currentAngle = 0;
 
         const currentTransform = barrelElem.style.transform || '';
@@ -426,11 +426,8 @@ const experimentFunctions = {
         state.currentResultAdded = false;
     
         const isHorizontal = !state.horizontalShotDone;        
-        const floorRect = floorArea.getBoundingClientRect();
         
-        const heightFromBottom = floorRect.bottom - barrelEnd.y;
-        const heightFromRuler = heightFromBottom - state.rulerBottomY;
-        const heightInMeters = heightFromRuler / this.PIXELS_PER_METER;
+        const heightInMeters = state.h;
         
         state.lastShootHeight = heightInMeters;
         state.currentShootHeight = heightInMeters;
@@ -548,7 +545,6 @@ const experimentFunctions = {
                         const distanceOnRuler_m = distanceOnRuler_px / self.PIXELS_PER_METER;
                         
                         state.l_exp = distanceOnRuler_m;
-                        state.l_calc = distanceOnRuler_m;
                         
                         document.getElementById('user-measurement-panel').style.display = 'block';
                         document.getElementById('user-measured-distance').value = '';
