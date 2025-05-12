@@ -26,7 +26,6 @@
             this.attachmentPoints = [];
             this.attachedToPoint = null;
             this.parentObject = null;
-            this.lastClickTime = 0;
             this.canRotate = true;
             
             this.initElement();
@@ -448,14 +447,16 @@
             physObjects.set(element, obj);
             
             element.addEventListener('mousedown', startDrag);
-            element.addEventListener('click', handleClick);
+            element.addEventListener('click', handleSingleClick);
+            element.addEventListener('dblclick', handleDoubleClick);
         });
 
         document.querySelectorAll('.phys-fixed').forEach(element => {
             const obj = new PhysObject(element);
             physObjects.set(element, obj);
             
-            element.addEventListener('click', handleClick);
+            element.addEventListener('click', handleSingleClick);
+            element.addEventListener('dblclick', handleDoubleClick);
         });
         
         document.addEventListener('keydown', handleKeyPress);
@@ -479,49 +480,50 @@
         if (!clickedOnPhys) unselectElement();
     }
     
-    function handleClick(e) {
+    function handleSingleClick(e) {
         if (draggedObject) return;
         let element = e.currentTarget;
         const physObject = physObjects.get(element);
         
         if (!physObject) return;
         
-        const currentTime = new Date().getTime();
-        if (currentTime - physObject.lastClickTime < 1000) {
-            if (element.classList.contains('phys-connectors') && 
-                labStepIterator && 
-                labStepIterator.getCurrentStep() && 
-                labStepIterator.currentIndex === 0) {
-            } 
-            else if (physObject.isAttached || physObject.attachedObjects.size > 0) {
-                if (labStepIterator && labStepIterator.getCurrentStep()) {
-                    const currentStep = labStepIterator.getCurrentStep();
-                    
-                    if (!currentStep.isDetachmentAllowed(element)) {
-                        log(`Открепление не разрешено для ${element.id} на текущем шаге`);
-                        return;
-                    }
-                }
-                
-                if (!triggerBeforeDetachmentEvent(physObject)) {
-                    log(`Открепление ${element.id} запрещено обработчиком beforeDetachment`);
-                    return;
-                }
-                
-                log(`Открепление ${element.id} по двойному клику`);
-                physObject.detach();
-                e.stopPropagation();
-                return;
-            }
-        }
-        
-        physObject.lastClickTime = currentTime;
-        
         unselectElement();
         selectedObject = physObject;
         element.classList.add('selected');
         
         e.stopPropagation();
+    }
+    
+    function handleDoubleClick(e) {
+        if (draggedObject) return;
+        let element = e.currentTarget;
+        const physObject = physObjects.get(element);
+        
+        if (!physObject) return;
+        
+        if (element.classList.contains('phys-connectors') && 
+            labStepIterator && 
+            labStepIterator.currentIndex === 0) {
+        } 
+        else if (physObject.isAttached || physObject.attachedObjects.size > 0) {
+            if (labStepIterator && labStepIterator.getCurrentStep()) {
+                const currentStep = labStepIterator.getCurrentStep();
+                
+                if (!currentStep.isDetachmentAllowed(element)) {
+                    log(`Открепление не разрешено для ${element.id} на текущем шаге`);
+                    return;
+                }
+            }
+            
+            if (!triggerBeforeDetachmentEvent(physObject)) {
+                log(`Открепление ${element.id} запрещено обработчиком beforeDetachment`);
+                return;
+            }
+            
+            log(`Открепление ${element.id} по двойному клику`);
+            physObject.detach();
+            e.stopPropagation();
+        }
     }
     
     function selectElement(e) {
@@ -1235,7 +1237,8 @@
                 physObjects.set(element, obj);
                 
                 element.addEventListener('mousedown', startDrag);
-                element.addEventListener('click', handleClick);
+                element.addEventListener('click', handleSingleClick);
+                element.addEventListener('dblclick', handleDoubleClick);
                 
                 return obj;
             }
