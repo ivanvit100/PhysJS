@@ -90,6 +90,11 @@ function initializeExperiment() {
         }
     }, true);
 
+    window.pumpHandle.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+    });
+
     experimentFunctions.resetExperiment();
     experimentFunctions.createDensityCalculator();
     experimentFunctions.setupTooltips();
