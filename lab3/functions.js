@@ -6,13 +6,7 @@ const experimentFunctions = {
         physjs.setDebugMode(false);
         physjs.init();
         
-        const towerTop = document.querySelector('.tower-top');
-        if (towerTop) {
-            const towerRect = towerTop.getBoundingClientRect();
-            elements.pistol.style.top = (towerRect.top - 60) + 'px';
-        } else {
-            elements.pistol.style.top = '150px';
-        }
+        this.adjustTowerHeight(state, elements);
         
         state.basePosition = this.getBarrelBasePosition(elements.pistol);
         
@@ -42,6 +36,41 @@ const experimentFunctions = {
         const baseCorrectionFactor = 0.88;
         state.correctionFactor = baseCorrectionFactor * (1 + 0.1 * Math.log(this.ballMass / 0.5));
         state.rulerBottomY = 50;
+    },
+
+    // Fixed tower height adjustment function
+    adjustTowerHeight(state, elements) {
+        const castleTower = document.querySelector('.castle-tower');
+        const towerBase = document.querySelector('.tower-base');
+        const towerBricks = document.querySelector('.tower-bricks');
+        const floorArea = elements.floorArea;
+        
+        if (castleTower && towerBase && towerBricks && floorArea) {
+            const experimentArea = document.getElementById('experiment-area');
+            const experimentRect = experimentArea.getBoundingClientRect();
+            const floorRect = floorArea.getBoundingClientRect();
+            const floorY = floorRect.top - experimentRect.top;
+            const heightInPixels = state.h * this.PIXELS_PER_METER * 1.1 + 50;
+            const towerHeight = state.h * this.PIXELS_PER_METER - 45;
+            
+            castleTower.style.height = towerHeight + 'px';
+            towerBase.style.height = towerHeight + 'px';
+            
+            if (elements.pistol) {
+                const pistol = elements.pistol;
+                const castleTowerRect = castleTower.getBoundingClientRect();
+                
+                pistol.style.left = (castleTowerRect.left + (castleTowerRect.width / 2) - 25) + 'px';
+                
+                const barrelVerticalOffset = 20;
+                const pistolY = floorY - heightInPixels - barrelVerticalOffset;
+                pistol.style.top = pistolY + 'px';
+                
+                state.actualShootHeightPixels = heightInPixels;
+                state.floorY = floorY;
+                state.pistolY = pistolY;
+            }
+        }
     },
 
     getBarrelBasePosition(pistol) {

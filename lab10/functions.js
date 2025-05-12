@@ -91,7 +91,6 @@ const experimentFunctions = {
             }
         });
         
-        // Добавляем обработчики для фильтров
         const filters = document.querySelectorAll('.filter, .red-filter, .green-filter, .blue-filter');
         filters.forEach(filter => {
             if (filter) {
@@ -166,7 +165,6 @@ const experimentFunctions = {
             if (lightBeam) lightBeam.classList.remove('visible');
             if (lightImpact) lightImpact.classList.remove('visible');
             
-            // Удаляем дополнительный луч, если он есть
             const filteredBeam = document.getElementById('filtered-light-beam');
             if (filteredBeam) filteredBeam.remove();
             
@@ -185,7 +183,6 @@ const experimentFunctions = {
     updateLightBeam() {
         if (!this.experimentState.lightOn || !this.experimentState.frameInstalled) return;
         
-        // Удаляем существующие лучи
         const existingFilteredBeam = document.getElementById('filtered-light-beam');
         if (existingFilteredBeam) existingFilteredBeam.remove();
         
@@ -196,8 +193,6 @@ const experimentFunctions = {
         const lens = document.getElementById('lens');
         const screen = document.getElementById('screen');
         const ruler = document.getElementById('ruler');
-        
-        // Добавляем получение фильтров
         const redFilter = document.querySelector('.red-filter');
         const greenFilter = document.querySelector('.green-filter');
         const blueFilter = document.querySelector('.blue-filter');
@@ -216,12 +211,10 @@ const experimentFunctions = {
         const rulerInBeamPath = this.isElementInBeamPath(rulerRect, sourceRect, beamY);
         const screenInBeamPath = this.isElementInBeamPath(screenRect, sourceRect, beamY);
         
-        // Устанавливаем стандартный вид луча
         this.experimentState.activeFilter = null;
         lightBeam.style.background = 'linear-gradient(to right, rgba(245, 245, 200, .6), rgba(245, 245, 200, 0.4))';
         lightBeam.style.boxShadow = '0 0 2px 1px rgba(245, 245, 200, 0.7), 0 0 4px 2px rgba(245, 245, 200, 0.5), 0 0 8px 4px rgba(245, 245, 200, 0.3)';
         
-        // Проверяем пересечение с фильтрами и находим первый фильтр на пути луча
         let firstFilter = null;
         let firstFilterRect = null;
         let filterType = null;
@@ -318,16 +311,13 @@ const experimentFunctions = {
                                                   correctOrder && 
                                                   !rulerBlockingBeam;
         
-        // Если на пути луча есть фильтр, разделяем луч на два
         if (firstFilter) {
-            // Первая часть луча (до фильтра)
             const beamWidth1 = firstFilterRect.left - startX;
             lightBeam.style.width = beamWidth1 + 'px';
             lightBeam.style.left = startX + 'px';
             lightBeam.style.top = beamY + 'px';
             lightBeam.classList.add('visible');
             
-            // Вторая часть луча (после фильтра)
             const filteredBeam = document.createElement('div');
             filteredBeam.id = 'filtered-light-beam';
             filteredBeam.className = 'light-beam visible';
@@ -337,7 +327,6 @@ const experimentFunctions = {
             filteredBeam.style.top = beamY + 'px';
             filteredBeam.style.width = (endX - firstFilterRect.left) + 'px';
             
-            // Применяем стиль в зависимости от типа фильтра
             if (filterType === 'red') {
                 filteredBeam.style.background = 'linear-gradient(to right, rgba(255, 0, 0, .6), rgba(255, 0, 0, 0.4))';
                 filteredBeam.style.boxShadow = '0 0 2px 1px rgba(255, 0, 0, 0.7), 0 0 4px 2px rgba(255, 0, 0, 0.5), 0 0 8px 4px rgba(255, 0, 0, 0.3)';
@@ -351,7 +340,6 @@ const experimentFunctions = {
             
             document.body.appendChild(filteredBeam);
         } else {
-            // Если нет фильтра, отображаем весь луч целиком
             const beamWidth = endX - startX;
             lightBeam.style.left = startX + 'px';
             lightBeam.style.top = beamY + 'px';
@@ -380,7 +368,7 @@ const experimentFunctions = {
         if (!this.experimentState.spectrumVisible || this.experimentState.step < 4) return;
         
         const now = performance.now();
-        if (now - this.experimentState.lastRulerCheckTime < 1000) return; // Проверяем не чаще раза в секунду
+        if (now - this.experimentState.lastRulerCheckTime < 1000) return;
         this.experimentState.lastRulerCheckTime = now;
         
         const screen = document.querySelector('#screen');
@@ -391,7 +379,6 @@ const experimentFunctions = {
         const screenRect = screen.getBoundingClientRect();
         const rulerRect = ruler.getBoundingClientRect();
         
-        // Проверяем, перекрываются ли прямоугольники экрана и линейки
         const doRectanglesOverlap = !(
             rulerRect.right < screenRect.left ||
             rulerRect.left > screenRect.right ||
@@ -541,7 +528,6 @@ const experimentFunctions = {
         const numBlocks = 5;
         const totalWidth = blockWidth * numBlocks;
         
-        // Создаем контейнер для всех блоков спектра
         const spectrumContainer = document.createElement('div');
         spectrumContainer.className = 'spectrum-container';
         spectrumContainer.style.position = 'absolute';
@@ -551,32 +537,23 @@ const experimentFunctions = {
         spectrumContainer.style.height = '50%';
         spectrumContainer.style.transform = 'translateY(-50%)';
         
-        // Общий градиент для затухания
         let maskImage = 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.05) 100%)';
         
-        // Определяем фон в зависимости от активного фильтра
         let spectrumBackground;
-        if (this.experimentState.activeFilter === 'red') {
-            // Для красного фильтра оставляем только красно-оранжевые части спектра
+        if (this.experimentState.activeFilter === 'red')
             spectrumBackground = 'linear-gradient(to right, red, orange, transparent, transparent, transparent)';
-        } else if (this.experimentState.activeFilter === 'green') {
-            // Для зеленого фильтра оставляем только желто-зеленые части спектра
+        else if (this.experimentState.activeFilter === 'green')
             spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, lime, green, transparent)';
-        } else if (this.experimentState.activeFilter === 'blue') {
-            // Для синего фильтра оставляем только сине-фиолетовые части спектра
-            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, violet)';
-        } else {
-            // Обычный радужный градиент
+        else if (this.experimentState.activeFilter === 'blue')
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, transparent)';
+        else
             spectrumBackground = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
-        }
         
-        // Применяем маску затухания к контейнеру
         spectrumContainer.style.maskImage = maskImage;
         spectrumContainer.style.webkitMaskImage = maskImage;
         
         screen.appendChild(spectrumContainer);
         
-        // Создаем блоки радужного спектра внутри контейнера
         for (let i = 0; i < numBlocks; i++) {
             const spectrumBlock = document.createElement('div');
             spectrumBlock.className = 'spectrum-element';
@@ -622,7 +599,6 @@ const experimentFunctions = {
         const numBlocks = Math.min(5, visibleBlocks);
         const totalWidth = blockWidth * numBlocks;
         
-        // Создаем контейнер для всех блоков спектра
         const spectrumContainer = document.createElement('div');
         spectrumContainer.className = 'spectrum-container';
         spectrumContainer.style.position = 'absolute';
@@ -632,35 +608,24 @@ const experimentFunctions = {
         spectrumContainer.style.height = '50%';
         spectrumContainer.style.transform = 'translateY(-50%)';
         
-        // Интенсивность градиента зависит от качества
         const baseOpacity = quality < 20 ? quality / 20 * 0.2 : quality / 100 * 0.8 + 0.2;
-        
-        // Общий градиент затухания
         let maskImage = `linear-gradient(to right, rgba(0,0,0,${baseOpacity}) 0%, rgba(0,0,0,0.05) 100%)`;
         
-        // Определяем фон в зависимости от активного фильтра
         let spectrumBackground;
-        if (this.experimentState.activeFilter === 'red') {
-            // Для красного фильтра оставляем только красно-оранжевые части спектра
+        if (this.experimentState.activeFilter === 'red')
             spectrumBackground = 'linear-gradient(to right, red, orange, transparent, transparent, transparent)';
-        } else if (this.experimentState.activeFilter === 'green') {
-            // Для зеленого фильтра оставляем только желто-зеленые части спектра
+        else if (this.experimentState.activeFilter === 'green')
             spectrumBackground = 'linear-gradient(to right, transparent, transparent, yellow, green, transparent)';
-        } else if (this.experimentState.activeFilter === 'blue') {
-            // Для синего фильтра оставляем только сине-фиолетовые части спектра
+        else if (this.experimentState.activeFilter === 'blue')
             spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, violet)';
-        } else {
-            // Обычный радужный градиент
+        else
             spectrumBackground = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
-        }
         
-        // Применяем маску затухания к контейнеру
         spectrumContainer.style.maskImage = maskImage;
         spectrumContainer.style.webkitMaskImage = maskImage;
         
         screen.appendChild(spectrumContainer);
         
-        // Создаем блоки радужного спектра внутри контейнера
         for (let i = 0; i < numBlocks; i++) {
             const spectrumBlock = document.createElement('div');
             spectrumBlock.className = 'spectrum-element';
@@ -705,7 +670,6 @@ const experimentFunctions = {
         const numBlocks = 2;
         const totalWidth = blockWidth * numBlocks;
         
-        // Создаем контейнер для всех блоков спектра
         const spectrumContainer = document.createElement('div');
         spectrumContainer.className = 'spectrum-container';
         spectrumContainer.style.position = 'absolute';
@@ -716,32 +680,23 @@ const experimentFunctions = {
         spectrumContainer.style.transform = 'translateY(-50%)';
         spectrumContainer.style.filter = 'blur(15px)';
         
-        // Общий градиент затухания
         let maskImage = 'linear-gradient(to right, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.05) 100%)';
         
-        // Определяем фон в зависимости от активного фильтра
         let spectrumBackground;
-        if (this.experimentState.activeFilter === 'red') {
-            // Для красного фильтра оставляем только красно-оранжевые части спектра
+        if (this.experimentState.activeFilter === 'red')
             spectrumBackground = 'linear-gradient(to right, red, orange, transparent, transparent, transparent)';
-        } else if (this.experimentState.activeFilter === 'green') {
-            // Для зеленого фильтра оставляем только желто-зеленые части спектра
+        else if (this.experimentState.activeFilter === 'green')
             spectrumBackground = 'linear-gradient(to right, transparent, transparent, yellow, green, transparent)';
-        } else if (this.experimentState.activeFilter === 'blue') {
-            // Для синего фильтра оставляем только сине-фиолетовые части спектра
+        else if (this.experimentState.activeFilter === 'blue')
             spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, violet)';
-        } else {
-            // Обычный радужный градиент
+        else
             spectrumBackground = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
-        }
         
-        // Применяем маску затухания к контейнеру
         spectrumContainer.style.maskImage = maskImage;
         spectrumContainer.style.webkitMaskImage = maskImage;
         
         screen.appendChild(spectrumContainer);
         
-        // Создаем блоки радужного спектра внутри контейнера
         for (let i = 0; i < numBlocks; i++) {
             const spectrumBlock = document.createElement('div');
             spectrumBlock.className = 'spectrum-element';
@@ -791,7 +746,6 @@ const experimentFunctions = {
         centralLine.style.width = '20px';
         centralLine.style.height = '100%';
         
-        // Изменяем цвет центральной линии в зависимости от активного фильтра
         if (this.experimentState.activeFilter === 'red') {
             centralLine.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
         } else if (this.experimentState.activeFilter === 'green') {
@@ -834,16 +788,14 @@ const experimentFunctions = {
         centralLine.style.transform = 'translateX(-50%)';
         centralLine.style.filter = '';
         
-        // Изменяем цвет центральной линии в зависимости от активного фильтра
-        if (this.experimentState.activeFilter === 'red') {
+        if (this.experimentState.activeFilter === 'red')
             centralLine.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
-        } else if (this.experimentState.activeFilter === 'green') {
+        else if (this.experimentState.activeFilter === 'green')
             centralLine.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
-        } else if (this.experimentState.activeFilter === 'blue') {
+        else if (this.experimentState.activeFilter === 'blue')
             centralLine.style.backgroundColor = 'rgba(0, 0, 255, 0.3)';
-        } else {
+        else
             centralLine.style.backgroundColor = 'rgba(255, 255, 0, 0.15)';
-        }
         
         this.experimentState.spectrumVisible = true;
     },
