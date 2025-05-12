@@ -42,10 +42,8 @@ const experimentFunctions = {
 
         const allCoins = elements.coinBoxElement.querySelectorAll('.coin');
         allCoins.forEach(coin => {
-            // Используем класс для анимации вместо inline стиля
             coin.classList.add('coin-flipping');
             
-            // Слушаем окончание анимации для удаления класса
             coin.addEventListener('animationend', function handler() {
                 coin.classList.remove('coin-flipping');
                 coin.removeEventListener('animationend', handler);
@@ -82,12 +80,7 @@ const experimentFunctions = {
                 this.updateTable(state, elements);
                 this.drawChart(state, elements);
 
-                const chartContainer = elements.canvas.parentElement.parentElement.parentElement;
-                if (state.remainingCoins == 0) {
-                    chartContainer.classList.add('chart-container-zoomed');
-                } else {
-                    chartContainer.classList.remove('chart-container-zoomed');
-                }
+                state.remainingCoins == 0 && this.createLargeChart(state, elements);
 
                 elements.resetButton.disabled = false;
                 state.isShaking = false;
@@ -209,7 +202,6 @@ const experimentFunctions = {
         const xScale = chartWidth / maxTosses;
         const yScale = chartHeight / state.INITIAL_COINS;
     
-        // Рисуем основные оси
         ctx.beginPath();
         ctx.strokeStyle = '#64748b';
         ctx.lineWidth = 1;
@@ -219,23 +211,18 @@ const experimentFunctions = {
         ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
         ctx.stroke();
     
-        // Рисуем сетку
         ctx.beginPath();
         ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 0.5;
     
-        // Определяем специфические значения для отображения на оси Y
-        // Используем только 5 ключевых значений вместо 11
         const yValues = [0, 32, 64, 96, 128];
         
-        // Рисуем горизонтальные линии только для выбранных значений
         yValues.forEach(value => {
             const yPos = margin.top + chartHeight - (value * yScale);
             ctx.moveTo(margin.left, yPos);
             ctx.lineTo(margin.left + chartWidth, yPos);
         });
     
-        // Вертикальные линии сетки
         for (let i = 0; i <= maxTosses; i++) {
             const x = margin.left + i * xScale;
             ctx.moveTo(x, margin.top);
@@ -243,7 +230,6 @@ const experimentFunctions = {
         }
         ctx.stroke();
     
-        // Метки на оси X
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#64748b';
         ctx.textAlign = 'center';
@@ -253,16 +239,14 @@ const experimentFunctions = {
             ctx.fillText(i.toString(), x, margin.top + chartHeight + 20);
         }
     
-        // Метки на оси Y - только для выбранных значений
         ctx.textAlign = 'right';
-        ctx.font = '13px sans-serif'; // Увеличиваем размер шрифта
+        ctx.font = '13px sans-serif';
         
         yValues.forEach(value => {
             const yPos = margin.top + chartHeight - (value * yScale);
             ctx.fillText(value.toString(), margin.left - 10, yPos + 4);
         });
     
-        // Названия осей
         ctx.font = '14px sans-serif';
         ctx.fillStyle = '#334155';
         ctx.textAlign = 'center';
@@ -274,7 +258,6 @@ const experimentFunctions = {
         ctx.fillText('Количество монет', 0, 0);
         ctx.restore();
     
-        // Теоретическая кривая
         const theoreticalData = [];
         for (let i = 0; i <= maxTosses; i++) {
             theoreticalData.push({
@@ -296,7 +279,6 @@ const experimentFunctions = {
     
         ctx.stroke();
     
-        // Экспериментальная кривая
         if (state.currentTrial.length > 0) {
             ctx.beginPath();
             ctx.strokeStyle = '#8884d8';
@@ -327,12 +309,10 @@ const experimentFunctions = {
             });
         }
     
-        // Легенда внизу
         let legendX = margin.left;
         let legendY = margin.top + chartHeight + 55;
         const legendSpacing = 20;
     
-        // Теоретическая кривая
         ctx.beginPath();
         ctx.strokeStyle = '#ff7300';
         ctx.lineWidth = 2;
@@ -344,7 +324,6 @@ const experimentFunctions = {
         ctx.textAlign = 'left';
         ctx.fillText('Теоретическая кривая', legendX + 30, legendY + 4);
     
-        // Экспериментальные данные
         if (state.currentTrial.length > 0) {
             legendY += legendSpacing;
             
@@ -363,6 +342,202 @@ const experimentFunctions = {
             ctx.fillStyle = '#334155';
             ctx.fillText('Экспериментальная кривая', legendX + 30, legendY + 4);
         }
+    },
+
+    createLargeChart(state, elements) {
+        const existingModal = document.getElementById('large-chart-modal');
+        existingModal && existingModal.remove();
+            
+        const modal = document.createElement('div');
+        modal.id = 'large-chart-modal';
+        modal.className = 'large-chart-modal';
+            
+        const chartContainer = document.createElement('div');
+        chartContainer.className = 'large-chart-container';
+            
+        const header = document.createElement('h2');
+        header.textContent = 'Результаты эксперимента';
+        header.className = 'large-chart-title';
+        chartContainer.appendChild(header);
+            
+        const canvas = document.createElement('canvas');
+        canvas.id = 'large-decay-chart';
+        chartContainer.appendChild(canvas);
+            
+        const closeButton = document.createElement('button');
+        closeButton.className = 'modal-close-btn';
+        closeButton.innerHTML = '&times;';
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        chartContainer.appendChild(closeButton);
+
+        modal.appendChild(chartContainer);
+        document.body.appendChild(modal);
+
+        modal.addEventListener('click', (e) => {
+            e.target === modal && document.body.removeChild(modal);
+        });
+
+        setTimeout(() => {
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            const margin = { 
+                top: 40,  
+                right: 40, 
+                bottom: 100, 
+                left: 80
+            };      
+
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;            
+            const maxTosses = Math.max(state.currentTrial.length, 7);
+            const xScale = chartWidth / maxTosses;
+            const yScale = chartHeight / state.INITIAL_COINS;           
+            
+            ctx.clearRect(0, 0, width, height);
+            ctx.beginPath();
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 2;
+            ctx.moveTo(margin.left, margin.top);
+            ctx.lineTo(margin.left, margin.top + chartHeight);
+            ctx.moveTo(margin.left, margin.top + chartHeight);
+            ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
+            ctx.stroke();           
+            ctx.beginPath();
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;          
+            
+            const yValues = [0, 32, 64, 96, 128];           
+            
+            yValues.forEach(value => {
+                const yPos = margin.top + chartHeight - (value * yScale);
+                ctx.moveTo(margin.left, yPos);
+                ctx.lineTo(margin.left + chartWidth, yPos);
+            });         
+            
+            for (let i = 0; i <= maxTosses; i++) {
+                const x = margin.left + i * xScale;
+                ctx.moveTo(x, margin.top);
+                ctx.lineTo(x, margin.top + chartHeight);
+            }
+            
+            ctx.stroke();           
+            ctx.font = '16px sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'center';           
+            
+            for (let i = 0; i <= maxTosses; i++) {
+                const x = margin.left + i * xScale;
+                ctx.fillText(i.toString(), x, margin.top + chartHeight + 30);
+            }           
+            
+            ctx.textAlign = 'right';
+            ctx.font = '16px sans-serif';           
+            
+            yValues.forEach(value => {
+                const yPos = margin.top + chartHeight - (value * yScale);
+                ctx.fillText(value.toString(), margin.left - 15, yPos + 5);
+            });         
+            
+            ctx.font = '18px sans-serif';
+            ctx.fillStyle = '#334155';
+            ctx.textAlign = 'center';
+            ctx.fillText('Номер броска', margin.left + chartWidth / 2, margin.top + chartHeight + 70);          
+            ctx.save();
+            ctx.translate(margin.left - 50, margin.top + chartHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Количество монет', 0, 0);
+            ctx.restore();          
+            
+            const theoreticalData = [];
+            
+            for (let i = 0; i <= maxTosses; i++) {
+                theoreticalData.push({
+                    toss: i,
+                    value: state.INITIAL_COINS * Math.pow(0.5, i)
+                });
+            }   
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff7300';
+            ctx.lineWidth = 3;          
+            
+            theoreticalData.forEach((point, index) => {
+                const x = margin.left + point.toss * xScale;
+                const y = margin.top + chartHeight - (point.value * yScale);          
+                index === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });     
+
+            ctx.stroke();           
+            
+            if (state.currentTrial.length > 0) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#8884d8';
+                ctx.lineWidth = 3;            
+                ctx.moveTo(margin.left, margin.top + chartHeight - (state.INITIAL_COINS * yScale));           
+                
+                state.currentTrial.forEach((value, index) => {
+                    const x = margin.left + (index + 1) * xScale;
+                    const y = margin.top + chartHeight - (value * yScale);
+                    ctx.lineTo(x, y);
+                }); 
+
+                ctx.stroke();
+                ctx.fillStyle = '#8884d8';
+                ctx.beginPath();
+                ctx.arc(margin.left, margin.top + chartHeight - (state.INITIAL_COINS * yScale), 6, 0, Math.PI * 2);
+                ctx.fill();           
+                
+                state.currentTrial.forEach((value, index) => {
+                    const x = margin.left + (index + 1) * xScale;
+                    const y = margin.top + chartHeight - (value * yScale);
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }     
+
+            let legendX = margin.left + 20;
+            let legendY = margin.top + 30;
+            const legendSpacing = 30;           
+            
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff7300';
+            ctx.lineWidth = 3;
+            ctx.moveTo(legendX, legendY);
+            ctx.lineTo(legendX + 30, legendY);
+            ctx.stroke();           
+            ctx.fillStyle = '#334155';
+            ctx.textAlign = 'left';
+            ctx.font = '16px sans-serif';
+            ctx.fillText('Теоретическая кривая', legendX + 40, legendY + 5);            
+            
+            if (state.currentTrial.length > 0) {
+                legendY += legendSpacing;         
+                ctx.beginPath();
+                ctx.strokeStyle = '#8884d8';
+                ctx.lineWidth = 3;
+                ctx.moveTo(legendX, legendY);
+                ctx.lineTo(legendX + 30, legendY);
+                ctx.stroke();         
+                ctx.fillStyle = '#8884d8';
+                ctx.beginPath();
+                ctx.arc(legendX + 15, legendY, 6, 0, Math.PI * 2);
+                ctx.fill();           
+                ctx.fillStyle = '#334155';
+                ctx.fillText('Экспериментальная кривая', legendX + 40, legendY + 5);
+            }
+        }, 100);
     },
 
     showToast(message, type = 'success', elements) {

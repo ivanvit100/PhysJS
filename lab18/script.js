@@ -23,6 +23,44 @@ const elements = {
 document.addEventListener('DOMContentLoaded', () => {
   experimentFunctions.initializeExperiment(experimentState, elements);
   
+  const tabsContent = intro.createTabContent([
+    'measurement-panel',
+    'chart-panel',
+    'results-panel'
+  ], 'tabs-container');
+  
+  const tabButtons = tabsContent.querySelectorAll('.info-content-buttons button');
+  tabButtons[0].textContent = 'Теория';
+  tabButtons[1].textContent = 'График';
+  tabButtons[2].textContent = 'Результаты';
+  
+  intro.init([
+    {
+      title: 'Информация',
+      description: 'Здесь вы можете ознакомиться с теоретической моделью, графиком распада и результатами эксперимента.',
+      element: '#tabs-container'
+    },
+    {
+      title: 'Рабочая область',
+      description: 'В этой области расположены монеты, которые моделируют радиоактивные ядра. Двойной клик запускает бросок монет.',
+      element: '#experiment-area'
+    },
+    {
+      title: 'Подсказки',
+      description: 'Здесь вы можете ознакомиться с краткими подсказками по управлению в эксперименте.',
+      element: '#help-text'
+    },
+    {
+      title: 'Панель управления',
+      description: 'Здесь расположены кнопки управления экспериментом. Кнопка "Сбросить" начинает эксперимент заново.',
+      element: '.buttons-container'
+    }
+  ]);
+  
+  document.getElementById('guide-btn').addEventListener('click', () => {
+    intro.start();
+  });
+
   elements.coinBoxElement.addEventListener('click', (event) => {
     experimentFunctions.handleCoinBoxClick(event, experimentState, elements);
   });
@@ -38,4 +76,5 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     experimentFunctions.drawChart(experimentState, elements);
   });
+  
 });
