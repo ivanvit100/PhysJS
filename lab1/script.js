@@ -1,26 +1,5 @@
 import experimentFunctions from './functions.js';
 
-let experimentState = {
-    step: 1,
-    hoseAttachedToSphere: false,
-    sphereWeighed: false,
-    initialMass: 153.45,
-    hoseAttachedToPump: false,
-    airPumpedOut: false,
-    clampAttachedToHose: false,
-    sphereReweighed: false,
-    massAfterPumping: 153.28,
-    hoseInWater: false,
-    clampOpened: false,
-    sphereFilledWithWater: false,
-    waterInCylinder: false,
-    airVolume: 140,
-    calculationSubmitted: false,
-    sphereOnScale: false,
-    animatingWaterFill: false,
-    animatingWaterTransfer: false
-};
-
 document.addEventListener('DOMContentLoaded', function() {
     try {
         function safeGetElementById(id) {
@@ -58,8 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
             !window.waterContainer || !window.cylinder) {
             throw new Error("Один или несколько критических элементов не найдены!");
         }
-
-        window.experimentState = experimentState;
 
         const backBtn = document.getElementById('back-btn');
         const resetBtn = safeGetElementById('reset-btn');
@@ -113,6 +90,7 @@ function initializeExperiment() {
         }
     }, true);
 
+    experimentFunctions.resetExperiment();
     experimentFunctions.createDensityCalculator();
     experimentFunctions.setupTooltips();
     experimentFunctions.setupLabSteps();

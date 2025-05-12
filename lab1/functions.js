@@ -126,8 +126,14 @@ const experimentFunctions = {
         
         window.experimentState.sphereOnScale = true;
         
-        if (window.experimentState.step === 5 && window.experimentState.airPumpedOut)
-            window.scaleDisplay.textContent = window.experimentState.massAfterPumping.toFixed(2);
+        if (window.experimentState.step === 5 && window.experimentState.airPumpedOut) {
+            const currentMass = (
+                window.experimentState.initialMass - 
+                (window.experimentState.initialAirMass - window.experimentState.currentAirMass)
+            ).toFixed(2);
+
+            window.scaleDisplay.textContent = currentMass;
+        }
         else
             window.scaleDisplay.textContent = window.experimentState.initialMass.toFixed(2);
         
@@ -192,20 +198,24 @@ const experimentFunctions = {
         tempContainer.appendChild(hoseTemp);
         
         setTimeout(() => {
-            document.body.removeChild(tempContainer);
-            
-            window.sphere.style.visibility = 'visible';
-            window.hose.style.visibility = 'visible';
-            window.sphere.style.backgroundColor = 'rgba(64, 164, 223, 0.5)';
-            
-            this.restoreAttachment();
-            
-            window.experimentState.sphereFilledWithWater = true;
-            window.experimentState.animatingWaterFill = false;
-            
-            this.advanceToStep(7);
-            this.updateInstructions("Переместите шланг к измерительному цилиндру, чтобы перелить воду из сферы");
-        }, 2000);
+        document.body.removeChild(tempContainer);
+        
+        window.sphere.style.visibility = 'visible';
+        window.hose.style.visibility = 'visible';
+        
+        const airRemovalPercentage = (window.experimentState.initialAirMass - window.experimentState.currentAirMass) / 
+                                  window.experimentState.initialAirMass;
+        
+        window.experimentState.airVolume = Math.round(140 * airRemovalPercentage);
+        
+        this.restoreAttachment();
+        
+        window.experimentState.sphereFilledWithWater = true;
+        window.experimentState.animatingWaterFill = false;
+        
+        this.advanceToStep(7);
+        this.updateInstructions("Переместите шланг к измерительному цилиндру, чтобы перелить воду из сферы");
+    }, 2000);
     },
 
     placeAtCylinder() {
@@ -272,8 +282,10 @@ const experimentFunctions = {
         }, 50);
         
         setTimeout(() => {
+            const waterHeight = 135 * (window.experimentState.airVolume / 140);
+            
             window.cylinderWater.style.transition = 'height 1.5s ease-in-out';
-            window.cylinderWater.style.height = '135px';
+            window.cylinderWater.style.height = `${waterHeight}px`;
             
             setTimeout(() => {
                 document.body.removeChild(overlay);
@@ -285,11 +297,11 @@ const experimentFunctions = {
                 window.experimentState.hoseAttachedToSphere = 
                     (sphereObj.attachedObjects && sphereObj.attachedObjects.has(hoseObj)) || 
                     (hoseObj.attachedObjects && hoseObj.attachedObjects.has(sphereObj));
-                    
+                
                 this.advanceToStep(8);
                 this.showDensityCalculator();
                 this.updateInstructions("Теперь рассчитайте плотность воздуха и введите результат для проверки");
-                
+
                 window.cylinderWater.style.transition = '';
             }, 2000);
         }, 1200);
@@ -313,19 +325,20 @@ const experimentFunctions = {
         }
         
         if (window.experimentState.clampAttachedToHose && !window.experimentState.sphereReweighed && window.experimentState.step === 5) {
-            setTimeout(() => {
-                window.mass2Display.textContent = window.experimentState.massAfterPumping.toFixed(2);
-                window.experimentState.sphereReweighed = true;
-                
-                setTimeout(() => {
-                    window.scaleDisplay.style.color = '';
-                }, 500);
-                
-                this.advanceToStep(6);
-                this.updateInstructions("Поместите шланг в воду и снимите зажим, чтобы наполнить сферу");
-            }, 1000);
+            window.experimentState.sphereReweighed = true;
             
-            return;
+            const currentMass = (
+                window.experimentState.initialMass - 
+                (window.experimentState.initialAirMass - window.experimentState.currentAirMass)
+            ).toFixed(2);
+            
+            window.scaleDisplay.textContent = currentMass;
+            
+            if (window.mass2Display) {
+                window.mass2Display.textContent = currentMass;
+            }
+            
+            this.advanceToStep(6);
         }
         
         setTimeout(() => {
@@ -617,18 +630,25 @@ const experimentFunctions = {
 
     pumpAir() {
         if (!window.experimentState.hoseAttachedToPump) return;
-
+    
         this.pumpCount++;
         window.pumpHandle.style.transform = 'translate(-50%, 5px)';
-
+    
         setTimeout(() => {
             window.pumpHandle.style.transform = 'translate(-50%, -25px)';
-
-            if (this.pumpCount >= 5 && !window.experimentState.airPumpedOut) {
+    
+            if (window.experimentState.currentAirMass > 0) {
+                const airRemoved = window.experimentState.initialAirMass * window.experimentState.pumpEfficiency;
+                window.experimentState.currentAirMass = Math.max(
+                    0,
+                    window.experimentState.currentAirMass - airRemoved
+                );
+            }
+    
+            if (!window.experimentState.airPumpedOut) {
                 window.experimentState.airPumpedOut = true;
                 this.advanceToStep(4);
                 this.updateInstructions("Отсоедините насос, затем закройте шланг сферы, прикрепив зажим");
-                window.sphere.style.backgroundColor = 'rgba(200, 230, 255, 0.3)';
             }
         }, 200);
     },
@@ -659,7 +679,6 @@ const experimentFunctions = {
 
     checkDensityCalculation() {
         const densityInput = document.getElementById('density-input');
-        const densityResult = document.getElementById('density-result');
         const checkBtn = document.getElementById('check-density-btn');
 
         const userInputValue = densityInput.value.trim().replace(',', '.');
@@ -670,7 +689,7 @@ const experimentFunctions = {
             return;
         }
 
-        const massDiff = (window.experimentState.initialMass - window.experimentState.massAfterPumping) / 1000;
+        const massDiff = (window.experimentState.initialAirMass - window.experimentState.currentAirMass) / 1000;
         const volumeInCubicMeters = window.experimentState.airVolume / 1000000;
         const correctDensity = massDiff / volumeInCubicMeters;
 
@@ -744,11 +763,13 @@ const experimentFunctions = {
             hoseAttachedToSphere: false,
             sphereWeighed: false,
             initialMass: 153.45,
+            initialAirMass: 0.17,
+            currentAirMass: 0.17,
+            pumpEfficiency: 0.1,
             hoseAttachedToPump: false,
             airPumpedOut: false,
             clampAttachedToHose: false,
             sphereReweighed: false,
-            massAfterPumping: 153.28,
             hoseInWater: false,
             clampOpened: false,
             sphereFilledWithWater: false,
