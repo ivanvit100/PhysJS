@@ -6,19 +6,17 @@ let experimentState = {
     rulerAttached: false,
     initialPositionMarked: false,
     weightAttached: false,
-    extension1: 0,
+    extension1: 5.0,
+    extension2: 3.5,
     extension1Measured: false,
     weightInWater: false,
-    extension2: 0,
     extension2Measured: false,
     volumeMeasured: false,
-    volume: 12.5,  
+    volume: 12.5,
     calculationsSubmitted: false,
-    springConstant: 12.25,
-    mass: 25,
     initialMarkerPosition: 0,
     extendedMarkerPosition: 0,
-    waterMarkerPosition: 0    
+    waterMarkerPosition: 0
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -286,7 +284,6 @@ document.addEventListener('DOMContentLoaded', function() {
         experimentFunctions.initializePhysicsObject('#dynamometer', 'dynamometer', false);
         experimentFunctions.initializePhysicsObject('#ruler', 'ruler', false);
         experimentFunctions.initializePhysicsObject('#weight', 'weight', false);
-        experimentFunctions.initializePhysicsObject('#spring-end', 'spring-end', false);
         experimentFunctions.initializePhysicsObject('#water-container', 'water-container', false);
       
         experimentFunctions.setupTooltips(tooltip);

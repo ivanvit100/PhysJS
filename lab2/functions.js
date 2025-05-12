@@ -194,20 +194,22 @@ const experimentFunctions = {
             return;
         }
         
-        const expectedK = experimentState.springConstant;
-        const expectedMass = experimentState.mass;
+        const expectedMass = 1000 * experimentState.volume / 1000;
+        const expectedK = expectedMass * 9.8 / (experimentState.extension1 - experimentState.extension2);
         
         const kTolerance = expectedK * 0.1;
         const massTolerance = expectedMass * 0.1;
         
         const isKCorrect = Math.abs(springConstantValue - expectedK) <= kTolerance;
         const isMassCorrect = Math.abs(massValue - expectedMass) <= massTolerance;
+
+        console.log(expectedMass, expectedK);
         
         if (isKCorrect && isMassCorrect) {
             this.showCalculationFeedback(calculationResult, 'success', 'Верно! Ваши расчеты соответствуют ожидаемым значениям.');
             
-            springConstantDisplay.textContent = springConstantValue.toFixed(1);
-            massArchimedesDisplay.textContent = massValue.toFixed(1);
+            springConstantDisplay.textContent = expectedK.toFixed(2);
+            massArchimedesDisplay.textContent = expectedMass.toFixed(2);
             
             experimentState.calculationsSubmitted = true;
             

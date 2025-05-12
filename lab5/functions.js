@@ -158,7 +158,7 @@ const experimentFunctions = {
             this.experimentState.finalAirColumnLength = finalAirColumnLength;
             
             const baseWaterLevel = 100 - (this.experimentState.airLevel || 50);
-            const visualScalingFactor = 0.5; // Увеличен для более заметного эффекта
+            const visualScalingFactor = 0.35;
             const visualColumnChangePercent = (columnChangeInCm / initialAirColumnLength) * 100 * visualScalingFactor;
             const tubeWaterPercent = baseWaterLevel - visualColumnChangePercent;
             const funnelWaterPercent = baseWaterLevel + visualColumnChangePercent;
@@ -283,39 +283,28 @@ const experimentFunctions = {
         const funnelY = funnelRect.bottom - 5;
         const funnelWidth = funnelRect.width + 10;
         
-        // Рассчитываем начальную оптимальную длину трубки, если её нет
         if (!this.experimentState.optimalTubeLength) {
             const initHorizDist = Math.abs(funnelX - tubeX);
-            const initVertDist = 150; // Начальная глубина колена
-            // Приблизительная длина трубки как сумма вертикальных и горизонтальных отрезков
+            const initVertDist = 150;
             this.experimentState.optimalTubeLength = initHorizDist + initVertDist * 2;
         }
         
-        // Горизонтальное расстояние между сосудами
         const horizDistance = Math.abs(funnelX - tubeX);
         
-        // Направление (влево или вправо)
         const direction = funnelX > tubeX ? 1 : -1;
         
-        // Рассчитываем глубину колена так, чтобы общая длина оставалась постоянной
-        // Общая длина = 2 * глубина колена + горизонтальное расстояние
         let kneeDepth = (this.experimentState.optimalTubeLength - horizDistance) / 2;
         
-        // Минимальная глубина колена для эстетики
         kneeDepth = Math.max(kneeDepth, 70);
         
-        // Позиция Y для колена
         const avgY = (tubeY + funnelY) / 2;
         const kneeY = avgY + kneeDepth;
         
-        // Радиус закругления колена
         const radius = Math.min(horizDistance / 3, 40);
         
-        // Создаем путь с полукруглым коленом
         let pathData;
         
         if (horizDistance > 20) {
-            // Полукруглое колено для нормального расстояния
             pathData = `
                 M ${tubeX} ${tubeY + 5}
                 L ${tubeX} ${kneeY - radius}
@@ -325,7 +314,6 @@ const experimentFunctions = {
                 L ${funnelX} ${funnelY + 5}
             `;
         } else {
-            // Для близких сосудов - более простая форма
             pathData = `
                 M ${tubeX} ${tubeY + 5}
                 L ${tubeX} ${kneeY}
@@ -335,8 +323,7 @@ const experimentFunctions = {
         }
         
         path.setAttribute('d', pathData);
-        
-        // Соединители для сосудов
+
         tubeConnector.setAttribute('x', tubeX - tubeWidth / 2);
         tubeConnector.setAttribute('y', tubeY - 15);
         tubeConnector.setAttribute('width', tubeWidth);
