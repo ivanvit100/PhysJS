@@ -28,7 +28,9 @@ const experimentFunctions = {
         draggedElement: null,
         lastRenderTime: 0,
         renderInterval: 20,
-        rulerBlockingBeam: false
+        rulerBlockingBeam: false,
+        lastRulerCheckTime: 0,
+        activeFilter: null
     },
     
     initializeExperiment() {
@@ -42,20 +44,6 @@ const experimentFunctions = {
         document.getElementById('red-wavelength').textContent = '-';
         document.getElementById('blue-wavelength').textContent = '-';
         document.getElementById('wavelength-calculator').style.display = 'none';
-        
-        const sourceElement = document.getElementById('light-source');
-        const frameElement = document.getElementById('slide-frame');
-        const gratingElement = document.getElementById('diffraction-grating');
-        const lensElement = document.getElementById('lens');
-        const screenElement = document.getElementById('screen');
-        const rulerElement = document.getElementById('ruler');
-        
-        if (sourceElement) sourceElement.style.left = '100px', sourceElement.style.top = '200px';
-        if (frameElement) frameElement.style.left = '250px', frameElement.style.top = '200px';
-        if (gratingElement) gratingElement.style.left = '400px', gratingElement.style.top = '200px';
-        if (lensElement) lensElement.style.left = '550px', lensElement.style.top = '200px';
-        if (screenElement) screenElement.style.left = '750px', screenElement.style.top = '200px';
-        if (rulerElement) rulerElement.style.left = '100px', rulerElement.style.top = '350px';
         
         this.updateExperimentStep(1);
         this.updateInstructions("Установите диапозитивную рамку со щелью в окно источника света и включите его.");
@@ -103,6 +91,27 @@ const experimentFunctions = {
             }
         });
         
+        // Добавляем обработчики для фильтров
+        const filters = document.querySelectorAll('.filter, .red-filter, .green-filter, .blue-filter');
+        filters.forEach(filter => {
+            if (filter) {
+                filter.addEventListener('mousedown', () => {
+                    this.experimentState.isDragging = true;
+                    this.experimentState.draggedElement = filter.className;
+                    document.addEventListener('mousemove', this.handleDragMove);
+                });
+                
+                filter.addEventListener('mouseup', () => {
+                    if (this.experimentState.isDragging) {
+                        this.experimentState.isDragging = false;
+                        this.experimentState.draggedElement = null;
+                        document.removeEventListener('mousemove', this.handleDragMove);
+                        this.checkExperimentConditions();
+                    }
+                });
+            }
+        });
+        
         document.addEventListener('mouseup', () => {
             if (this.experimentState.isDragging) {
                 this.experimentState.isDragging = false;
@@ -128,6 +137,7 @@ const experimentFunctions = {
                 experimentFunctions.updateLightBeam();
                 experimentFunctions.checkOpticalAlignment();
                 experimentFunctions.updateSpectrumQuality();
+                experimentFunctions.checkRulerPosition();
             }
         }
     },
@@ -156,6 +166,10 @@ const experimentFunctions = {
             if (lightBeam) lightBeam.classList.remove('visible');
             if (lightImpact) lightImpact.classList.remove('visible');
             
+            // Удаляем дополнительный луч, если он есть
+            const filteredBeam = document.getElementById('filtered-light-beam');
+            if (filteredBeam) filteredBeam.remove();
+            
             this.hideSpectrum();
         }
         
@@ -171,6 +185,10 @@ const experimentFunctions = {
     updateLightBeam() {
         if (!this.experimentState.lightOn || !this.experimentState.frameInstalled) return;
         
+        // Удаляем существующие лучи
+        const existingFilteredBeam = document.getElementById('filtered-light-beam');
+        if (existingFilteredBeam) existingFilteredBeam.remove();
+        
         const lightBeam = document.getElementById('light-beam');
         const lightImpact = document.getElementById('light-impact');
         const lightSource = document.getElementById('light-source');
@@ -178,6 +196,11 @@ const experimentFunctions = {
         const lens = document.getElementById('lens');
         const screen = document.getElementById('screen');
         const ruler = document.getElementById('ruler');
+        
+        // Добавляем получение фильтров
+        const redFilter = document.querySelector('.red-filter');
+        const greenFilter = document.querySelector('.green-filter');
+        const blueFilter = document.querySelector('.blue-filter');
         
         if (!lightBeam || !lightSource || !screen || !lightImpact || !grating || !lens || !ruler) return;
         
@@ -192,6 +215,56 @@ const experimentFunctions = {
         const lensInBeamPath = this.isElementInBeamPath(lensRect, sourceRect, beamY);
         const rulerInBeamPath = this.isElementInBeamPath(rulerRect, sourceRect, beamY);
         const screenInBeamPath = this.isElementInBeamPath(screenRect, sourceRect, beamY);
+        
+        // Устанавливаем стандартный вид луча
+        this.experimentState.activeFilter = null;
+        lightBeam.style.background = 'linear-gradient(to right, rgba(245, 245, 200, .6), rgba(245, 245, 200, 0.4))';
+        lightBeam.style.boxShadow = '0 0 2px 1px rgba(245, 245, 200, 0.7), 0 0 4px 2px rgba(245, 245, 200, 0.5), 0 0 8px 4px rgba(245, 245, 200, 0.3)';
+        
+        // Проверяем пересечение с фильтрами и находим первый фильтр на пути луча
+        let firstFilter = null;
+        let firstFilterRect = null;
+        let filterType = null;
+        
+        if (redFilter) {
+            const redFilterRect = redFilter.getBoundingClientRect();
+            if (this.isElementInBeamPath(redFilterRect, sourceRect, beamY)) {
+                if (!firstFilter || redFilterRect.left < firstFilterRect.left) {
+                    firstFilter = redFilter;
+                    firstFilterRect = redFilterRect;
+                    filterType = 'red';
+                    console.log("Луч пересекается с красным фильтром");
+                }
+            }
+        }
+        
+        if (greenFilter) {
+            const greenFilterRect = greenFilter.getBoundingClientRect();
+            if (this.isElementInBeamPath(greenFilterRect, sourceRect, beamY)) {
+                if (!firstFilter || greenFilterRect.left < firstFilterRect.left) {
+                    firstFilter = greenFilter;
+                    firstFilterRect = greenFilterRect;
+                    filterType = 'green';
+                    console.log("Луч пересекается с зеленым фильтром");
+                }
+            }
+        }
+        
+        if (blueFilter) {
+            const blueFilterRect = blueFilter.getBoundingClientRect();
+            if (this.isElementInBeamPath(blueFilterRect, sourceRect, beamY)) {
+                if (!firstFilter || blueFilterRect.left < firstFilterRect.left) {
+                    firstFilter = blueFilter;
+                    firstFilterRect = blueFilterRect;
+                    filterType = 'blue';
+                    console.log("Луч пересекается с синим фильтром");
+                }
+            }
+        }
+        
+        if (firstFilter) {
+            this.experimentState.activeFilter = filterType;
+        }
         
         const startX = sourceRect.right;
         let endX = window.innerWidth;
@@ -235,22 +308,56 @@ const experimentFunctions = {
         
         if (this.experimentState.step === 2)
             this.experimentState.opticsAligned = this.experimentState.beamPassesThroughGrating && 
-                                               this.experimentState.beamPassesThroughLens && 
-                                               correctOrder && 
-                                               !rulerBlockingBeam;
+                                              this.experimentState.beamPassesThroughLens && 
+                                              correctOrder && 
+                                              !rulerBlockingBeam;
         else
             this.experimentState.allElementsInPath = this.experimentState.beamPassesThroughGrating && 
-                                                   this.experimentState.beamPassesThroughLens && 
-                                                   screenReached && 
-                                                   correctOrder && 
-                                                   !rulerBlockingBeam;
+                                                  this.experimentState.beamPassesThroughLens && 
+                                                  screenReached && 
+                                                  correctOrder && 
+                                                  !rulerBlockingBeam;
         
-        const beamWidth = endX - startX;
-        
-        lightBeam.style.left = startX + 'px';
-        lightBeam.style.top = beamY + 'px';
-        lightBeam.style.width = beamWidth + 'px';
-        lightBeam.classList.add('visible');
+        // Если на пути луча есть фильтр, разделяем луч на два
+        if (firstFilter) {
+            // Первая часть луча (до фильтра)
+            const beamWidth1 = firstFilterRect.left - startX;
+            lightBeam.style.width = beamWidth1 + 'px';
+            lightBeam.style.left = startX + 'px';
+            lightBeam.style.top = beamY + 'px';
+            lightBeam.classList.add('visible');
+            
+            // Вторая часть луча (после фильтра)
+            const filteredBeam = document.createElement('div');
+            filteredBeam.id = 'filtered-light-beam';
+            filteredBeam.className = 'light-beam visible';
+            filteredBeam.style.position = 'absolute';
+            filteredBeam.style.height = '2px';
+            filteredBeam.style.left = firstFilterRect.left + 'px';
+            filteredBeam.style.top = beamY + 'px';
+            filteredBeam.style.width = (endX - firstFilterRect.left) + 'px';
+            
+            // Применяем стиль в зависимости от типа фильтра
+            if (filterType === 'red') {
+                filteredBeam.style.background = 'linear-gradient(to right, rgba(255, 0, 0, .6), rgba(255, 0, 0, 0.4))';
+                filteredBeam.style.boxShadow = '0 0 2px 1px rgba(255, 0, 0, 0.7), 0 0 4px 2px rgba(255, 0, 0, 0.5), 0 0 8px 4px rgba(255, 0, 0, 0.3)';
+            } else if (filterType === 'green') {
+                filteredBeam.style.background = 'linear-gradient(to right, rgba(0, 255, 0, .6), rgba(0, 255, 0, 0.4))';
+                filteredBeam.style.boxShadow = '0 0 2px 1px rgba(0, 255, 0, 0.7), 0 0 4px 2px rgba(0, 255, 0, 0.5), 0 0 8px 4px rgba(0, 255, 0, 0.3)';
+            } else if (filterType === 'blue') {
+                filteredBeam.style.background = 'linear-gradient(to right, rgba(0, 0, 255, .6), rgba(0, 0, 255, 0.4))';
+                filteredBeam.style.boxShadow = '0 0 2px 1px rgba(0, 0, 255, 0.7), 0 0 4px 2px rgba(0, 0, 255, 0.5), 0 0 8px 4px rgba(0, 0, 255, 0.3)';
+            }
+            
+            document.body.appendChild(filteredBeam);
+        } else {
+            // Если нет фильтра, отображаем весь луч целиком
+            const beamWidth = endX - startX;
+            lightBeam.style.left = startX + 'px';
+            lightBeam.style.top = beamY + 'px';
+            lightBeam.style.width = beamWidth + 'px';
+            lightBeam.classList.add('visible');
+        }
         
         if (rulerBlockingBeam) {
             lightImpact.style.left = rulerRect.left + 'px';
@@ -266,6 +373,38 @@ const experimentFunctions = {
             this.experimentState.beamOffsetY = beamOffsetPercent;
         } else {
             lightImpact.classList.remove('visible');
+        }
+    },
+    
+    checkRulerPosition() {
+        if (!this.experimentState.spectrumVisible || this.experimentState.step < 4) return;
+        
+        const now = performance.now();
+        if (now - this.experimentState.lastRulerCheckTime < 1000) return; // Проверяем не чаще раза в секунду
+        this.experimentState.lastRulerCheckTime = now;
+        
+        const screen = document.querySelector('#screen');
+        const ruler = document.querySelector('#ruler');
+        
+        if (!screen || !ruler) return;
+        
+        const screenRect = screen.getBoundingClientRect();
+        const rulerRect = ruler.getBoundingClientRect();
+        
+        // Проверяем, перекрываются ли прямоугольники экрана и линейки
+        const doRectanglesOverlap = !(
+            rulerRect.right < screenRect.left ||
+            rulerRect.left > screenRect.right ||
+            rulerRect.bottom < screenRect.top ||
+            rulerRect.top > screenRect.bottom
+        );
+        
+        if (doRectanglesOverlap) {
+            if (this.experimentState.step === 4 && !this.experimentState.redMeasured) {
+                this.measureRedEdge();
+            } else if (this.experimentState.step === 5 && !this.experimentState.blueMeasured) {
+                this.measureBlueEdge();
+            }
         }
     },
     
@@ -369,7 +508,7 @@ const experimentFunctions = {
                     !this.experimentState.isDragging) {
                     this.experimentState.screenAdjusted = true;
                     this.updateExperimentStep(4);
-                    this.updateInstructions("Используйте маркеры, чтобы измерить расстояние от центра до красного края спектра.");
+                    this.updateInstructions("Поднесите линейку к экрану, чтобы измерить расстояние от центра до красного края спектра.");
                 }
             } else {
                 this.showBlurredSpectrum(quality);
@@ -377,6 +516,170 @@ const experimentFunctions = {
         } else {
             this.hideSpectrum();
         }
+    },
+    
+    showSpectrum() {
+        const screen = document.querySelector('#screen .spectrum-display');
+        const leftSpectrum = document.querySelector('.left-spectrum');
+        const rightSpectrum = document.querySelector('.right-spectrum');
+        const centralLine = document.querySelector('.central-line');
+        
+        if (!screen || !leftSpectrum || !rightSpectrum || !centralLine) return;
+        
+        screen.classList.add('spectrum-visible');
+        screen.style.overflow = 'hidden';
+        
+        leftSpectrum.classList.remove('visible');
+        rightSpectrum.classList.remove('visible');
+        centralLine.style.display = 'none';
+        
+        const beamOffsetPercent = this.experimentState.beamOffsetY || 50;
+        
+        screen.querySelectorAll('.spectrum-element, .spectrum-container').forEach(el => el.remove());
+        
+        const blockWidth = 100;
+        const numBlocks = 5;
+        const totalWidth = blockWidth * numBlocks;
+        
+        // Создаем контейнер для всех блоков спектра
+        const spectrumContainer = document.createElement('div');
+        spectrumContainer.className = 'spectrum-container';
+        spectrumContainer.style.position = 'absolute';
+        spectrumContainer.style.top = `${beamOffsetPercent}%`;
+        spectrumContainer.style.left = '0';
+        spectrumContainer.style.width = `${totalWidth}px`;
+        spectrumContainer.style.height = '50%';
+        spectrumContainer.style.transform = 'translateY(-50%)';
+        
+        // Общий градиент для затухания
+        let maskImage = 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.05) 100%)';
+        
+        // Определяем фон в зависимости от активного фильтра
+        let spectrumBackground;
+        if (this.experimentState.activeFilter === 'red') {
+            // Для красного фильтра оставляем только красно-оранжевые части спектра
+            spectrumBackground = 'linear-gradient(to right, red, orange, transparent, transparent, transparent)';
+        } else if (this.experimentState.activeFilter === 'green') {
+            // Для зеленого фильтра оставляем только желто-зеленые части спектра
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, lime, green, transparent)';
+        } else if (this.experimentState.activeFilter === 'blue') {
+            // Для синего фильтра оставляем только сине-фиолетовые части спектра
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, violet)';
+        } else {
+            // Обычный радужный градиент
+            spectrumBackground = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
+        }
+        
+        // Применяем маску затухания к контейнеру
+        spectrumContainer.style.maskImage = maskImage;
+        spectrumContainer.style.webkitMaskImage = maskImage;
+        
+        screen.appendChild(spectrumContainer);
+        
+        // Создаем блоки радужного спектра внутри контейнера
+        for (let i = 0; i < numBlocks; i++) {
+            const spectrumBlock = document.createElement('div');
+            spectrumBlock.className = 'spectrum-element';
+            spectrumContainer.appendChild(spectrumBlock);
+            
+            const left = i * blockWidth;
+            
+            spectrumBlock.style.position = 'absolute';
+            spectrumBlock.style.left = `${left}px`;
+            spectrumBlock.style.top = '0';
+            spectrumBlock.style.width = `${blockWidth}px`;
+            spectrumBlock.style.height = '100%';
+            spectrumBlock.style.background = spectrumBackground;
+            spectrumBlock.classList.add('visible');
+        }
+        
+        this.experimentState.spectrumVisible = true;
+        this.checkRulerPosition();
+    },
+    
+    showBlurredSpectrum(quality) {
+        const screen = document.querySelector('#screen .spectrum-display');
+        const leftSpectrum = document.querySelector('.left-spectrum');
+        const rightSpectrum = document.querySelector('.right-spectrum');
+        const centralLine = document.querySelector('.central-line');
+        
+        if (!screen || !leftSpectrum || !rightSpectrum || !centralLine) return;
+        
+        screen.classList.add('spectrum-visible');
+        screen.style.overflow = 'hidden';
+        
+        leftSpectrum.classList.remove('visible');
+        rightSpectrum.classList.remove('visible');
+        centralLine.style.display = 'none';
+        
+        const beamOffsetPercent = this.experimentState.beamOffsetY || 50;
+        const blurAmount = Math.max(0, (80 - quality) / 8);
+        
+        screen.querySelectorAll('.spectrum-element, .spectrum-container').forEach(el => el.remove());
+        
+        const blockWidth = 100;
+        const visibleBlocks = Math.max(1, Math.floor(quality / 25) + 1);
+        const numBlocks = Math.min(5, visibleBlocks);
+        const totalWidth = blockWidth * numBlocks;
+        
+        // Создаем контейнер для всех блоков спектра
+        const spectrumContainer = document.createElement('div');
+        spectrumContainer.className = 'spectrum-container';
+        spectrumContainer.style.position = 'absolute';
+        spectrumContainer.style.top = `${beamOffsetPercent}%`;
+        spectrumContainer.style.left = '0';
+        spectrumContainer.style.width = `${totalWidth}px`;
+        spectrumContainer.style.height = '50%';
+        spectrumContainer.style.transform = 'translateY(-50%)';
+        
+        // Интенсивность градиента зависит от качества
+        const baseOpacity = quality < 20 ? quality / 20 * 0.2 : quality / 100 * 0.8 + 0.2;
+        
+        // Общий градиент затухания
+        let maskImage = `linear-gradient(to right, rgba(0,0,0,${baseOpacity}) 0%, rgba(0,0,0,0.05) 100%)`;
+        
+        // Определяем фон в зависимости от активного фильтра
+        let spectrumBackground;
+        if (this.experimentState.activeFilter === 'red') {
+            // Для красного фильтра оставляем только красно-оранжевые части спектра
+            spectrumBackground = 'linear-gradient(to right, red, orange, transparent, transparent, transparent)';
+        } else if (this.experimentState.activeFilter === 'green') {
+            // Для зеленого фильтра оставляем только желто-зеленые части спектра
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, yellow, green, transparent)';
+        } else if (this.experimentState.activeFilter === 'blue') {
+            // Для синего фильтра оставляем только сине-фиолетовые части спектра
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, violet)';
+        } else {
+            // Обычный радужный градиент
+            spectrumBackground = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
+        }
+        
+        // Применяем маску затухания к контейнеру
+        spectrumContainer.style.maskImage = maskImage;
+        spectrumContainer.style.webkitMaskImage = maskImage;
+        
+        screen.appendChild(spectrumContainer);
+        
+        // Создаем блоки радужного спектра внутри контейнера
+        for (let i = 0; i < numBlocks; i++) {
+            const spectrumBlock = document.createElement('div');
+            spectrumBlock.className = 'spectrum-element';
+            spectrumContainer.appendChild(spectrumBlock);
+            
+            const left = i * blockWidth;
+            
+            spectrumBlock.style.position = 'absolute';
+            spectrumBlock.style.left = `${left}px`;
+            spectrumBlock.style.top = '0';
+            spectrumBlock.style.width = `${blockWidth}px`;
+            spectrumBlock.style.height = '100%';
+            spectrumBlock.style.background = spectrumBackground;
+            spectrumBlock.style.filter = `blur(${blurAmount + (i * 1.0)}px)`;
+            spectrumBlock.classList.add('visible');
+        }
+        
+        this.experimentState.spectrumVisible = true;
+        this.checkRulerPosition();
     },
     
     showDiffractedBeam() {
@@ -388,19 +691,72 @@ const experimentFunctions = {
         if (!screen || !leftSpectrum || !rightSpectrum || !centralLine) return;
         
         screen.classList.add('spectrum-visible');
-        leftSpectrum.classList.add('visible');
-        rightSpectrum.classList.add('visible');
-        centralLine.style.display = 'block';
+        screen.style.overflow = 'hidden';
+        
+        leftSpectrum.classList.remove('visible');
+        rightSpectrum.classList.remove('visible');
+        centralLine.style.display = 'none';
         
         const beamOffsetPercent = this.experimentState.beamOffsetY || 50;
-        this.adjustSpectrumVerticalPosition(leftSpectrum, rightSpectrum, centralLine, beamOffsetPercent);
         
-        const blurAmount = 8;
-        leftSpectrum.style.filter = `blur(${blurAmount}px)`;
-        rightSpectrum.style.filter = `blur(${blurAmount}px)`;
+        screen.querySelectorAll('.spectrum-element, .spectrum-container').forEach(el => el.remove());
         
-        leftSpectrum.style.opacity = '0.5';
-        rightSpectrum.style.opacity = '0.5';
+        const blockWidth = 100;
+        const numBlocks = 2;
+        const totalWidth = blockWidth * numBlocks;
+        
+        // Создаем контейнер для всех блоков спектра
+        const spectrumContainer = document.createElement('div');
+        spectrumContainer.className = 'spectrum-container';
+        spectrumContainer.style.position = 'absolute';
+        spectrumContainer.style.top = `${beamOffsetPercent}%`;
+        spectrumContainer.style.left = '0';
+        spectrumContainer.style.width = `${totalWidth}px`;
+        spectrumContainer.style.height = '40%';
+        spectrumContainer.style.transform = 'translateY(-50%)';
+        spectrumContainer.style.filter = 'blur(15px)';
+        
+        // Общий градиент затухания
+        let maskImage = 'linear-gradient(to right, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.05) 100%)';
+        
+        // Определяем фон в зависимости от активного фильтра
+        let spectrumBackground;
+        if (this.experimentState.activeFilter === 'red') {
+            // Для красного фильтра оставляем только красно-оранжевые части спектра
+            spectrumBackground = 'linear-gradient(to right, red, orange, transparent, transparent, transparent)';
+        } else if (this.experimentState.activeFilter === 'green') {
+            // Для зеленого фильтра оставляем только желто-зеленые части спектра
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, yellow, green, transparent)';
+        } else if (this.experimentState.activeFilter === 'blue') {
+            // Для синего фильтра оставляем только сине-фиолетовые части спектра
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, violet)';
+        } else {
+            // Обычный радужный градиент
+            spectrumBackground = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
+        }
+        
+        // Применяем маску затухания к контейнеру
+        spectrumContainer.style.maskImage = maskImage;
+        spectrumContainer.style.webkitMaskImage = maskImage;
+        
+        screen.appendChild(spectrumContainer);
+        
+        // Создаем блоки радужного спектра внутри контейнера
+        for (let i = 0; i < numBlocks; i++) {
+            const spectrumBlock = document.createElement('div');
+            spectrumBlock.className = 'spectrum-element';
+            spectrumContainer.appendChild(spectrumBlock);
+            
+            const left = i * blockWidth;
+            
+            spectrumBlock.style.position = 'absolute';
+            spectrumBlock.style.left = `${left}px`;
+            spectrumBlock.style.top = '0';
+            spectrumBlock.style.width = `${blockWidth}px`;
+            spectrumBlock.style.height = '100%';
+            spectrumBlock.style.background = spectrumBackground;
+            spectrumBlock.classList.add('visible');
+        }
         
         this.experimentState.spectrumVisible = true;
     },
@@ -414,6 +770,8 @@ const experimentFunctions = {
         if (!screen || !leftSpectrum || !rightSpectrum || !centralLine) return;
         
         screen.classList.add('spectrum-visible');
+        screen.style.overflow = 'hidden';
+        
         leftSpectrum.classList.remove('visible');
         rightSpectrum.classList.remove('visible');
         centralLine.style.display = 'block';
@@ -426,16 +784,24 @@ const experimentFunctions = {
         quality = Math.max(0, Math.min(100, quality));
         
         const beamOffsetPercent = this.experimentState.beamOffsetY;
-        centralLine.style.top = `${beamOffsetPercent}%`;
-        centralLine.style.transform = 'translateY(-50%)';
-        centralLine.style.height = '80%';
         
-        if (quality > 80) {
-            centralLine.style.width = '20px';
+        centralLine.style.left = `${beamOffsetPercent}%`;
+        centralLine.style.top = '0';
+        centralLine.style.transform = 'translateX(-50%)';
+        centralLine.style.width = '20px';
+        centralLine.style.height = '100%';
+        
+        // Изменяем цвет центральной линии в зависимости от активного фильтра
+        if (this.experimentState.activeFilter === 'red') {
+            centralLine.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        } else if (this.experimentState.activeFilter === 'green') {
+            centralLine.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+        } else if (this.experimentState.activeFilter === 'blue') {
+            centralLine.style.backgroundColor = 'rgba(0, 0, 255, 0.3)';
+        } else if (quality > 80) {
             centralLine.style.backgroundColor = 'rgba(255, 255, 0, 0.15)';
             centralLine.style.filter = '';
         } else {
-            centralLine.style.width = '20px';
             const blurAmount = Math.max(0, (80 - quality) / 10);
             centralLine.style.filter = `blur(${blurAmount}px)`;
             centralLine.style.boxShadow = '0 0 5px 2px rgba(255, 255, 255, 0.4)';
@@ -453,116 +819,45 @@ const experimentFunctions = {
         if (!screen || !leftSpectrum || !rightSpectrum || !centralLine) return;
         
         screen.classList.add('spectrum-visible');
+        screen.style.overflow = 'hidden';
+        
         leftSpectrum.classList.remove('visible');
         rightSpectrum.classList.remove('visible');
         centralLine.style.display = 'block';
         
         const beamOffsetPercent = this.experimentState.beamOffsetY;
-        centralLine.style.width = '20px';
-        centralLine.style.height = '80%';
-        centralLine.style.top = `${beamOffsetPercent}%`;
-        centralLine.style.transform = 'translateY(-50%)';
+        
+        centralLine.style.left = `${beamOffsetPercent}%`;
+        centralLine.style.top = '0';
+        centralLine.style.width = '20px'; 
+        centralLine.style.height = '100%';
+        centralLine.style.transform = 'translateX(-50%)';
         centralLine.style.filter = '';
-        centralLine.style.backgroundColor = 'rgba(255, 255, 0, 0.15)';
+        
+        // Изменяем цвет центральной линии в зависимости от активного фильтра
+        if (this.experimentState.activeFilter === 'red') {
+            centralLine.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        } else if (this.experimentState.activeFilter === 'green') {
+            centralLine.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+        } else if (this.experimentState.activeFilter === 'blue') {
+            centralLine.style.backgroundColor = 'rgba(0, 0, 255, 0.3)';
+        } else {
+            centralLine.style.backgroundColor = 'rgba(255, 255, 0, 0.15)';
+        }
         
         this.experimentState.spectrumVisible = true;
-    },
-    
-    showSpectrum() {
-        const screen = document.querySelector('#screen .spectrum-display');
-        const leftSpectrum = document.querySelector('.left-spectrum');
-        const rightSpectrum = document.querySelector('.right-spectrum');
-        const centralLine = document.querySelector('.central-line');
-        
-        if (!screen || !leftSpectrum || !rightSpectrum || !centralLine) return;
-        
-        screen.classList.add('spectrum-visible');
-        leftSpectrum.classList.add('visible');
-        rightSpectrum.classList.add('visible');
-        centralLine.style.display = 'block';
-        
-        const beamOffsetPercent = this.experimentState.beamOffsetY || 50;
-        this.adjustSpectrumVerticalPosition(leftSpectrum, rightSpectrum, centralLine, beamOffsetPercent);
-        
-        centralLine.style.width = '2px';
-        centralLine.style.boxShadow = '';
-        leftSpectrum.style.filter = '';
-        rightSpectrum.style.filter = '';
-        leftSpectrum.style.opacity = '1';
-        rightSpectrum.style.opacity = '1';
-        
-        this.experimentState.spectrumVisible = true;
-    },
-    
-    showBlurredSpectrum(quality) {
-        const screen = document.querySelector('#screen .spectrum-display');
-        const leftSpectrum = document.querySelector('.left-spectrum');
-        const rightSpectrum = document.querySelector('.right-spectrum');
-        const centralLine = document.querySelector('.central-line');
-        
-        if (!screen || !leftSpectrum || !rightSpectrum || !centralLine) return;
-        
-        screen.classList.add('spectrum-visible');
-        leftSpectrum.classList.add('visible');
-        rightSpectrum.classList.add('visible');
-        centralLine.style.display = 'block';
-        
-        const beamOffsetPercent = this.experimentState.beamOffsetY || 50;
-        this.adjustSpectrumVerticalPosition(leftSpectrum, rightSpectrum, centralLine, beamOffsetPercent);
-        
-        const blurAmount = Math.max(0, (80 - quality) / 8);
-        leftSpectrum.style.filter = `blur(${blurAmount}px)`;
-        rightSpectrum.style.filter = `blur(${blurAmount}px)`;
-        
-        const opacity = quality < 20 ? quality / 20 * 0.4 : quality / 100 * 0.6 + 0.4;
-        leftSpectrum.style.opacity = opacity;
-        rightSpectrum.style.opacity = opacity;
-        
-        centralLine.style.width = '2px';
-        centralLine.style.boxShadow = '';
-        
-        this.experimentState.spectrumVisible = true;
-    },
-    
-    adjustSpectrumVerticalPosition(leftSpectrum, rightSpectrum, centralLine, beamOffsetPercent) {
-        const visibilityPercent = 100 - Math.abs(beamOffsetPercent - 50) * 2;
-        const spectrumHeight = Math.max(0, visibilityPercent);
-        
-        leftSpectrum.style.top = `${beamOffsetPercent}%`;
-        leftSpectrum.style.height = `${spectrumHeight}%`;
-        leftSpectrum.style.transform = `translateY(-50%)`;
-        
-        rightSpectrum.style.top = `${beamOffsetPercent}%`;
-        rightSpectrum.style.height = `${spectrumHeight}%`;
-        rightSpectrum.style.transform = `translateY(-50%)`;
-        
-        centralLine.style.top = `${beamOffsetPercent}%`;
-        centralLine.style.height = `${spectrumHeight}%`;
-        centralLine.style.transform = `translateY(-50%)`;
-        
-        const markers = document.querySelectorAll('.measurement-marker');
-        markers.forEach(marker => {
-            marker.style.top = `${beamOffsetPercent}%`;
-        });
     },
     
     hideSpectrum() {
         const screen = document.querySelector('#screen .spectrum-display');
-        const leftSpectrum = document.querySelector('.left-spectrum');
-        const rightSpectrum = document.querySelector('.right-spectrum');
-        const centralLine = document.querySelector('.central-line');
         
-        if (screen) screen.classList.remove('spectrum-visible');
-        if (leftSpectrum) {
-            leftSpectrum.classList.remove('visible');
-            leftSpectrum.style.filter = '';
-            leftSpectrum.style.opacity = '0';
+        if (screen) {
+            screen.classList.remove('spectrum-visible');
+            screen.style.overflow = '';
+            screen.querySelectorAll('.spectrum-element, .spectrum-container').forEach(el => el.remove());
         }
-        if (rightSpectrum) {
-            rightSpectrum.classList.remove('visible');
-            rightSpectrum.style.filter = '';
-            rightSpectrum.style.opacity = '0';
-        }
+        
+        const centralLine = document.querySelector('.central-line');
         if (centralLine) {
             centralLine.style.display = 'none';
             centralLine.style.width = '2px';
@@ -607,28 +902,17 @@ const experimentFunctions = {
             
             const lightBeam = document.getElementById('light-beam');
             const lightImpact = document.getElementById('light-impact');
+            const filteredBeam = document.getElementById('filtered-light-beam');
+            
             if (lightBeam) lightBeam.classList.remove('visible');
             if (lightImpact) lightImpact.classList.remove('visible');
+            if (filteredBeam) filteredBeam.remove();
             
             this.hideSpectrum();
         }
     },
     
-    startMarkerDrag(e) {
-        if (!this.experimentState.spectrumVisible || this.experimentState.step < 4) return;
-        
-        const marker = e.currentTarget;
-        const isRedMarker = marker.classList.contains('red-marker');
-        const isLeftMarker = marker.classList.contains('left-red') || marker.classList.contains('left-blue');
-        
-        if (isRedMarker && this.experimentState.step === 4) {
-            this.measureRedEdge(isLeftMarker);
-        } else if (!isRedMarker && this.experimentState.step === 5) {
-            this.measureBlueEdge(isLeftMarker);
-        }
-    },
-    
-    measureRedEdge(isLeftMarker) {
+    measureRedEdge() {
         const redEdgeDistance = 34;
         
         this.experimentState.redEdgeDistance = redEdgeDistance;
@@ -640,19 +924,13 @@ const experimentFunctions = {
         this.experimentState.redWavelength = redWavelength;
         this.experimentState.redMeasured = true;
         
-        const redMarker = document.querySelector('.red-marker' + (isLeftMarker ? '.left-red' : '.right-red'));
-        if (redMarker) {
-            redMarker.classList.add('reading-taken');
-            setTimeout(() => redMarker.classList.remove('reading-taken'), 500);
-        }
-        
         if (this.experimentState.step === 4) {
             this.updateExperimentStep(5);
-            this.updateInstructions("Теперь измерьте расстояние от центра до синего края спектра.");
+            this.updateInstructions("Теперь поднесите линейку к экрану, чтобы измерить расстояние от центра до синего края спектра.");
         }
     },
     
-    measureBlueEdge(isLeftMarker) {
+    measureBlueEdge() {
         const blueEdgeDistance = 23;
         
         this.experimentState.blueEdgeDistance = blueEdgeDistance;
@@ -663,12 +941,6 @@ const experimentFunctions = {
         const blueWavelength = gratingConstant * blueEdgeDistance / screenDistance * 1000000;
         this.experimentState.blueWavelength = blueWavelength;
         this.experimentState.blueMeasured = true;
-        
-        const blueMarker = document.querySelector('.blue-marker' + (isLeftMarker ? '.left-blue' : '.right-blue'));
-        if (blueMarker) {
-            blueMarker.classList.add('reading-taken');
-            setTimeout(() => blueMarker.classList.remove('reading-taken'), 500);
-        }
         
         if (this.experimentState.redMeasured && this.experimentState.blueMeasured) {
             document.getElementById('wavelength-calculator').style.display = 'block';
@@ -709,8 +981,7 @@ const experimentFunctions = {
             
             this.updateInstructions("Эксперимент завершен! Вы успешно определили длины волн красного и синего света.");
         } else {
-            let errorMsg = "Ошибка в расчетах. Проверьте формулу λ = d·a/b";
-            resultDisplay.textContent = errorMsg;
+            resultDisplay.textContent = "Ошибка в расчетах. Проверьте формулу λ = d·a/b";
             resultDisplay.className = "error-message";
         }
     },
@@ -720,6 +991,7 @@ const experimentFunctions = {
             requestAnimationFrame(() => {
                 this.checkOpticalAlignment();
                 this.updateSpectrumQuality();
+                this.checkRulerPosition();
             });
         }
     },
@@ -745,7 +1017,7 @@ const experimentFunctions = {
     
     resetExperiment() {
         window.location.reload();
-    },
+    }
 };
 
 export default experimentFunctions;

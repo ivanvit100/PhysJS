@@ -60,12 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     
-    document.querySelectorAll('.measurement-marker').forEach(marker => {
-        marker.addEventListener('mousedown', (e) => {
-            experimentFunctions.startMarkerDrag(e);
-        });
-    });
-    
     document.getElementById('check-wavelength').addEventListener('click', () => {
         experimentFunctions.checkWavelengthCalculation();
     });
