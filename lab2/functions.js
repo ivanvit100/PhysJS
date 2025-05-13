@@ -109,6 +109,37 @@ const experimentFunctions = {
         updateInstructions("Удлинение в воде измерено! Теперь рассчитайте жесткость пружины и массу груза.");
     },
 
+    updateSpringStretch(newHeight) {
+        const springSvg = document.querySelector('.spring2 svg');
+        if (!springSvg) return;
+        
+        springSvg.style.height = `${newHeight}px`;
+        
+        springSvg.setAttribute('viewBox', `0 0 10 ${newHeight}`);
+        
+        const path = springSvg.querySelector('path');
+        if (path) {
+            path.setAttribute('d', this.generateSpringPath(newHeight));
+        }
+    },
+
+    generateSpringPath(height) {
+        const coils = 5;
+        const segmentHeight = height / (coils * 2 + 2);
+        
+        let path = `M5 0, 5 ${segmentHeight}`;
+        
+        for (let i = 0; i < coils; i++) {
+            const y1 = segmentHeight * (i * 2 + 1);
+            const y2 = segmentHeight * (i * 2 + 2);
+            path += `, 1 ${y1}, 9 ${y2}`;
+        }
+        
+        path += `, 5 ${height - segmentHeight}, 5 ${height}`;
+        
+        return path;
+    },
+
     showTooltip(e, tooltip) {
         const name = this.getAttribute('data-name');
         if (name) {
@@ -166,7 +197,10 @@ const experimentFunctions = {
         const currentPointerTop = parseInt(pointer.style.top) || 185;
         const currentWeightTop = parseInt(weight.style.top) || 240;
 
-        spring.style.height = (currentSpringHeight - 10) + 'px';
+        const newHeight = currentSpringHeight - 10;
+        spring.style.height = newHeight + 'px';
+        this.updateSpringStretch(newHeight);
+        
         springEnd.style.top = (currentSpringEndTop - 10) + 'px';
         pointer.style.top = (currentPointerTop - 10) + 'px';
         weight.style.top = (currentWeightTop - 10) + 'px';
@@ -265,30 +299,6 @@ const experimentFunctions = {
         });
     },
 
-    advanceToStep(stepElements, experimentState, step) {
-        if (step <= experimentState.step) return;
-
-        experimentState.step = step;
-        
-        physjs.goToStep('step' + step);
-
-        stepElements.forEach((el, index) => {
-            if (index + 1 < step) {
-                el.classList.remove('active');
-                el.style.textDecoration = 'line-through';
-                el.style.opacity = '0.6';
-            } else if (index + 1 === step) {
-                el.classList.add('active');
-                el.style.textDecoration = '';
-                el.style.opacity = '1';
-            } else {
-                el.classList.remove('active');
-                el.style.textDecoration = '';
-                el.style.opacity = '0.6';
-            }
-        });
-    },
-
     resetExperiment(experimentState, elements) {
         experimentState.step = 1;
         experimentState.dynamometerMounted = false;
@@ -344,6 +354,7 @@ const experimentFunctions = {
         
         spring.style.transition = 'height 0.3s ease-in-out';
         spring.style.height = '100px';
+        this.updateSpringStretch(100);
         
         springEnd.style.transition = 'top 0.3s ease-in-out';
         springEnd.style.top = '160px';

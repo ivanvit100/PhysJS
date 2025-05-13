@@ -22,7 +22,7 @@ let experimentState = {
 document.addEventListener('DOMContentLoaded', function() {
     const stand = document.getElementById('stand');
     const dynamometer = document.getElementById('dynamometer');
-    const spring = document.querySelector('.spring');
+    const spring = document.querySelector('.spring2');
     const springEnd = document.getElementById('spring-end');
     const pointer = document.getElementById('pointer');
     const weight = document.getElementById('weight');
@@ -184,9 +184,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const waterContainerRect = waterContainer.getBoundingClientRect();
             const weightRect = weight.getBoundingClientRect();
             
-            if (weightRect.left < waterContainerRect.right && 
-                weightRect.right > waterContainerRect.left && 
-                weightRect.top < waterContainerRect.bottom && 
+            if (weightRect.left < waterContainerRect.right &&
+                weightRect.right > waterContainerRect.left &&
+                weightRect.top < waterContainerRect.bottom &&
                 weightRect.bottom > waterContainerRect.top) {
                 experimentFunctions.placeWeightInWater(
                     experimentState, 
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
             experimentState.weightAttached = true;
     
-            springEnd.style.transition = 'top 0.7s ease-in-out';
+            // springEnd.style.transition = 'top 0.7s ease-in-out';
             pointer.style.transition = 'top 0.7s ease-in-out';
             spring.style.transition = 'height 0.7s ease-in-out';
     
@@ -252,12 +252,18 @@ document.addEventListener('DOMContentLoaded', function() {
             dynamometerObj.setPosition(standObj.x + 30, standObj.y + 50);
     
             setTimeout(() => {
-                spring.style.height = '120px';
+                let springSvg = document.querySelector(".spring2 svg");
+                let oldHeight = springSvg.getBoundingClientRect().height;
+                console.log(oldHeight);
+                const newHeight = 120;
+                let diff = newHeight - oldHeight;
+                springSvg.style.height = newHeight + 'px';
+                experimentFunctions.updateSpringStretch(newHeight);
     
                 const weightObj = physjs.getObject('#weight');
-                weightObj.setPosition(standObj.x + 30, standObj.y + 240);
+                weightObj.setPosition(standObj.x + 30, standObj.y + 210 + diff);
                 
-                springEnd.style.top = '180px';
+                springEnd.style.top = newHeight + 50 + 'px';
                 pointer.style.top = '185px';
                 
                 advanceToStep(4);
