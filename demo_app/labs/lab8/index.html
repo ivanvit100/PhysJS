@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Определение удельной теплоты парообразования воды</title>
+    <link rel="stylesheet" href="../phys.css">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="specific.css">
+</head>
+<body>
+    <div id="experiment-container">
+        <header>
+            <h1>Определение удельной теплоты парообразования воды</h1>
+        </header>
+
+        <div id="experiment-area">
+            <!-- Цилиндрический сосуд -->
+            <div id="cylinder" class="phys phys-attachable equipment" data-name="Цилиндрический сосуд" data-type="cylinder">
+                <div class="cylinder-body"></div>
+                <div id="cylinder-marks" class="cylinder-marks">
+                    <div class="mark" style="top: 10%"><span class="mark-label">200</span></div>
+                    <div class="mark" style="top: 30%"><span class="mark-label">150</span></div>
+                    <div class="mark" style="top: 50%"><span class="mark-label">100</span></div>
+                    <div class="mark" style="top: 70%"><span class="mark-label">50</span></div>
+                </div>
+                <div class="water-level"></div>
+                <div class="steam-particles"></div>
+            </div>
+            
+            <!-- Кипятильник -->
+            <div id="heater" class="phys phys-attachable" data-type="heater" data-name="Кипятильник">
+                <div class="heater-body"></div>
+                <div class="heater-handle"></div>
+                <div class="heater-indicator"></div>
+            </div>
+            
+            <!-- Термометр -->
+            <div id="thermometer" class="phys phys-attachable" data-type="thermometer" data-name="Термометр">
+                <div class="thermometer-body">
+                    <div class="thermometer-scale">
+                        <span class="temp-mark">100°</span>
+                        <span class="temp-mark">80°</span>
+                        <span class="temp-mark">60°</span>
+                        <span class="temp-mark">40°</span>
+                        <span class="temp-mark">20°</span>
+                        <span class="temp-mark">0°</span>
+                    </div>
+                    <div class="thermometer-tube">
+                        <div class="thermometer-mercury"></div>
+                    </div>
+                    <div class="thermometer-markers"></div>
+                </div>
+                <div class="thermometer-neck"></div>
+                <div class="thermometer-bulb"></div>
+            </div>
+            
+            <!-- Панель управления кипятильником -->
+            <div id="heater-control" class="control-panel">
+                <div class="timer">
+                    <span id="timer-value">00:00</span>
+                </div>
+                <button id="heater-toggle" class="btn btn-danger">Включить</button>
+            </div>
+            
+            <div id="help-text">
+                <div class="help-item"><span class="key-indicator">ЛКМ</span> перетащить объект</div>
+                <div class="help-item"><span class="key-indicator">2х ЛКМ</span> взаимодействие</div>
+            </div>
+
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок выполнения</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step1" class="active">Налейте в цилиндр воду и измерьте её начальную температуру t₁ и уровень h₁</li>
+                    <li id="step2">Поставьте цилиндр на кипятильник</li>
+                    <li id="step3">Включите кипятильник и дождитесь закипания воды (t₂ = 100°C)</li>
+                    <li id="step4">Дайте воде покипеть некоторое время, затем выключите кипятильник</li>
+                    <li id="step6">Рассчитайте удельную теплоту парообразования воды</li>
+                </ol>
+            </div>
+        </div>
+        <div class="info-box info-box-primary mb-0">
+            <p id="current-instruction" class="mb-0">Для начала эксперимента дважды кликните по цилиндру, чтобы налить воду.</p>
+        </div>
+
+        <div class="panel ui-panel" id="measurement-panel">
+            <div class="panel-header">
+                <h3>Результаты измерений и расчетов</h3>
+            </div>
+            <div class="panel-content">
+                <div class="measurement-row">
+                    <span class="measurement-label">Начальная температура (t₁):</span>
+                    <span class="measurement-value"><span id="initial-temp">-</span> °C</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Конечная температура (t₂):</span>
+                    <span class="measurement-value"><span id="final-temp">-</span> °C</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Начальный уровень воды (h₁):</span>
+                    <span class="measurement-value"><span id="initial-level">-</span> мм</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Конечный уровень воды (h₂):</span>
+                    <span class="measurement-value"><span id="final-level">-</span> мм</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Время нагрева (τ₁):</span>
+                    <span class="measurement-value"><span id="heating-time">-</span> с</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Время кипения (τ₂):</span>
+                    <span class="measurement-value"><span id="boiling-time">-</span> с</span>
+                </div>
+                <div class="measurement-row result">
+                    <span class="measurement-label">Удельная теплота парообразования (L):</span>
+                    <span class="measurement-value"><span id="vaporization-heat">-</span> кДж/кг</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel ui-panel" id="theory-panel">
+            <div class="panel-header">
+                <h3>Формулы</h3>
+            </div>
+            <div class="panel-content">
+                <div class="formula">L = c·h₁·(t₂-t₁)/(h₁-h₂) · τ₂/τ₁</div>
+            </div>
+        </div>
+
+        <div class="buttons-container">
+            <button id="guide-btn" class="btn btn-info">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+                Гайд
+            </button>
+
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
+        </div>
+    </div>
+
+    <script src="../phys.js"></script>
+    <script src="../intro-wrapper.js"></script>
+    <script type="module" src="script.js" defer></script>
+</body>
+</html>

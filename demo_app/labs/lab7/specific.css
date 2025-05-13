@@ -1,0 +1,172 @@
+#ice-container {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    top: 180px;
+    left: 330px;
+    border-radius: 8px;
+    border: 2px solid #a5d8ff;
+    background-color: #dbeafe;
+    overflow: visible;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 5px;
+    padding: 5px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.ice-cell {
+    background: #bfdbfe;
+    border-radius: 5px;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.water-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0px;
+    background-color: rgba(125, 211, 252, 0.5);
+    transition: height 0.5s;
+    z-index: 3;
+    border-radius: 0 0 8px 8px;
+}
+
+.ice-cube {
+    width: 50px;
+    height: 50px;
+    top: 70px;
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    border: 1px solid #7dd3fc;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 8px;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 51 !important;
+    display: none;
+}
+
+@keyframes melt {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.8); opacity: 0.7; }
+    100% { transform: scale(0.2); opacity: 0; }
+}
+
+.melting {
+    animation: melt 2s ease forwards;
+}
+
+.water-level {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 0;
+    background-color: rgba(56, 189, 248, 0.6);
+    transition: height 1s;
+    border-radius: 0 0 10px 10px;
+    z-index: -1;
+}
+
+#calorimeter {
+    position: absolute;
+    width: 140px;
+    height: 180px;
+    top: 180px;
+    left: 20px;
+    border-radius: 12px 12px 10px 10px;
+    background: linear-gradient(145deg, #94a3b8, #7e8ea1);
+    border: 2px solid #64748b;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2), inset 0 1px 3px rgba(255, 255, 255, 0.3);
+    overflow: visible;
+}
+
+.calorimeter-handle-left,
+.calorimeter-handle-right {
+    position: absolute;
+    width: 8px;
+    height: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #64748b;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    display: none;
+}
+
+.calorimeter-handle-left {
+    left: -6px;
+}
+
+.calorimeter-handle-right {
+    right: -6px;
+}
+
+.calorimeter-inner {
+    position: absolute;
+    width: 80%;
+    height: 90%;
+    top: 0%;
+    left: 10%;
+    background: linear-gradient(145deg, #cbd5e1, #b7c4d1);
+    border-radius: 8px;
+    border: 2px solid #94a3b8;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.water-in-calorimeter {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 0;
+    background: linear-gradient(0deg, rgba(56, 189, 248, 0.7) 0%, rgba(56, 189, 248, 0.5) 100%);
+    transition: height 1s;
+    border-radius: 0 0 6px 6px;
+}
+
+.water-in-calorimeter::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 15%;
+    width: 70%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.5s;
+}
+
+.water-in-calorimeter:not([style*="height: 0"]):not([style*="display: none"])::before {
+    opacity: 1;
+}
+
+#measurement-panel {
+    height: auto;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+#theory-panel {
+    width: 280px;
+    bottom: 80px;
+    left: 20px;
+}
+
+#cylinder {
+    top: 180px;
+    left: 180px;
+}
+
+#thermometer {
+    top: 180px;
+    left: 280px;
+}

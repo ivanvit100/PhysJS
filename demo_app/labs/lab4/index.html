@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Закон сохранения механической энергии</title>
+    <link rel="stylesheet" href="../phys.css">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="specific.css">
+</head>
+<body>
+    <div id="experiment-container">
+        <header>
+            <h1>Закон сохранения механической энергии</h1>
+        </header>
+
+        <div id="experiment-area">
+            <!-- Штативы -->
+            <div id="left-stand" class="phys-fixed phys-attachable equipment" data-name="Штатив 1" data-type="stand">
+                <div class="stand-base"></div>
+                <div class="stand-rod"></div>
+                <div class="stand-clamp"></div>
+            </div>
+            
+            <div id="right-stand" class="phys-fixed phys-attachable equipment" data-name="Штатив 2" data-type="stand">
+                <div class="stand-base"></div>
+                <div class="stand-rod"></div>
+                <div class="stand-clamp"></div>
+            </div>
+            
+            <!-- Динамометр -->
+            <div id="dynamometer" class="phys phys-attachable equipment" data-name="Динамометр">
+                <div class="dynamometer-body"></div>
+                <div class="spring" id="spring"></div>
+                <div class="spring-end" id="spring-end"></div>
+                <div class="pointer" id="pointer"></div>
+            </div>
+            
+            <!-- Желоб -->
+            <div id="trough" class="phys phys-attachable" data-name="Желоб" data-type="trough">
+                <div class="left-edge"></div>
+                <div class="right-edge"></div>
+                <div class="highlight"></div>
+                <div class="highlight-secondary"></div>
+            </div>
+            
+            <!-- Шар с нитью -->
+            <div id="string"></div>
+            <div id="ball" class="phys phys-attachable" data-name="Шар" data-type="ball"></div>
+            
+            <!-- Поверхность стола -->
+            <div id="floor-area"></div>
+            
+            <!-- Весы -->
+            <div id="scale" class="phys-fixed equipment" data-name="Весы">
+                <div class="scale-base"></div>
+                <div id="scale-display" class="digital-display">0.0</div>
+            </div>
+            
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок действий</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step1" class="active">Взвесьте шар на весах</li>
+                    <li id="step2">Укрепите динамометр и желоб на штативах</li>
+                    <li id="step3">Прикрепите шар к динамометру нитью</li>
+                    <li id="step4">Растяните пружину до показания 2H</li>
+                    <li id="step5">Отпустите шар и запишите место падения</li>
+                    <li id="step6">Проведите измерения и выполните расчеты</li>
+                </ol>
+            </div>
+        </div>
+        <div class="info-box info-box-primary mb-0">
+            <p id="current-instruction" class="mb-0">Взвесьте шар, поместив его на весы</p>
+        </div>
+
+        <div id="data-collection-panel" class="panel ui-panel" style="display: block;">
+            <div class="panel-header">
+                <h3>Результаты измерений</h3>
+            </div>
+            <div class="panel-content">
+                <div class="table-container">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Fy, Н</th>
+                                <th>x, м</th>
+                                <th>S, м</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body">
+                            <!-- Данные будут добавлены через JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel ui-panel" id="measurement-panel">
+            <div class="panel-header">
+                <h3>Измерения</h3>
+            </div>
+            <div class="panel-content">
+                <div class="measurement-row">
+                    <span class="measurement-label">Жесткость пружины:</span>
+                    <span class="measurement-value"><span id="spring-stiffness">0.0</span> Н/м</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Сила упругости (Fy):</span>
+                    <span class="measurement-value"><span id="force-value">0.0</span> Н</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Деформация пружины (x):</span>
+                    <span class="measurement-value"><span id="deformation">0.0</span> м</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Высота (h):</span>
+                    <span class="measurement-value"><span id="height">1.2</span> м</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Масса шара (m):</span>
+                    <span class="measurement-value"><span id="mass">0.0</span> кг</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Дальность полета (S<sub>ср</sub>):</span>
+                    <span class="measurement-value"><span id="distance-avg">0.0</span> м</span>
+                </div>
+                <button id="measure-ball-btn" class="btn btn-primary" style="margin-top: 10px; display: none;">Измерить массу шара</button>
+                <button id="reset-measurements-btn" class="btn btn-secondary" style="margin-top: 10px; display: none;">Сбросить измерения</button>
+            </div>
+        </div>
+
+        <div id="data-collection-panel" class="panel ui-panel">
+            <div class="panel-header">
+                <h3>Результаты измерений</h3>
+            </div>
+            <div class="panel-content">
+                <div class="table-container">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Fy, Н</th>
+                                <th>x, м</th>
+                                <th>S, м</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body">
+                            <!-- Данные будут добавлены через JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="help-text">
+            <div class="help-item"><span class="key-indicator">ЛКМ</span> перемещать объекты</div>
+            <div class="help-item"><span class="key-indicator">2х ЛКМ</span> открепить объект</div>
+        </div>
+
+        <div class="buttons-container">
+            <button id="guide-btn" class="btn btn-info">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+                Гайд
+            </button>
+
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+            
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
+        </div>
+    </div>
+
+    <script src="../phys.js"></script>
+    <script src="../intro-wrapper.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
