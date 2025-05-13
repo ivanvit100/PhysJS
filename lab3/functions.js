@@ -199,7 +199,6 @@ const experimentFunctions = {
                     <tbody>
                     </tbody>
                 </table>
-                <div id="optimal-angle-result" class="info-box info-box-primary mt-3"></div>
             </div>
         `;
         
@@ -254,10 +253,6 @@ const experimentFunctions = {
         });
         
         results.sort((a, b) => b.range - a.range);
-        const maxResult = results[0];
-        
-        document.getElementById('optimal-angle-result').textContent = 
-            `Оптимальный угол: ${maxResult.angle}° (${maxResult.range.toFixed(2)} м)`;
     },
 
     handleKeyDown(event) {

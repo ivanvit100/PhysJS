@@ -9,7 +9,7 @@ const experimentFunctions = {
         
         initialTemperature: 20,
         finalTemperature: 100,
-        initialWaterLevel: 120,
+        initialWaterLevel: 170,
         finalWaterLevel: 0,
         heatingTime: 0,
         boilingTime: 0,

@@ -57,19 +57,54 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    if (backBtn) {
-        backBtn.addEventListener('click', experimentFunctions.goBack);
-    }
+    backBtn && backBtn.addEventListener('click', experimentFunctions.goBack);
 
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 5; i++)
         stepElements.push(document.getElementById(`step${i}`));
-    }
 
     experimentFunctions.initExperiment(experimentState, {
         pistol, projectile, floorArea, tooltip, heightDisplay, alphaDisplay, angleDisplay
     });
 
     window.experimentState = experimentState;
+
+    const tabsContent = intro.createTabContent([
+      'status-panel',
+      'results-panel',
+      'measurement-panel'
+    ], 'tabs-container');
+      
+    const tabButtons = tabsContent.querySelectorAll('.info-content-buttons button');
+    tabButtons[0].textContent = 'Порядок';
+    tabButtons[1].textContent = 'Таблица';
+    tabButtons[2].textContent = 'Результаты';
+    
+    intro.init([
+      {
+        title: 'Информация',
+        description: 'Здесь вы можете ознакомиться с порядком выполнения лабораторной работы, теоретической моделью, и результатами эксперимента.',
+        element: '#tabs-container'
+      },
+      {
+        title: 'Рабочая область',
+        description: 'В этой области расположено оборудование, которое используется для проведения лабораторной работы.',
+        element: '#experiment-area'
+      },
+      {
+        title: 'Подсказки',
+        description: 'Здесь вы можете ознакомиться с краткими подсказками по управлению в эксперименте.',
+        element: '#help-text'
+      },
+      {
+        title: 'Панель управления',
+        description: 'Здесь расположены кнопки управления экспериментом. Кнопка "Сбросить" начинает эксперимент заново.',
+        element: '.buttons-container'
+      }
+    ]);
+    
+    document.getElementById('guide-btn').addEventListener('click', () => {
+      intro.start();
+    });
 });
 
 function handlePistolClick() {

@@ -80,8 +80,8 @@
 #heater {
     width: 40px;
     height: 180px;
-    left: 450px;
-    top: 250px;
+    left: 150px;
+    top: 120px;
     position: absolute;
     z-index: 50;
     transform: rotate(-90deg) !important;
@@ -199,6 +199,11 @@
 #theory-panel {
     width: 280px;
     bottom: 80px;
+    left: 20px;
+}
+
+#thermometer {
+    top: 180px;
     left: 20px;
 }
 

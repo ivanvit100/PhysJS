@@ -161,8 +161,8 @@ const experimentFunctions = {
         physjs.addConnectionPoint('#switch', 'switch-input', 10, 50);
         physjs.addConnectionPoint('#switch', 'switch-output', 90, 50);
         
-        physjs.addConnectionPoint('#rheostat', 'rheostat-input', 10, 50);
-        physjs.addConnectionPoint('#rheostat', 'rheostat-output', 90, 50);
+        physjs.addConnectionPoint('#rheostat', 'rheostat-input', 10, 80);
+        physjs.addConnectionPoint('#rheostat', 'rheostat-output', 90, 80);
     },
 
     recordEmfMeasurement() {

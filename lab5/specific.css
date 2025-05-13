@@ -2,8 +2,12 @@
     width: 40px;
     height: 400px;
     left: 400px;
-    top: 100px;
+    top: 180px;
     position: relative;
+}
+
+#barometer {
+    top: 180px;
 }
 
 .tube-body {
@@ -67,7 +71,7 @@
     width: 40px;
     height: 400px;
     left: 600px;
-    top: 100px;
+    top: 180px;
     position: relative;
     z-index: 5;
 }
@@ -99,7 +103,7 @@
 #rubber-tube {
     width: 150px;
     height: 35px;
-    top: 300px;
+    top: 380px;
     left: 65px;
     position: absolute;
     background-color: rgba(44, 62, 80, 1);
@@ -128,7 +132,7 @@
 #cork {
     width: 30px;
     left: 240px;
-    top: 310px;
+    top: 380px;
 }
 
 #cork::before {
@@ -143,7 +147,7 @@
     height: 30px;
     width: 300px;
     left: 170px;
-    top: 240px;
+    top: 320px;
     transform: rotate(90deg);
     position: relative;
     z-index: 4;

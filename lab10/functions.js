@@ -541,11 +541,11 @@ const experimentFunctions = {
         
         let spectrumBackground;
         if (this.experimentState.activeFilter === 'red')
-            spectrumBackground = 'linear-gradient(to right, red, orange, transparent, transparent, transparent)';
+            spectrumBackground = 'linear-gradient(to right, red, transparent, transparent, transparent, transparent)';
         else if (this.experimentState.activeFilter === 'green')
-            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, lime, green, transparent)';
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, green, transparent, transparent)';
         else if (this.experimentState.activeFilter === 'blue')
-            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, indigo, transparent)';
+            spectrumBackground = 'linear-gradient(to right, transparent, transparent, transparent, blue, transparent, transparent)';
         else
             spectrumBackground = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
         

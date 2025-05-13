@@ -5,7 +5,7 @@
     width: 120px;
     height: 100px;
     left: 20px;
-    top: 200px;
+    top: 250px;
     position: absolute;
     z-index: 2 !important;
 }
@@ -136,7 +136,7 @@
     width: 40px;
     height: 70px;
     left: 220px;
-    top: 200px;
+    top: 250px;
 }
 
 .frame-body {
@@ -213,7 +213,7 @@
     width: 10px;
     height: 80px;
     left: 300px;
-    top: 200px;
+    top: 250px;
 }
 
 .grating-body {
@@ -244,7 +244,7 @@
     width: 15px;
     height: 80px;
     left: 350px;
-    top: 200px;
+    top: 250px;
 }
 
 .lens-body {
@@ -277,7 +277,8 @@
     width: 200px;
     height: 150px;
     left: 20px;
-    top: 330px;
+    top: 380px;
+    transform: rotate(-90deg) translate(0, -40px);
 }
 
 .screen-body {
@@ -315,6 +316,10 @@
 
 .spectrum-visible .central-line {
     display: block;
+}
+
+.spectrum-element:nth-child(2n) {
+    transform: rotate(180deg);
 }
 
 .spectrum {
@@ -361,7 +366,7 @@
     width: 200px;
     height: 25px;
     left: 250px;
-    top: 330px;
+    top: 380px;
 }
 
 .ruler-body {
@@ -509,7 +514,7 @@
     width: 50px;
     height: 50px;
     opacity: 0.8;
-    top: 120px;
+    top: 170px;
 }
 
 .red-filter {

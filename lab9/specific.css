@@ -19,14 +19,18 @@
     left: 320px;
 }
 
+#power-source {
+    top: 180px;
+}
+
 /* Ammeter and Voltmeter */
 #ammeter {
-    top: 120px;
+    top: 180px;
     left: 200px;
 }
 
 #voltmeter {
-    top: 120px;
+    top: 180px;
     left: 320px;
 }
 
@@ -35,7 +39,7 @@
     position: absolute;
     width: 120px;
     height: 80px;
-    top: 260px;
+    top: 320px;
     left: 300px;
 }
 
@@ -74,7 +78,7 @@
 /* Thermometer */
 #thermometer {
     position: absolute;
-    top: 120px;
+    top: 180px;
     left: 440px;
 }
 
@@ -121,4 +125,8 @@
 
 #status-panel li.completed::marker {
     content: "✓ ";
+}
+
+#tabs-container {
+    width: 450px;
 }

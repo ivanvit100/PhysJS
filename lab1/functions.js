@@ -811,22 +811,6 @@ const experimentFunctions = {
 
         physjs.detachAll();
         physjs.resetLab();
-
-        window.sphere.style.left = '50px';
-        window.sphere.style.top = '60px';
-        window.hose.style.left = '120px';
-        window.hose.style.top = '100px';
-        window.clamp.style.left = '150px';
-        window.clamp.style.top = '130px';
-        window.pump.style.left = '350px';
-        window.pump.style.top = '70px';
-        window.scale.style.left = '50px';
-        window.scale.style.top = '350px';
-        window.waterContainer.style.left = '500px';
-        window.waterContainer.style.top = '280px';
-        window.cylinder.style.left = '700px';
-        window.cylinder.style.top = '280px';
-
         this.pumpCount = 0;
         window.pumpHandle.style.transform = 'translate(-50%, -25px)';
 

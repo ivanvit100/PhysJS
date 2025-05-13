@@ -7,6 +7,7 @@
     <title>Лабораторная работа №1</title>
     <link rel="stylesheet" href="../phys.css">
     <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="specific.css">
 </head>
 
 <body>
@@ -66,10 +67,10 @@
                     <li id="step7">Перелейте воду в измерительный цилиндр</li>
                     <li id="step8">Рассчитайте плотность воздуха</li>
                 </ol>
-                <div class="info-box info-box-primary mb-0">
-                    <p id="current-instruction" class="mb-0">Прикрепите шланг к шару с помощью правой кнопки мыши</p>
-                </div>
             </div>
+        </div>
+        <div class="info-box info-box-primary mb-0">
+            <p id="current-instruction" class="mb-0">Прикрепите шланг к шару с помощью правой кнопки мыши</p>
         </div>
 
         <div class="panel ui-panel" id="measurement-panel">
@@ -102,6 +103,13 @@
         </div>
 
         <div class="buttons-container">
+            <button id="guide-btn" class="btn btn-info">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+                Гайд
+            </button>
+
             <button id="back-btn" class="btn btn-primary">
                 <svg viewBox="0 0 24 24" width="16" height="16">
                     <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
@@ -122,6 +130,7 @@
     <div id="hose-inv"></div>
 
     <script src="../phys.js"></script>
+    <script src="../intro-wrapper.js"></script>
     <script type="module" src="script.js"></script>
 </body>
 

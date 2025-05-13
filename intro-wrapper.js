@@ -45,7 +45,7 @@
           exitOnEsc: true,
           nextLabel: 'Далее',
           prevLabel: 'Назад',
-          skipLabel: 'Пропустить',
+          skipLabel: '>',
           doneLabel: 'Готово'
         });
       };
