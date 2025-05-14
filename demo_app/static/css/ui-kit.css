@@ -303,35 +303,37 @@ p {
     width: 350px;
     z-index: 3;
 }
+
 .info-content {
     background-color: var(--transparency-light, rgba(255, 255, 255, 0.85));
     backdrop-filter: var(--blur-effect, blur(10px));
     border-radius: var(--radius-lg, 8px);
     box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
-    overflow: hidden;
+    overflow-y: auto;
     margin: 20px 0;
     transition: var(--transition-default, all 0.3s ease);
-  }
-  
-  .info-content-header {
+    max-height: calc(100vh - 170px);
+}
+
+.info-content-header {
     background-color: var(--color-primary, #3498db);
     color: white;
     padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
-  }
-  
-  .info-content-header h3 {
+}
+
+.info-content-header h3 {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
     color: white;
-  }
-  
-  .info-content-panels {
+}
+
+.info-content-panels {
     padding: 0;
     position: relative;
-  }
-  
-  .info-content-panels > div {
+}
+
+.info-content-panels > div {
     position: relative;
     width: 100% !important;
     box-shadow: none !important;
@@ -340,22 +342,22 @@ p {
     left: 0 !important;
     max-height: 100% !important;
     overflow-y: auto;
-  }
-  
-  .info-content-panels > div .panel-header {
+}
+
+.info-content-panels > div .panel-header {
     display: none;
-  }
-  
-  .info-content-buttons {
+}
+
+.info-content-buttons {
     display: flex;
     justify-content: center;
     border-top: 1px solid rgba(44, 62, 80, 0.1);
     background: rgba(52, 152, 219, 0.05);
     position: relative;
     z-index: 3;
-  }
-  
-  .info-content-buttons button {
+}
+
+.info-content-buttons button {
     padding: 10px 15px;
     background: none;
     border: none;
@@ -365,18 +367,18 @@ p {
     color: var(--color-secondary, #2c3e50);
     font-weight: 500;
     transition: var(--transition-fast, all 0.2s ease);
-  }
-  
-  .info-content-buttons button:hover {
+}
+
+.info-content-buttons button:hover {
     background: rgba(52, 152, 219, 0.1);
-  }
-  
-  .info-content-buttons button.active {
+}
+
+.info-content-buttons button.active {
     background: var(--color-primary, #3498db);
     color: white;
     font-weight: bold;
-  }
-  
-  .info-content-buttons button:last-child {
+}
+
+.info-content-buttons button:last-child {
     border-right: none;
-  }
+}

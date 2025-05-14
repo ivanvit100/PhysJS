@@ -61,9 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
             experimentState.rubberTubeConnectedToFunnel)
             return false;
         
-        if (!experimentFunctions.isDetachmentAllowedForStep(id, experimentState.step))
+        if (!experimentFunctions.isDetachmentAllowedForStep(id, experimentState.step)) {
             experimentFunctions.showDetachmentHint(id, experimentState.step, elements);
             return false;
+        }
         
         return true;
     });

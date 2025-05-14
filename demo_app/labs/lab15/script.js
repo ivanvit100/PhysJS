@@ -183,7 +183,6 @@ window.addEventListener('DOMContentLoaded', () => {
         const substance = substances[currentSubstanceId];
         const currentR = measuredCircumference / (2 * Math.PI);
     
-        // Рисуем линзу
         ctx.beginPath();
         ctx.arc(LENS_CENTER_X, LENS_CENTER_Y, currentR, 0, 2 * Math.PI);
         ctx.fillStyle = substance.color;
@@ -192,7 +191,6 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.lineWidth = 1;
         ctx.stroke();
     
-        // Рисуем черную точку в центре
         ctx.beginPath();
         ctx.arc(LENS_CENTER_X, LENS_CENTER_Y, 3, 0, 2 * Math.PI);
         ctx.fillStyle = 'black';
@@ -229,40 +227,30 @@ window.addEventListener('DOMContentLoaded', () => {
         
         for (let i = 0; i < rayPositions.length; i++) {
             const ray = rayPositions[i];
-            
             const x_refract = LENS_CENTER_X + Math.sqrt(Math.max(0, currentR**2 - (ray.entry_y - LENS_CENTER_Y)**2));
-            
             const distanceFromAxis = Math.abs(ray.distance_from_axis);
             const aberrationFactor = 1 - 0.05 * Math.pow(distanceFromAxis / currentR, 2);
             const effectiveFocalLength = F_ideal * aberrationFactor;
             const effectiveFocusX = LENS_CENTER_X + effectiveFocalLength;
-            
             const targetX = effectiveFocusX;
             const targetY = LENS_CENTER_Y;
             
-            // Рисуем луч
             ctx.beginPath();
             ctx.moveTo(x_refract, ray.entry_y);
             
-            // Направление луча после преломления
             const rayDirection = Math.atan2(targetY - ray.entry_y, targetX - x_refract);
-            
-            // Продолжаем луч до конца холста
             const lineEndX = canvas.width;
             const lineEndY = ray.entry_y + Math.tan(rayDirection) * (lineEndX - x_refract);
             
-            // Рисуем луч через точку фокуса до конца
             ctx.lineTo(targetX, targetY);
             ctx.lineTo(lineEndX, lineEndY);
             ctx.stroke();
             
-            // Сохраняем информацию о точке пересечения с экраном
             ray.screen_x = screenX;
             ray.screen_y = ray.entry_y + Math.tan(rayDirection) * (screenX - x_refract);
             ray.aberration_factor = aberrationFactor;
         }
         
-        // Рисуем экран
         const screenWidth = 15;
         const screenHeight = canvas.height - 100;
         const screenY = 50;
@@ -275,27 +263,20 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.fill();
         ctx.stroke();
         
-        // Расчет расстояния от экрана до идеального фокуса
         const distanceFromFocus = Math.abs(screenX - focusPointX);
         const maxDistance = canvas.width / 2;
         const relativeDistance = Math.min(1, distanceFromFocus / maxDistance);
         
-        // Рисуем индивидуальные точки для каждого луча на экране
         for (let i = 0; i < rayPositions.length; i++) {
             const ray = rayPositions[i];
             
-            // Проверяем, попадает ли луч на экран
             if (ray.screen_y >= screenY && ray.screen_y <= screenY + screenHeight) {
-                // Размер точки зависит от расстояния до фокуса для этого луча
                 const rayFocusX = LENS_CENTER_X + F_ideal * ray.aberration_factor;
                 const rayDistanceFromFocus = Math.abs(screenX - rayFocusX);
                 const rayRelativeDistance = Math.min(1, rayDistanceFromFocus / maxDistance);
-                
-                // Размер и яркость точки
                 const dotSize = 2 + rayRelativeDistance * 8;
                 const dotOpacity = 0.7 - rayRelativeDistance * 0.5;
                 
-                // Рисуем точку
                 ctx.beginPath();
                 ctx.arc(ray.screen_x, ray.screen_y, dotSize, 0, 2 * Math.PI);
                 ctx.fillStyle = `rgba(255, 220, 150, ${dotOpacity})`;
@@ -314,21 +295,19 @@ window.addEventListener('DOMContentLoaded', () => {
         const windowX = screenX;
         const windowY = LENS_CENTER_Y;
         
-        // Создаем градиент для изображения
         const gradient = ctx.createRadialGradient(
             windowX, windowY, 0,
             windowX, windowY, imageSize
         );
-        gradient.addColorStop(0, `rgba(255, 215, 0, ${imageOpacity})`); // Яркий центр
+        gradient.addColorStop(0, `rgba(255, 215, 0, ${imageOpacity})`);
         gradient.addColorStop(0.2, `rgba(255, 165, 0, ${imageOpacity * 0.7})`);
-        gradient.addColorStop(1, `rgba(255, 69, 0, 0)`); // Прозрачные края
+        gradient.addColorStop(1, `rgba(255, 69, 0, 0)`);
         
         ctx.beginPath();
         ctx.arc(windowX, windowY, imageSize, 0, 2 * Math.PI);
         ctx.fillStyle = gradient;
         ctx.fill();
         
-        // Плюсик посередине
         const windowLineSize = imageSize * 0.7;
         ctx.strokeStyle = `rgba(255, 255, 255, ${imageOpacity * 0.9})`;
         ctx.lineWidth = 1 + (1 - relativeDistance) * 2;
@@ -402,13 +381,11 @@ window.addEventListener('DOMContentLoaded', () => {
             const errorCell = row.querySelector(`#error-${id}`);
             const checkButton = row.querySelector(`.check-btn[data-id="${id}"]`);
             
-            if (res.userCalcValue) {
+            if (res.userCalcValue)
                 calcInput.value = res.userCalcValue;
-            }
             
-            if (res.userTheorValue) {
+            if (res.userTheorValue)
                 theorInput.value = res.userTheorValue;
-            }
             
             if (res.calcCorrect) {
                 calcInput.disabled = true;
@@ -525,4 +502,42 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     init();
+
+    const tabsContent = intro.createTabContent([
+        'status-panel',
+        'results-panel',
+        'measurement-panel'
+      ], 'tabs-container');
+        
+      const tabButtons = tabsContent.querySelectorAll('.info-content-buttons button');
+      tabButtons[0].textContent = 'Порядок';
+      tabButtons[1].textContent = 'Таблица';
+      tabButtons[2].textContent = 'Результаты';
+      
+      intro.init([
+        {
+          title: 'Информация',
+          description: 'Здесь вы можете ознакомиться с порядком выполнения лабораторной работы, теоретической моделью, и результатами эксперимента.',
+          element: '#tabs-container'
+        },
+        {
+          title: 'Рабочая область',
+          description: 'В этой области расположено оборудование, которое используется для проведения лабораторной работы.',
+          element: '#experiment-area'
+        },
+        {
+          title: 'Подсказки',
+          description: 'Здесь вы можете ознакомиться с краткими подсказками по управлению в эксперименте.',
+          element: '#help-text'
+        },
+        {
+          title: 'Панель управления',
+          description: 'Здесь расположены кнопки управления экспериментом. Кнопка "Сбросить" начинает эксперимент заново.',
+          element: '.buttons-container'
+        }
+      ]);
+      
+      document.getElementById('guide-btn').addEventListener('click', () => {
+        intro.start();
+      });
 });

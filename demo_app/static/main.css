@@ -148,6 +148,27 @@ footer {
     border-radius: 0 0 10px 0;
 }
 
+.loading {
+    text-align: center;
+    padding: 30px;
+    color: #64748b;
+}
+
+.error-message {
+    background-color: #fee2e2;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.tags-container {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
     .experiments-grid {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

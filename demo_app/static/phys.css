@@ -1,0 +1,235 @@
+.phys {
+    cursor: grab !important;
+    transition: filter 0.2s, box-shadow 0.2s !important;
+    user-select: none !important;
+    position: absolute !important;
+    z-index: 1 !important;
+}
+
+.phys:hover {
+    filter: brightness(1.05) !important;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3) !important;
+}
+
+.phys:active {
+    cursor: grabbing !important;
+    z-index: 100 !important;
+}
+
+.phys-attachable {
+    cursor: context-menu !important;
+}
+
+.phys-attachable:hover {
+    box-shadow: 0 0 0 2px rgba(155, 89, 182, 0.5) !important;
+}
+
+.phys-fixed {
+    cursor: default !important;
+    transition: filter 0.2s, box-shadow 0.2s !important;
+    user-select: none !important;
+    position: absolute !important;
+    z-index: 1 !important;
+}
+
+.phys-fixed:hover {
+    filter: brightness(1.05) !important;
+    box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.3) !important;
+}
+
+.phys-fixed.phys-attachable {
+    cursor: context-menu !important;
+}
+
+.phys-fixed.phys-attachable:hover {
+    box-shadow: 0 0 0 2px rgba(142, 68, 173, 0.5) !important;
+}
+
+.phys-fixed.selected {
+    outline: 2px dashed #3498db !important;
+    outline-offset: 3px !important;
+    z-index: 50 !important;
+}
+
+.phys-fixed.attached {
+    box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.5), 0 0 10px rgba(46, 204, 113, 0.3) !important;
+}
+
+.selected {
+    outline: 2px dashed #3498db !important;
+    outline-offset: 3px !important;
+    z-index: 50 !important;
+}
+
+.attached {
+    box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.5), 0 0 10px rgba(46, 204, 113, 0.3) !important;
+}
+
+.attached.selected:after {
+    content: "✓" !important;
+    position: absolute !important;
+    top: -15px !important;
+    right: -15px !important;
+    background-color: #2ecc71 !important;
+    color: white !important;
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+}
+
+.selected:not(.attached):after {
+    content: "Q/E to rotate" !important;
+    position: absolute !important;
+    bottom: -25px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    color: white !important;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+    border-radius: 3px !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+    opacity: 0.8 !important;
+}
+
+.phys.group-parent {
+    z-index: 40 !important;
+}
+
+.phys.group-child {
+    z-index: 41 !important;
+    pointer-events: none !important;
+}
+
+.phys.incompatible-attachment {
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.5), 0 0 10px rgba(231, 76, 60, 0.3) !important;
+    animation: shake 0.5s !important;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0) !important; }
+    20%, 60% { transform: translateX(-5px) !important; }
+    40%, 80% { transform: translateX(5px) !important; }
+}
+
+.step-highlight {
+    animation: pulse 1.5s infinite !important;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7) !important; }
+    70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0) !important; }
+    100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0) !important; }
+}
+
+.step-completed {
+    outline: 2px solid #2ecc71 !important;
+    outline-offset: 3px !important;
+}
+
+.instruction-hint {
+    position: absolute !important;
+    background-color: rgba(52, 152, 219, 0.9) !important;
+    color: white !important;
+    padding: 5px 10px !important;
+    border-radius: 5px !important;
+    font-size: 12px !important;
+    pointer-events: none !important;
+    z-index: 1000 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+    white-space: nowrap !important;
+}
+
+.instruction-hint:after {
+    content: '' !important;
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-left: 7px solid transparent !important;
+    border-right: 7px solid transparent !important;
+    border-top: 7px solid rgba(52, 152, 219, 0.9) !important;
+    bottom: -7px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+}
+
+.phys.disabled {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.phys-deny {
+    outline: 2px dashed #ff0000 !important;
+    outline-offset: 3px !important;
+    animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) !important;
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.5), 0 0 10px rgba(231, 76, 60, 0.3) !important;
+    filter: brightness(1.1) !important;
+    position: relative;
+}
+
+.phys-deny::after {
+    content: '❌' !important;
+    position: absolute !important;
+    top: -12px !important;
+    right: -12px !important;
+    background-color: #e74c3c !important;
+    color: white !important;
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 10px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0) !important; }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) !important; }
+    20%, 40%, 60%, 80% { transform: translateX(4px) !important; }
+}
+
+.phys-wire {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.phys-wire path {
+    stroke-width: 3.5px;
+    fill: none;
+    pointer-events: stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.phys-wire path:hover {
+    stroke-width: 5px;
+    cursor: pointer;
+    filter: drop-shadow(0px 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+.connection-point-indicator {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: #8ca6b8e1;
+    border-radius: 50%;
+    border: 2px solid #eeeeee;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 3px rgba(0,0,0,0.5);
+    z-index: 1000;
+    pointer-events: none;
+}

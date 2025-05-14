@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Виртуальная лаборатория физики</title>
-    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="./static/main.css">
 </head>
 <body>
     <div id="main-container">
@@ -13,194 +13,13 @@
             <p class="subtitle">Интерактивные эксперименты для изучения физических законов</p>
         </header>
 
-        <div class="experiments-grid">
-            <a href="/lab1" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab1.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Плотность воздуха</h3>
-                    <p>Экспериментальное определение плотности воздуха с использованием закона Бойля-Мариотта.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Механика</span>
-                        <span class="card-badge">Термодинамика</span>
-                        <span class="card-badge">Газы</span>
-                    </div>
-                </div>
-                <span class="number">#1</span>
-            </a>
-            
-            <a href="/lab2" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab2.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Закон Архимеда и масса тела</h3>
-                    <p>Изучение выталкивающей силы и закона Архимеда для определения массы тела. Эксперимент демонстрирует практическое применение принципа Архимеда для измерения физических характеристик объектов.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Механика</span>
-                        <span class="card-badge">Гидростатика</span>
-                    </div>
-                </div>
-                <span class="number">#2</span>
-            </a>
-
-            <a href="/lab3" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab3.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Бросок под углом</h3>
-                    <p>Исследование траектории движения тела, брошенного под углом к горизонту. Определение зависимости дальности полета от угла броска. Проверка теоретических расчетов экспериментальным путем.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Механика</span>
-                        <span class="card-badge">Кинематика</span>
-                    </div>
-                </div>
-                <span class="number">#3</span>
-            </a>
-
-            <a href="/lab4" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab4.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Закон сохранения энергии</h3>
-                    <p>Экспериментальное подтверждение закона сохранения энергии на примере преобразования потенциальной энергии растянутой пружины в кинетическую энергию движущегося тела. Выявление факторов, влияющих на сохранение энергии в реальных системах.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Механика</span>
-                        <span class="card-badge">Динамика</span>
-                        <span class="card-badge">Энергия</span>
-                    </div>
-                </div>
-                <span class="number">#4</span>
-            </a>
-
-            <a href="/lab5" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab5.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Измерение атмосферного давления</h3>
-                    <p>Экспериментальное определение атмосферного давления с помощью метода Торричелли, используя водяной столб. Изучение зависимости между высотой столба жидкости и величиной давления.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Гидростатика</span>
-                        <span class="card-badge">Давление</span>
-                        <span class="card-badge">Атмосфера</span>
-                    </div>
-                </div>
-                <span class="number">#5</span>
-            </a>
-
-            <a href="/lab7" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab7.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Плавление льда</h3>
-                    <p>Измерение удельной температуры плавления льда с использованием калориметра и тёплой воды.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Механика</span>
-                        <span class="card-badge">Энергия</span>
-                    </div>
-                </div>
-                <span class="number">#7</span>
-            </a>
-
-            <a href="/lab8" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab8.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Парообразование</h3>
-                    <p>Удельная теплота парообразования воды определяется по изменению её уровня в сосуде при выкипании.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Механика</span>
-                        <span class="card-badge">Энергия</span>
-                    </div>
-                </div>
-                <span class="number">#8</span>
-            </a>
-
-            <a href="/lab9" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab9.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Электрическое сопротивление</h3>
-                    <p>Определение температурного коэффициента сопротивления металла. Построение простейшей электрической цепи.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Электроника</span>
-                        <span class="card-badge">Энергия</span>
-                    </div>
-                </div>
-                <span class="number">#9</span>
-            </a>
-
-            <a href="/lab10" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab10.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Световая волна</h3>
-                    <p>Опрделение длины световой волны, используя дифракционную решетку с известным периодом d.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Механика</span>
-                        <span class="card-badge">Оптика</span>
-                    </div>
-                </div>
-                <span class="number">#10</span>
-            </a>
-
-            <a href="/lab15" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab15.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Измерение ЭДС</h3>
-                    <p>Измерение ЭДС и внутреннего сопротивления источника тока. Сборка простейшей электрической цепи для проведения эксперимента.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Электроника</span>
-                        <span class="card-badge">Энергия</span>
-                    </div>
-                </div>
-                <span class="number">#15</span>
-            </a>
-
-            <a href="/lab16" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab16.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Измерение ЭДС</h3>
-                    <p>Измерение ЭДС и внутреннего сопротивления источника тока. Сборка простейшей электрической цепи для проведения эксперимента.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Электроника</span>
-                        <span class="card-badge">Энергия</span>
-                    </div>
-                </div>
-                <span class="number">#16</span>
-            </a>
-
-            <a href="/lab18" class="experiment-card">
-                <div class="card-image" style="background-image: url('images/lab18.png');">
-                    <div class="card-overlay"></div>
-                </div>
-                <div class="card-content">
-                    <h3>Закон радиоактивного распада</h3>
-                    <p>Изучение закона радиоактивного распада на примере бросков монет.</p>
-                    <div class="tags-container">
-                        <span class="card-badge">Радиация</span>
-                        <span class="card-badge">Вероятности</span>
-                    </div>
-                </div>
-                <span class="number">#18</span>
-            </a>        
-            
+        <div class="experiments-grid">     
+            <!-- Labs will be here -->
         </div>
         <footer>
             <p>© 2025 IVANVIT</p>
         </footer>
     </div>
+    <script src="./static/main.js"></script>
 </body>
 </html>
