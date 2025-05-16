@@ -8,6 +8,12 @@ app = Flask(__name__, template_folder='./')
 def main_page():
     return render_template('index.html')
 
+@app.route('/favicon.ico')
+def favicon():
+    favicon_path = os.path.join(app.root_path, 'static')
+    return send_from_directory(favicon_path, 'favicon.ico', mimetype='image/x-icon')
+
+
 @app.route('/lab/index.html/')
 def lab_index_redirect():
     return redirect('/')

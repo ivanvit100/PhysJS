@@ -121,6 +121,11 @@ function initializeExperiment() {
         element: '#tabs-container'
       },
       {
+        title: 'Инструкция',
+        description: 'Здесь показывается, что нужно сделать на текущем шаге эксперимента.',
+        element: '#steps-vis'
+      },
+      {
         title: 'Рабочая область',
         description: 'В этой области расположено оборудование, которое используется для проведения лабораторной работы.',
         element: '#experiment-area'

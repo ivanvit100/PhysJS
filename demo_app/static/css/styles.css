@@ -4,11 +4,9 @@
 @import 'equipment.css';
 @import 'keyframes.css';
 
-/* CSS Variables */
 :root {
     user-select: none;
     
-    /* Colors */
     --color-primary: #3498db;
     --color-primary-dark: #2980b9;
     --color-secondary: #2c3e50;
@@ -22,45 +20,47 @@
     --color-gray-dark: #95a5a6;
     --color-gray-darker: #7f8c8d;
     
-    /* Transparency and overlays */
     --transparency-light: rgba(255, 255, 255, 0.85);
     --transparency-medium: rgba(255, 255, 255, 0.5);
     --glass-effect: rgba(200, 230, 255, 0.3);
     
-    /* Shadows */
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
     --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.2);
     --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.1);
     
-    /* Border radius */
     --radius-sm: 4px;
     --radius-md: 6px;
     --radius-lg: 12px;
     
-    /* Blur effects */
     --blur-effect: blur(8px);
     
-    /* Spacing */
     --spacing-xs: 5px;
     --spacing-sm: 10px;
     --spacing-md: 15px;
     --spacing-lg: 20px;
     
-    /* Fonts */
     --font-main: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'Consolas', monospace;
     
-    /* Transitions */
     --transition-default: all 0.3s ease;
     --transition-fast: all 0.2s ease;
 }
 
-/* Modern CSS Reset */
 *,
 *::before,
 *::after {
     box-sizing: border-box;
+}
+
+::selection {
+    background-color: var(--selection-background);
+    color: var(--selection-text);
+}
+
+::-moz-selection {
+    background-color: var(--selection-background);
+    color: var(--selection-text);
 }
 
 body,
@@ -74,7 +74,6 @@ html {
     color: #333;
 }
 
-/* Main container */
 #experiment-container {
     width: 100%;
     height: 100%;
@@ -82,7 +81,6 @@ html {
     background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
 }
 
-/* Header */
 header {
     position: absolute;
     top: 0;
@@ -96,7 +94,6 @@ header {
     text-align: center;
 }
 
-/* Experiment area */
 #experiment-area {
     position: absolute;
     top: 0;
