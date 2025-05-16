@@ -82,10 +82,6 @@
               opacity: 0.7 !important;
             }
             
-            .introjs-skipbutton:hover {
-              background: linear-gradient(to bottom, #c0392b 0%, #a93226 100%) !important;
-            }
-            
             .introjs-donebutton {
               background: linear-gradient(to bottom, #2ecc71 0%, #27ae60 100%) !important;
               color: white !important;
