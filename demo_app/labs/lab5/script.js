@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     elements.backBtn.addEventListener('click', () => {
-        window.location.href = '../index.html';
+        window.location.href = window.location.origin;
     });
     
     if (elements.submitButton) {

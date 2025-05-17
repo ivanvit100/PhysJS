@@ -683,7 +683,7 @@ const experimentFunctions = {
     
     resetExperiment() { window.location.reload(); },
     
-    backToMainPage() { window.location.href = '../index.html'; }
+    backToMainPage() { window.location.href = window.location.origin; }
 };
 
 export default experimentFunctions;

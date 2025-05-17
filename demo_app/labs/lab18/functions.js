@@ -550,7 +550,7 @@ const experimentFunctions = {
     },
 
     backToMainPage() {
-        window.location.href = '../index.html';
+        window.location.href = window.location.origin;
     }
 };
 

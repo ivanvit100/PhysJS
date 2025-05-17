@@ -397,8 +397,8 @@ const experimentFunctions = {
     },
     
     goBack() {
-        window.location.href = '../index.html';
-    }    
+        window.location.href = window.location.origin;
+    }
 };
 
 export default experimentFunctions;
