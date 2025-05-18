@@ -52,7 +52,7 @@ const experimentFunctions = {
         setInterval(() => this.checkCylinderProximity(), 200);
     },
 
-    elementsOverlap(el1, el2, tolerance = 0) {
+    sOverlap(el1, el2, tolerance = 0) {
         const rect1 = el1.getBoundingClientRect();
         const rect2 = el2.getBoundingClientRect();
         
@@ -92,7 +92,7 @@ const experimentFunctions = {
             hoseObj.detach();
             sphereObj.detach();
             
-            if (!hoseObj.isAttached && !sphereObj.isAttached) {
+         element   if (!hoseObj.isAttached && !sphereObj.isAttached) {
                 hoseObj.attach(sphereObj);
             }
         }

@@ -1,0 +1,80 @@
+.water_container1 {
+    width: 140px;
+    height: 230px;
+    left: 500px;
+    top: 220px;
+    border: 2px solid rgba(208, 143, 143, 0.8);
+    border-radius: 10px;
+}
+
+.water_container2 {
+    width: 140px;
+    height: 170px;
+    right: 500px;
+    top: 280px;
+    border: 2px solid rgba(143, 174, 195, 0.8);
+    border-radius: 10px;
+}
+
+#hot{
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    right: 5px;
+    bottom: 5px;
+    border-radius: 90px;
+    border: 1px solid rgba(170, 0, 0, 1);
+    background-color: red;
+    background: linear-gradient(135deg,rgba(255, 0, 0, 1) 0%, rgba(195, 0, 0, 1) 51%, rgba(170, 0, 0, 1) 100%);
+    z-index: 4;
+}
+
+#cold{
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    right: 5px;
+    bottom: 5px;
+    border-radius: 90px;
+    border: 1px solid rgba(0, 0, 170, 1);
+    background-color: blue;
+    background: linear-gradient(135deg,rgba(0, 0, 255, 1) 0%, rgba(0, 0, 195, 1) 51%, rgba(0, 0, 170, 1) 100%);
+    z-index: 4;
+}
+
+
+#glass-tube{
+    position: absolute;    
+    width: 20px;
+    height: 230px;
+    left: calc(50% - 11px);
+    top: 220px;
+}
+
+.glass-tube-cont {
+    border-radius: 0 0 10px 10px;
+}
+
+#cork {
+    position: absolute;    
+    width: 15px;
+    height: 20px;
+    left: 900px;
+    top: 200px;
+    background: linear-gradient(180deg,rgb(124, 86, 70) 0%, rgb(50, 34, 28) 100%);
+}
+
+#cork::before {
+    content: '';
+    position: absolute;    
+    width: 20px;
+    height: 5px;
+    left: -15%;
+    top: 0px;
+    border: 3px;
+    background: linear-gradient(180deg,rgb(124, 86, 70) 0%, rgb(50, 34, 28) 100%);
+}
+
+#cork.attached {
+    z-index: -1;
+}

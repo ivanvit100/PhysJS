@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лабораторная работа №3</title>
+    <link rel="stylesheet" href="../phys.css">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="specific.css">
+</head>
+<body>
+    <div id="experiment-container">
+        <header>
+            <h1>Проверка уравнения состояния газа</h1>
+        </header>
+
+        <div id="experiment-area">
+            <div id="water-container1" class="water_container1 phys-fixed equipment" data-name="Сосуд с горячей водой" data-type="water-container1">
+                <div class="container-body"></div>
+                <div id="hot"></div>
+                <div id="water1" class="water"></div>
+                <div id="cylinder-marks" class="cylinder-marks">
+                    <div class="mark" style="top: 8%"><span class="mark-label">600мл</span></div>
+                    <div class="mark" style="top: 32%"><span class="mark-label">450мл</span></div>
+                    <div class="mark" style="top: 56%"><span class="mark-label">300мл</span></div>
+                    <div class="mark" style="top: 80%"><span class="mark-label">150мл</span></div>
+                </div>
+            </div>
+
+            <div id="water-container2" class="water_container2 phys-fixed equipment" data-name="Сосуд с холодной водой" data-type="water-container2">
+                <div class="container-body"></div>
+                <div id="cold"></div>
+                <div id="water2" class="water"></div>
+            </div>
+
+            <div id="glass-tube" class="phys-attachable equipment" data-name="Стеклянная трубка" data-type="glass-tube">
+                <div class="glass-tube-cont container-body"></div>
+            </div>
+
+            <div id="cork" class="phys-attachable equipment" data-name="Пробка" data-type="cork"></div>
+        </div>
+    </div>
+    <script src="../phys.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
