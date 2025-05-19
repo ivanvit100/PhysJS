@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лабораторная работа: Определение показателя преломления стекла линзы</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="lab-container">
+        <h1>Лабораторная работа: Определение показателя преломления стекла линзы</h1>
+
+        <div class="theory">
+            <h2>Теоретическая часть</h2>
+            <p>Показатель преломления стекла (n) можно определить, измерив параметры двояковыпуклой линзы и её фокусное расстояние.</p>
+            <p>Для двояковыпуклой линзы действует формула: <strong>n = (R/2F) + 1</strong>, где R - радиус кривизны сферических поверхностей линзы, F - фокусное расстояние.</p>
+            <p>Радиус кривизны (R) вычисляется по формуле: <strong>R = (D²/4 + (H-h₀)²)/(2*(H-h₀))</strong>, где D - диаметр линзы, H - толщина линзы в центре, h₀ - толщина линзы на краю.</p>
+        </div>
+
+        <div class="measurement-controls">
+            <h2>Измерение параметров линзы</h2>
+            <div class="caliper-controls">
+                <button id="toggle-caliper" class="measure-button">Показать/Скрыть штангенциркуль</button>
+            </div>
+            <p class="instruction">Используйте штангенциркуль для измерения толщины (H), диаметра (D) и толщины края (h₀) линзы. Перетащите экран для определения фокусного расстояния (F).</p>
+        </div>
+
+        <div class="simulation-area">
+            <canvas id="simulationCanvas" width="800" height="400">
+                Ваш браузер не поддерживает Canvas.
+            </canvas>
+            <div id="ruler-container">
+                <div id="ruler-f">
+                    <div class="ruler-line-f"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-input-area">
+            <h2>Ваши измерения</h2>
+            <div class="input-group">
+                <label for="user-thickness">Толщина линзы (H):</label>
+                <input type="number" id="user-thickness" placeholder="см" step="0.1" min="0">
+                <span id="thickness-check" class="check-mark"></span>
+            </div>
+            <div class="input-group">
+                <label for="user-diameter">Диаметр линзы (D):</label>
+                <input type="number" id="user-diameter" placeholder="см" step="0.1" min="0">
+                <span id="diameter-check" class="check-mark"></span>
+            </div>
+            <div class="input-group">
+                <label for="user-edge-thickness">Толщина края (h₀):</label>
+                <input type="number" id="user-edge-thickness" placeholder="см" step="0.1" min="0">
+                <span id="edge-thickness-check" class="check-mark"></span>
+            </div>
+            <div class="input-group">
+                <label for="user-focus">Фокусное расстояние (F):</label>
+                <input type="number" id="user-focus" placeholder="см" step="0.1" min="0">
+                <span id="focus-check" class="check-mark"></span>
+            </div>
+            <div class="input-group">
+                <label for="user-radius">Радиус кривизны (R):</label>
+                <input type="number" id="user-radius" placeholder="пикс" step="0.1" min="0">
+                <span id="radius-check" class="check-mark"></span>
+            </div>
+            <div class="input-group">
+                <label for="user-refractive-index">Показатель преломления (n):</label>
+                <input type="number" id="user-refractive-index" placeholder="безразмерн." step="0.01" min="1">
+                <span id="refractive-index-check" class="check-mark"></span>
+            </div>
+            <button id="check-measurements" class="check-button">Проверить измерения</button>
+            <button id="calculate-button" class="calculate-button">Рассчитать и добавить в таблицу</button>
+            <div id="error-info"></div>
+        </div>
+
+        <div class="results-area">
+            <h2>Результаты измерений и расчетов</h2>
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>f, см</th>
+                        <th>F, см</th>
+                        <th>H, см</th>
+                        <th>D, см</th>
+                        <th>h₀, см</th>
+                        <th>R, см</th>
+                        <th>n</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    <!-- Результаты будут добавлены сюда -->
+                </tbody>
+            </table>
+            <button id="reset-button">Сбросить измерения</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
