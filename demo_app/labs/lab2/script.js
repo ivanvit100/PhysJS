@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (rulerObj) {
                 rulerObj.rotation = 90;
                 rulerObj.element.style.transform = 'rotate(90deg)';
-                rulerObj.setPosition(0, 320);
+                rulerObj.setPosition(-65, 390);
             }
             if (dynamometerObj) {
                 dynamometerObj.setPosition(standObj.x + 30, standObj.y + 50);
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
             experimentState.weightAttached = true;
     
-            // springEnd.style.transition = 'top 0.7s ease-in-out';
+            springEnd.style.transition = 'top 0.2s ease-in-out';
             pointer.style.transition = 'top 0.7s ease-in-out';
             spring.style.transition = 'height 0.7s ease-in-out';
     

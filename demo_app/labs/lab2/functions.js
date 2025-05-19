@@ -32,7 +32,7 @@ const experimentFunctions = {
         const step2 = physjs.createStep('step2', 'Прикрепите линейку и отметьте начальное положение', ['#ruler', '#dynamometer']);
         const step3 = physjs.createStep('step3', 'Прикрепите груз к динамометру', ['#weight', '#dynamometer']);
         const step4 = physjs.createStep('step4', 'Измерьте удлинение с грузом');
-        const step5 = physjs.createStep('step5', 'Погрузите груз в воду и измерьте удлинение');
+        const step5 = physjs.createStep('step5', 'Погрузите груз в воду и измерьте удлинение', [], ['#ruler']);
         
         physjs.addStep(step1).addStep(step2).addStep(step3).addStep(step4).addStep(step5);
         
@@ -65,10 +65,10 @@ const experimentFunctions = {
     markInitialPosition(ruler, experimentState, advanceToStep, updateInstructions) {
         if (experimentState.step !== 2 || experimentState.initialPositionMarked) return;
         
-        const marker = this.createMarker(128, '#e74c3c', 'x₀');
+        const marker = this.createMarker(53, '#e74c3c', 'x₀');
         ruler.appendChild(marker);
     
-        experimentState.initialMarkerPosition = 128;
+        experimentState.initialMarkerPosition = 53;
         experimentState.initialPositionMarked = true;
     
         advanceToStep(3);
@@ -124,10 +124,10 @@ const experimentFunctions = {
     },
 
     generateSpringPath(height) {
-        const coils = 5;
+        const coils = 4;
         const segmentHeight = height / (coils * 2 + 2);
         
-        let path = `M5 0, 5 ${segmentHeight}`;
+        let path = `M5 0, 5 ${segmentHeight / 2}`;
         
         for (let i = 0; i < coils; i++) {
             const y1 = segmentHeight * (i * 2 + 1);
@@ -135,7 +135,7 @@ const experimentFunctions = {
             path += `, 1 ${y1}, 9 ${y2}`;
         }
         
-        path += `, 5 ${height - segmentHeight}, 5 ${height}`;
+        path += `, 5 ${height - segmentHeight - 5}, 5 ${height}`;
         
         return path;
     },
@@ -164,20 +164,21 @@ const experimentFunctions = {
 
     fixWaterContainer(experimentState, waterContainer, waterContainerObj, standObj, placeWeightInWater) {
         if (experimentState.step === 5 && !experimentState.weightInWater) {
-            if (!waterContainerObj || !standObj) return;
+            if (!waterContainerObj) return;
             
             const fixedX = standObj.x - 25;
-            const fixedY = standObj.y + standObj.height - 220;
+            const fixedY = standObj.y + standObj.height - 120;
             
             waterContainer.classList.remove('phys');
             waterContainer.classList.remove('phys-attachable');
             
             waterContainerObj.disabled = true;
             waterContainer.style.pointerEvents = 'none';
-
+    
             requestAnimationFrame(() => {
                 waterContainer.style.left = fixedX + 'px';
                 waterContainer.style.top = fixedY + 'px';    
+                waterContainer.style.zIndex = '5';
             });
             
             placeWeightInWater();
@@ -187,25 +188,34 @@ const experimentFunctions = {
     placeWeightInWater(experimentState, springEnd, pointer, spring, weight, water, volumeDisplay, updateInstructions) {
         if (experimentState.step !== 5 || experimentState.weightInWater) return;
                
-        springEnd.style.transition = 'top 0.7s ease-in-out';
-        pointer.style.transition = 'top 0.7s ease-in-out';
-        spring.style.transition = 'height 0.7s ease-in-out';
-        weight.style.transition = 'top 0.7s ease-in-out, left 0.7s ease-in-out';
+        const dynamometer = document.querySelector('#dynamometer');
+        const ruler = document.querySelector('#ruler');
+        const standClamp = document.querySelector("#stand-clamp");
+        
+        ruler.style.transition = 'top 1s ease-in-out';
+        pointer.style.transition = 'top 1s ease-in-out';
+        spring.style.transition = 'height 1s ease-in-out';
+        springEnd.style.transition = 'height 0.2s ease-in-out';
+        weight.style.transition = 'top 1s ease-in-out';
+        
+        const currentDynamometerTop = parseInt(dynamometer.style.top) || 180;
+        const currentRulerTop = parseInt(ruler.style.top) || 180;
+        
+        const moveDownOffset = 90;
+        
+        standClamp.style.top = (standClamp.getBoundingClientRect().top - 180 + moveDownOffset) + 'px';
+        dynamometer.style.top = (currentDynamometerTop + moveDownOffset) + 'px';
+        ruler.style.top = (currentRulerTop + moveDownOffset) + 'px';
+        weight.style.top = (parseInt(weight.style.top) + moveDownOffset) + 'px'
         
         const currentSpringHeight = parseInt(spring.style.height) || 120;
-        const currentSpringEndTop = parseInt(springEnd.style.top) || 180;
-        const currentPointerTop = parseInt(pointer.style.top) || 185;
-        const currentWeightTop = parseInt(weight.style.top) || 240;
-
-        const newHeight = currentSpringHeight - 10;
-        spring.style.height = newHeight + 'px';
-        this.updateSpringStretch(newHeight);
+        spring.style.height = currentSpringHeight + 'px';
+        this.updateSpringStretch(currentSpringHeight);
         
-        springEnd.style.top = (currentSpringEndTop - 10) + 'px';
-        pointer.style.top = (currentPointerTop - 10) + 'px';
-        weight.style.top = (currentWeightTop - 10) + 'px';
-               
-        water.style.transition = 'height 1s ease-in-out';
+        springEnd.style.top = (parseInt(springEnd.style.top) || 180) + 'px';
+        pointer.style.top = (parseInt(pointer.style.top) || 185) + 'px';
+        
+        water.style.transition = 'height 0.5s ease-in-out';
         water.style.height = '80%';
         
         setTimeout(() => {
@@ -215,7 +225,7 @@ const experimentFunctions = {
         
         experimentState.weightInWater = true;
         
-        updateInstructions("Груз помещен в воду. Нажмите на линейку, чтобы отметить новое положение растяжения.");
+        updateInstructions("Груз погружен в воду. Нажмите на линейку, чтобы отметить новое положение растяжения.");
     },
 
     checkCalculations(experimentState, springConstantInput, massInput, calculationResult, springConstantDisplay, 
@@ -356,7 +366,7 @@ const experimentFunctions = {
         spring.style.height = '100px';
         this.updateSpringStretch(100);
         
-        springEnd.style.transition = 'top 0.3s ease-in-out';
+        springEnd.style.transition = 'top 0.2s ease-in-out';
         springEnd.style.top = '160px';
         
         pointer.style.transition = 'top 0.3s ease-in-out';
