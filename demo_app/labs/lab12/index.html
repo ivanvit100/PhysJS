@@ -3,98 +3,280 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лабораторная работа: Определение показателя преломления стекла линзы</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Определение показателя преломления стекла линзы</title>
+    <link rel="stylesheet" href="../../static/phys.css">
+    <link rel="stylesheet" href="../../static/css/styles.css">
+    <link rel="stylesheet" href="specific.css">
 </head>
 <body>
-    <div class="lab-container">
-        <h1>Лабораторная работа: Определение показателя преломления стекла линзы</h1>
+    <div id="experiment-container">
+        <header>
+            <h1>Определение показателя преломления стекла линзы</h1>
+        </header>
 
-        <div class="theory">
-            <h2>Теоретическая часть</h2>
-            <p>Показатель преломления стекла (n) можно определить, измерив параметры двояковыпуклой линзы и её фокусное расстояние.</p>
-            <p>Для двояковыпуклой линзы действует формула: <strong>n = (R/2F) + 1</strong>, где R - радиус кривизны сферических поверхностей линзы, F - фокусное расстояние.</p>
-            <p>Радиус кривизны (R) вычисляется по формуле: <strong>R = (D²/4 + (H-h₀)²)/(2*(H-h₀))</strong>, где D - диаметр линзы, H - толщина линзы в центре, h₀ - толщина линзы на краю.</p>
-        </div>
-
-        <div class="measurement-controls">
-            <h2>Измерение параметров линзы</h2>
-            <div class="caliper-controls">
-                <button id="toggle-caliper" class="measure-button">Показать/Скрыть штангенциркуль</button>
-            </div>
-            <p class="instruction">Используйте штангенциркуль для измерения толщины (H), диаметра (D) и толщины края (h₀) линзы. Перетащите экран для определения фокусного расстояния (F).</p>
-        </div>
-
-        <div class="simulation-area">
+        <div id="experiment-area">
+            <!-- Canvas для симуляции -->
             <canvas id="simulationCanvas" width="800" height="400">
                 Ваш браузер не поддерживает Canvas.
             </canvas>
-            <div id="ruler-container">
-                <div id="ruler-f">
-                    <div class="ruler-line-f"></div>
+            
+            <!-- Линза -->
+            <div id="lens" class="phys phys-attachable" data-name="Линза" data-type="lens">
+                <div class="lens-body"></div>
+            </div>
+            
+            <!-- Штангенциркуль -->
+            <div id="caliper" class="phys phys-attachable equipment" data-name="Штангенциркуль" data-type="caliper">
+                <div class="caliper-body"></div>
+            </div>
+            
+            <!-- Оптическая скамья -->
+            <div id="optical-bench" class="phys phys-fixed" data-name="Оптическая скамья" data-type="bench">
+                <div class="bench-body"></div>
+            </div>
+            
+            <!-- Источник света -->
+            <div id="light-source" class="phys phys-attachable" data-name="Источник света" data-type="light-source">
+                <div class="source-body">
+                    <div class="source-indicator"></div>
+                </div>
+            </div>
+            
+            <!-- Экран -->
+            <div id="screen" class="phys phys-attachable" data-name="Экран" data-type="screen">
+                <div class="screen-body">
+                    <div class="screen-scale"></div>
+                </div>
+            </div>
+
+            <!-- Световой луч -->
+            <div class="light-beam" id="light-beam"></div>
+            <div class="light-impact" id="light-impact"></div>
+
+            <div id="help-text">
+                <div class="help-item"><span class="key-indicator">ЛКМ</span> перетащить объект</div>
+            </div>
+
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок выполнения</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step1" class="active">Измерьте толщину линзы (H) с помощью штангенциркуля</li>
+                    <li id="step2">Измерьте диаметр линзы (D) с помощью штангенциркуля</li>
+                    <li id="step3">Измерьте толщину края линзы (h₀) с помощью штангенциркуля</li>
+                    <li id="step4">Установите линзу на оптическую скамью между источником света и экраном</li>
+                    <li id="step5">Перемещайте экран до получения четкого изображения и измерьте фокусное расстояние (F)</li>
+                    <li id="step6">Рассчитайте радиус кривизны (R) и показатель преломления (n) по формулам</li>
+                </ol>
+            </div>
+        </div>
+        <div id="steps-vis" class="info-box info-box-primary mb-0">
+            <p id="current-instruction" class="mb-0">Измерьте показатели линзы с помощью штангенциркуля.</p>
+        </div>
+
+        <div class="panel ui-panel" id="measurement-panel">
+            <div class="panel-header"><div class="panel ui-panel" id="measurement-panel">
+                <div class="panel-header">
+                    <h3>Результаты измерений и расчетов</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="measurement-row">
+                        <span class="measurement-label">Толщина линзы (H):</span>
+                        <span class="measurement-value"><span id="thickness-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Диаметр линзы (D):</span>
+                        <span class="measurement-value"><span id="diameter-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Толщина края (h₀):</span>
+                        <span class="measurement-value"><span id="edge-thickness-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Фокусное расстояние (F):</span>
+                        <span class="measurement-value"><span id="focus-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Радиус кривизны (R):</span>
+                        <span class="measurement-value"><span id="radius-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row result">
+                        <span class="measurement-label">Показатель преломления (n):</span>
+                        <span class="measurement-value"><span id="refractive-index-value">-</span></span>
+                    </div>
+                    <button id="calculate-button" class="btn btn-primary mt-2">Рассчитать</button>
+                </div>
+            </div>
+                <h3>Результаты измерений и расчетов</h3>
+            </div>
+            <div class="panel-content">
+                <!-- Добавляем форму для ввода измерений -->
+                <div class="measurement-form">
+                    <div class="measurement-row">
+                        <span class="measurement-label">Толщина линзы (H):</span>
+                        <div class="measurement-input-group">
+                            <input type="number" id="user-thickness" class="measurement-input" step="0.1"> см
+                            <span id="thickness-check" class="check-mark"></span>
+                        </div>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Диаметр линзы (D):</span>
+                        <div class="measurement-input-group">
+                            <input type="number" id="user-diameter" class="measurement-input" step="0.1"> см
+                            <span id="diameter-check" class="check-mark"></span>
+                        </div>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Толщина края (h₀):</span>
+                        <div class="measurement-input-group">
+                            <input type="number" id="user-edge-thickness" class="measurement-input" step="0.1"> см
+                            <span id="edge-thickness-check" class="check-mark"></span>
+                        </div>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Фокусное расстояние (F):</span>
+                        <div class="measurement-input-group">
+                            <input type="number" id="user-focus" class="measurement-input" step="0.1"> см
+                            <span id="focus-check" class="check-mark"></span>
+                        </div>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Радиус кривизны (R):</span>
+                        <div class="measurement-input-group">
+                            <input type="number" id="user-radius" class="measurement-input" step="0.1"> см
+                            <span id="radius-check" class="check-mark"></span>
+                        </div>
+                    </div>
+                    <div class="measurement-row result">
+                        <span class="measurement-label">Показатель преломления (n):</span>
+                        <div class="measurement-input-group">
+                            <input type="number" id="user-refractive-index" class="measurement-input" step="0.01">
+                            <span id="refractive-index-check" class="check-mark"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Информационные поля для отображения -->
+                <div class="measurements-display" style="margin-top: 20px;">
+                    <div class="measurement-row">
+                        <span class="measurement-label">Толщина линзы (H):</span>
+                        <span class="measurement-value"><span id="thickness-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Диаметр линзы (D):</span>
+                        <span class="measurement-value"><span id="diameter-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Толщина края (h₀):</span>
+                        <span class="measurement-value"><span id="edge-thickness-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Фокусное расстояние (F):</span>
+                        <span class="measurement-value"><span id="focus-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row">
+                        <span class="measurement-label">Радиус кривизны (R):</span>
+                        <span class="measurement-value"><span id="radius-value">-</span> см</span>
+                    </div>
+                    <div class="measurement-row result">
+                        <span class="measurement-label">Показатель преломления (n):</span>
+                        <span class="measurement-value"><span id="refractive-index-value">-</span></span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="user-input-area">
-            <h2>Ваши измерения</h2>
-            <div class="input-group">
-                <label for="user-thickness">Толщина линзы (H):</label>
-                <input type="number" id="user-thickness" placeholder="см" step="0.1" min="0">
-                <span id="thickness-check" class="check-mark"></span>
-            </div>
-            <div class="input-group">
-                <label for="user-diameter">Диаметр линзы (D):</label>
-                <input type="number" id="user-diameter" placeholder="см" step="0.1" min="0">
-                <span id="diameter-check" class="check-mark"></span>
-            </div>
-            <div class="input-group">
-                <label for="user-edge-thickness">Толщина края (h₀):</label>
-                <input type="number" id="user-edge-thickness" placeholder="см" step="0.1" min="0">
-                <span id="edge-thickness-check" class="check-mark"></span>
-            </div>
-            <div class="input-group">
-                <label for="user-focus">Фокусное расстояние (F):</label>
-                <input type="number" id="user-focus" placeholder="см" step="0.1" min="0">
-                <span id="focus-check" class="check-mark"></span>
-            </div>
-            <div class="input-group">
-                <label for="user-radius">Радиус кривизны (R):</label>
-                <input type="number" id="user-radius" placeholder="пикс" step="0.1" min="0">
-                <span id="radius-check" class="check-mark"></span>
-            </div>
-            <div class="input-group">
-                <label for="user-refractive-index">Показатель преломления (n):</label>
-                <input type="number" id="user-refractive-index" placeholder="безразмерн." step="0.01" min="1">
-                <span id="refractive-index-check" class="check-mark"></span>
-            </div>
-            <button id="check-measurements" class="check-button">Проверить измерения</button>
-            <button id="calculate-button" class="calculate-button">Рассчитать и добавить в таблицу</button>
-            <div id="error-info"></div>
+        <div class="action-buttons">
+            <button id="calculate-button" class="btn btn-success">Рассчитать</button>
+            <button id="toggle-caliper" class="btn btn-secondary">Показать штангенциркуль</button>
+            <button id="check-measurements" class="btn btn-primary">Проверить измерения</button>
         </div>
 
-        <div class="results-area">
-            <h2>Результаты измерений и расчетов</h2>
-            <table id="results-table">
-                <thead>
-                    <tr>
-                        <th>f, см</th>
-                        <th>F, см</th>
-                        <th>H, см</th>
-                        <th>D, см</th>
-                        <th>h₀, см</th>
-                        <th>R, см</th>
-                        <th>n</th>
-                    </tr>
-                </thead>
-                <tbody id="results-body">
-                    <!-- Результаты будут добавлены сюда -->
-                </tbody>
-            </table>
-            <button id="reset-button">Сбросить измерения</button>
+        <div class="panel ui-panel" id="theory-panel">
+            <div class="panel-header">
+                <h3>Формулы</h3>
+            </div>
+            <div class="panel-content">
+                <div class="formula">n = (R/2F) + 1</div>
+                <div class="formula">R = (D²/4 + (H-h₀)²)/(2*(H-h₀))</div>
+                <div class="theory-description">
+                    <p>R - радиус кривизны сферических поверхностей линзы, F - фокусное расстояние.</p>
+                    <p>D - диаметр линзы, H - толщина линзы в центре, h₀ - толщина линзы на краю.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-table-panel" class="panel ui-panel">
+            <div class="panel-header">
+                <h3>Таблица результатов</h3>
+            </div>
+            <div class="panel-content">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>H, см</th>
+                            <th>D, см</th>
+                            <th>h₀, см</th>
+                            <th>F, см</th>
+                            <th>R, см</th>
+                            <th>n</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <!-- Результаты будут добавлены сюда -->
+                    </tbody>
+                </table>
+                <button id="add-to-table" class="btn btn-secondary mt-2">Добавить в таблицу</button>
+            </div>
+        </div>
+
+        <div class="buttons-container">
+            <button id="guide-btn" class="btn btn-info">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+                Гайд
+            </button>
+
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <div class="small-screen-alert">
+        <div class="alert-container">
+            <div class="content">
+                <div class="text">
+                    <h2>Хьюстон, у нас проблемы!</h2>
+                    <p>Сайт не адаптирован для вашего устройства</p>
+                    <p>Попробуйте зайти с компьютера или другого устройства с большим экраном</p>
+                </div>
+                <div class="image">
+                    <img src="../../static/images/frog.png" alt="Houston, we have a problem!">
+                </div>
+            </div>
+            <div class="ps">«Если не изучать магию, то весь мир будет казаться физикой» ©Жабка</div>
+        </div>
+    </div>
+
+    <script src="../../static/phys.js"></script>
+    <script src="../../static/intro-wrapper.js"></script>
+    <script type="module" src="script.js" defer></script>
 </body>
 </html>

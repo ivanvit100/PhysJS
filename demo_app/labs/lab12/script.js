@@ -3,7 +3,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const ctx = canvas.getContext('2d');
     const resultsBody = document.getElementById('results-body');
     const calculateButton = document.getElementById('calculate-button');
-    const resetButton = document.getElementById('reset-button');
+    const resetButton = document.getElementById('reset-btn');
     const checkMeasurementsButton = document.getElementById('check-measurements');
     const errorInfo = document.getElementById('error-info');
     const toggleCaliperButton = document.getElementById('toggle-caliper');
@@ -25,18 +25,20 @@ window.addEventListener('DOMContentLoaded', () => {
     const LENS_CENTER_X = 250;
     const LENS_CENTER_Y = canvas.height / 2;
 
-    const F = 200;
+    let correctAnswersCount = 0;
+    let incorrectAnswersCount = 0;
+    let measuredFocus = 0;
     
     // CONFIG
-    const H = 120;
+    const H = 170;
     const D = 250;
     const h0 = 60;
+    const n = 1.5;
     
     const R = ((D * D / 4) + Math.pow(H - h0, 2)) / (2 * (H - h0));
+    const F = R / (2 * (n - 1));
     
-    const n = (R / (2 * F)) + 1;
-    
-    let screenX = LENS_CENTER_X + F;
+    let screenX = LENS_CENTER_X + F * 1.2;
 
     const bulgeAtCenter = (H - h0) / 2;
     const halfDiameter = D / 2;
@@ -57,10 +59,7 @@ window.addEventListener('DOMContentLoaded', () => {
     
     function init() {
         drawSimulation();
-        setupEventListeners();
-    }
-
-    function setupEventListeners() {
+        
         calculateButton.addEventListener('click', handleCalculation);
         resetButton.addEventListener('click', resetMeasurements);
         checkMeasurementsButton.addEventListener('click', checkMeasurements);
@@ -70,6 +69,13 @@ window.addEventListener('DOMContentLoaded', () => {
         canvas.addEventListener('mousemove', handleMouseMove);
         canvas.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('mouseleave', handleMouseLeave);
+        
+        document.getElementById('guide-btn').addEventListener('click', () => {
+            intro.start();
+        });
+        document.getElementById('back-btn').addEventListener('click', () => {
+            window.location.href = window.location.origin;
+        });
     }
     
     function toggleCaliper() {
@@ -94,7 +100,7 @@ window.addEventListener('DOMContentLoaded', () => {
         calculatedResults = {};
         resultsBody.innerHTML = '';
         
-        screenX = LENS_CENTER_X + 200;
+        screenX = LENS_CENTER_X + F * 1.2;
         measuredFocus = 0;
         
         userThicknessInput.value = '';
@@ -103,6 +109,9 @@ window.addEventListener('DOMContentLoaded', () => {
         userFocusInput.value = '';
         userRadiusInput.value = '';
         userRefractiveIndexInput.value = '';
+
+        correctAnswersCount = 0;
+        incorrectAnswersCount = 0;
         
         thicknessCheck.className = 'check-mark';
         diameterCheck.className = 'check-mark';
@@ -121,13 +130,14 @@ window.addEventListener('DOMContentLoaded', () => {
         const mouseX = event.clientX - rect.left;
         const mouseY = event.clientY - rect.top;
         
-        // if (Math.abs(mouseX - screenX) <= 5) {
-        //     isDraggingScreen = true;
-        //     dragStartX = mouseX;
-        //     initialScreenX = screenX;
-        //     canvas.classList.add('dragging');
-        //     return;
-        // }
+        if (isPointInside(mouseX, mouseY, screenX, LENS_CENTER_Y, 10) || 
+            (mouseX >= screenX - 5 && mouseX <= screenX + 5 && mouseY >= 50 && mouseY <= canvas.height - 50)) {
+            isDraggingScreen = true;
+            dragStartX = mouseX;
+            initialScreenX = screenX;
+            canvas.classList.add('dragging');
+            return;
+        }
         
         if (showCaliper) {
             const pointRadius = 8;
@@ -281,6 +291,7 @@ window.addEventListener('DOMContentLoaded', () => {
     function checkMeasurements() {
         const tolerance = 8;
         const nTolerance = 0.05;
+        const FTolerance = 10;
         
         const userThickness = parseFloat(userThicknessInput.value) || 0;
         const userDiameter = parseFloat(userDiameterInput.value) || 0;
@@ -289,23 +300,12 @@ window.addEventListener('DOMContentLoaded', () => {
         const userR = parseFloat(userRadiusInput.value) || 0;
         const userN = parseFloat(userRefractiveIndexInput.value) || 0;
         
-        const currentFocus = screenX - LENS_CENTER_X;
-
         checkValue(userThickness, H, tolerance, thicknessCheck);
         checkValue(userDiameter, D, tolerance, diameterCheck);
         checkValue(userEdgeThickness, h0, tolerance, edgeThicknessCheck);
-        checkValue(userFocus, F, tolerance, focusCheck);
-        
+        checkValue(userFocus, F, FTolerance, focusCheck);
         checkValue(userR, R, tolerance, radiusCheck);
         checkValue(userN, n, nTolerance, refractiveIndexCheck);
-        
-        if (areAllMeasurementsValid()) {
-            errorInfo.textContent = 'Все измерения корректны! Нажмите "Рассчитать" для добавления в таблицу.';
-            errorInfo.style.color = 'green';
-        } else {
-            errorInfo.textContent = 'Некоторые измерения неточны. Попробуйте ещё раз.';
-            errorInfo.style.color = 'red';
-        }
     }
     
     function checkValue(userValue, actualValue, tolerance, checkElement) {
@@ -331,9 +331,19 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.lineTo(screenX, canvas.height - 50);
         ctx.stroke();
         
-        if (showCaliper) {
-            drawCaliper();
-        }
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0, 100, 0, 0.5)';
+        ctx.setLineDash([5, 3]);
+        ctx.moveTo(LENS_CENTER_X + F, 50);
+        ctx.lineTo(LENS_CENTER_X + F, canvas.height - 50);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = 'rgba(0, 100, 0, 0.8)';
+        ctx.font = '12px Arial';
+        ctx.fillText(`F = ${F.toFixed(1)}`, LENS_CENTER_X + F + 5, 70);
+        
+        showCaliper && drawCaliper();
     }
     
     function drawLens() {
@@ -393,7 +403,8 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         
-        const visualRefractionFactor = 0.9;
+        const focusX = centerX + F;
+        const focusY = centerY;
         
         for (let i = 0; i < numRays; i++) {
             const rayY = centerY - halfDiameter * 0.9 + i * raySpacing;
@@ -402,35 +413,27 @@ window.addEventListener('DOMContentLoaded', () => {
             const dx = Math.sqrt(Math.max(0, adjustedR * adjustedR - dy * dy)) - Math.sqrt(adjustedR * adjustedR - halfDiameter * halfDiameter);
             const entryX = leftCenter - dx;
             
-            const innerY = centerY + (rayY - centerY) * visualRefractionFactor;
-            
+            const innerY = centerY + (rayY - centerY) * 0.9;
             const innerDy = innerY - centerY;
             const innerDx = Math.sqrt(Math.max(0, adjustedR * adjustedR - innerDy * innerDy)) - Math.sqrt(adjustedR * adjustedR - halfDiameter * halfDiameter);
             const exitX = rightCenter + innerDx;
             
-            const h = rayY - centerY;
-            
-            const lensToScreen = screenX - centerX;
-            
-            let screenY;
-            
-            if (Math.abs(h) < 1) {
-                screenY = centerY;
-            } else {
-                screenY = centerY + h * (lensToScreen - F) / F;
-            }
+            const slope = (focusY - innerY) / (focusX - exitX);
+            const screenY = innerY + slope * (screenX - exitX);
             
             ctx.beginPath();
             ctx.moveTo(0, rayY);
-            // До левого края
             ctx.lineTo(entryX, rayY);
-
-            // До правого края
             ctx.lineTo(exitX, innerY);
-            
             ctx.lineTo(screenX, screenY);
-            
             ctx.stroke();
+            
+            if (i === Math.floor(numRays / 2)) {
+                ctx.beginPath();
+                ctx.arc(focusX, focusY, 3, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.fill();
+            }
         }
     }
 
@@ -459,7 +462,6 @@ window.addEventListener('DOMContentLoaded', () => {
         
         ctx.fillStyle = "#808080";
         ctx.fillRect(-distance/2 - 5, -caliperHeight/2 - 20, 5, caliperHeight + 40);
-        
         ctx.fillRect(distance/2, -caliperHeight/2 - 20, 5, caliperHeight + 40);
         
         ctx.fillStyle = "#000";
@@ -535,6 +537,47 @@ window.addEventListener('DOMContentLoaded', () => {
             errorInfo.style.color = 'green';
         }
     }
+
+    const tabsContent = intro.createTabContent([
+        'status-panel',
+        'theory-panel',
+        'results-table-panel',
+        'measurement-panel'
+    ], 'tabs-container');
+          
+    const tabButtons = tabsContent.querySelectorAll('.info-content-buttons button');
+    tabButtons[0].textContent = 'Порядок';
+    tabButtons[1].textContent = 'Формулы';
+    tabButtons[2].textContent = 'Таблица';
+    tabButtons[3].textContent = 'Результаты';
+      
+    intro.init([
+        {
+            title: 'Информация',
+            description: 'Здесь вы можете ознакомиться с порядком выполнения лабораторной работы, теоретической моделью, и результатами эксперимента.',
+            element: '#tabs-container'
+        },
+        {
+            title: 'Инструкция',
+            description: 'Здесь показывается, что нужно сделать на текущем шаге эксперимента.',
+            element: '#steps-vis'
+        },
+        {
+            title: 'Рабочая область',
+            description: 'В этой области расположено оборудование, которое используется для проведения лабораторной работы.',
+            element: '#experiment-area'
+        },
+        {
+            title: 'Подсказки',
+            description: 'Здесь вы можете ознакомиться с краткими подсказками по управлению в эксперименте.',
+            element: '#help-text'
+        },
+        {
+            title: 'Панель управления',
+            description: 'Здесь расположены кнопки управления экспериментом. Кнопка "Сбросить" начинает эксперимент заново.',
+            element: '.buttons-container'
+        }
+    ]);
 
     init();
 });
