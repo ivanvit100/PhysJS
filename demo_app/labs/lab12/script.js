@@ -5,7 +5,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const calculateButton = document.getElementById('calculate-button');
     const resetButton = document.getElementById('reset-btn');
     const checkMeasurementsButton = document.getElementById('check-measurements');
-    const errorInfo = document.getElementById('error-info');
     const toggleCaliperButton = document.getElementById('toggle-caliper');
 
     const userThicknessInput = document.getElementById('user-thickness');
@@ -25,10 +24,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const LENS_CENTER_X = 250;
     const LENS_CENTER_Y = canvas.height / 2;
 
-    let correctAnswersCount = 0;
-    let incorrectAnswersCount = 0;
-    let measuredFocus = 0;
-    
     // CONFIG
     const H = 170;
     const D = 250;
@@ -87,11 +82,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 x2: canvas.width / 2 + 50,
                 y2: canvas.height / 2
             };
-            errorInfo.textContent = 'Штангенциркуль активирован. Перетащите его для измерения параметров линзы.';
-            errorInfo.style.color = '#333';
-        } else {
-            errorInfo.textContent = 'Штангенциркуль скрыт.';
-            errorInfo.style.color = '#333';
         }
         drawSimulation();
     }
@@ -121,8 +111,6 @@ window.addEventListener('DOMContentLoaded', () => {
         refractiveIndexCheck.className = 'check-mark';
         
         drawSimulation();
-        errorInfo.textContent = 'Все результаты сброшены.';
-        errorInfo.style.color = '#333';
     }
 
     function handleMouseDown(event) {
@@ -251,14 +239,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleCalculation() {
-        if (!areAllMeasurementsValid()) {
-            errorInfo.textContent = 'Ошибка: Заполните все поля корректными значениями и проверьте их точность.';
-            errorInfo.style.color = 'red';
-            return;
-        }
+        if (!areAllMeasurementsValid()) return;
         
-        errorInfo.textContent = '';
-
         const h = parseFloat(userThicknessInput.value);
         const d = parseFloat(userDiameterInput.value);
         const h0 = parseFloat(userEdgeThicknessInput.value);
@@ -532,9 +514,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 <td>${res.R.toFixed(1)}</td>
                 <td>${res.n.toFixed(4)}</td>
             `;
-            
-            errorInfo.textContent = 'Расчет выполнен успешно!';
-            errorInfo.style.color = 'green';
         }
     }
 
