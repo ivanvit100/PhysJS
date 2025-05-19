@@ -183,6 +183,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const substance = substances[currentSubstanceId];
         const currentR = measuredCircumference / (2 * Math.PI);
     
+        // Отрисовка сферической линзы
         ctx.beginPath();
         ctx.arc(LENS_CENTER_X, LENS_CENTER_Y, currentR, 0, 2 * Math.PI);
         ctx.fillStyle = substance.color;
@@ -196,7 +197,18 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = 'black';
         ctx.fill();
     
-        const F_ideal = currentR / (2 * (substance.n_actual - 1));
+        // Расчет фокусного расстояния с учетом физической достоверности
+        let n_effective = substance.n_actual;
+        
+        // Максимальное эффективное значение n, при котором фокус остается за пределами линзы
+        const maxNForExternalFocus = 1 + currentR / (2 * (currentR + 10));
+        
+        // Если n слишком высок, корректируем эффективное значение для визуализации
+        if (substance.n_actual > maxNForExternalFocus) {
+            n_effective = maxNForExternalFocus;
+        }
+        
+        const F_ideal = currentR / (2 * (n_effective - 1));
         const focusPointX = LENS_CENTER_X + F_ideal;
     
         const numRays = 7;
@@ -206,6 +218,7 @@ window.addEventListener('DOMContentLoaded', () => {
         
         const rayPositions = [];
         
+        // Рисуем входящие лучи
         for (let i = 0; i < numRays; i++) {
             const y = LENS_CENTER_Y - currentR * 0.8 + i * raySpacing;
             const entryX = LENS_CENTER_X - Math.sqrt(Math.max(0, currentR**2 - (y - LENS_CENTER_Y)**2));
@@ -227,30 +240,156 @@ window.addEventListener('DOMContentLoaded', () => {
         
         for (let i = 0; i < rayPositions.length; i++) {
             const ray = rayPositions[i];
+            
+            // Находим точку выхода из линзы
             const x_refract = LENS_CENTER_X + Math.sqrt(Math.max(0, currentR**2 - (ray.entry_y - LENS_CENTER_Y)**2));
+            
+            // Рассчитываем аберрацию - лучи дальше от оси имеют немного другой фокус
             const distanceFromAxis = Math.abs(ray.distance_from_axis);
             const aberrationFactor = 1 - 0.05 * Math.pow(distanceFromAxis / currentR, 2);
-            const effectiveFocalLength = F_ideal * aberrationFactor;
+            
+            // Рассчитываем эффективное фокусное расстояние с учетом аберрации
+            let effectiveFocalLength = F_ideal * aberrationFactor;
+            
+            // Минимальное допустимое фокусное расстояние - чуть больше радиуса
+            const minFocalLength = currentR + 10;
+            if (effectiveFocalLength < minFocalLength) {
+                effectiveFocalLength = minFocalLength;
+            }
+            
             const effectiveFocusX = LENS_CENTER_X + effectiveFocalLength;
-            const targetX = effectiveFocusX;
-            const targetY = LENS_CENTER_Y;
             
-            ctx.beginPath();
-            ctx.moveTo(x_refract, ray.entry_y);
+            // Направление луча после выхода из линзы - к фокусу
+            const rayDirection = Math.atan2(LENS_CENTER_Y - ray.entry_y, effectiveFocusX - x_refract);
             
-            const rayDirection = Math.atan2(targetY - ray.entry_y, targetX - x_refract);
-            const lineEndX = canvas.width;
-            const lineEndY = ray.entry_y + Math.tan(rayDirection) * (lineEndX - x_refract);
+            // Проверка на пересечение с окружностью - математически точный метод
+            let shouldDraw = true;
             
-            ctx.lineTo(targetX, targetY);
-            ctx.lineTo(lineEndX, lineEndY);
-            ctx.stroke();
+            // Вектор направления преломленного луча внутри сферы
+            const dirX = Math.cos(rayDirection);
+            const dirY = Math.sin(rayDirection);
             
-            ray.screen_x = screenX;
-            ray.screen_y = ray.entry_y + Math.tan(rayDirection) * (screenX - x_refract);
-            ray.aberration_factor = aberrationFactor;
+            // Проверяем пересечение луча с окружностью
+            // Точка старта - точка выхода из линзы
+            const startX = x_refract;
+            const startY = ray.entry_y;
+            
+            // Уравнение для пересечения луча с окружностью
+            const a = dirX*dirX + dirY*dirY;
+            const b = 2*((startX - LENS_CENTER_X)*dirX + (startY - LENS_CENTER_Y)*dirY);
+            const c = (startX - LENS_CENTER_X)*(startX - LENS_CENTER_X) + 
+                    (startY - LENS_CENTER_Y)*(startY - LENS_CENTER_Y) - 
+                    currentR*currentR;
+            
+            // Решаем квадратное уравнение
+            const discriminant = b*b - 4*a*c;
+            
+            // Если дискриминант > 0, то есть 2 точки пересечения
+            if (discriminant > 0) {
+                const t1 = (-b + Math.sqrt(discriminant)) / (2*a);
+                const t2 = (-b - Math.sqrt(discriminant)) / (2*a);
+                
+                // Нас интересуют только положительные значения t (движение вперед)
+                // и отбрасываем очень маленькие t (это текущая точка выхода)
+                const possibleT = [t1, t2].filter(t => t > 0.01);
+                
+                // Если есть хотя бы одно пересечение впереди, луч пересекает сферу
+                if (possibleT.length > 0) {
+                    shouldDraw = false;
+                }
+            }
+            
+            // Дополнительная проверка для случая, когда луч направлен через фокус
+            if (shouldDraw && substance.n_actual <= maxNForExternalFocus) {
+                // Направление от точки выхода к фокусу
+                const toFocusX = effectiveFocusX - x_refract;
+                const toFocusY = LENS_CENTER_Y - ray.entry_y;
+                const toFocusLength = Math.sqrt(toFocusX*toFocusX + toFocusY*toFocusY);
+                
+                // Нормализованный вектор направления
+                const dirToFocusX = toFocusX / toFocusLength;
+                const dirToFocusY = toFocusY / toFocusLength;
+                
+                // Проверяем, пересекает ли линия от точки выхода к фокусу сферу
+                const a2 = dirToFocusX*dirToFocusX + dirToFocusY*dirToFocusY;
+                const b2 = 2*((x_refract - LENS_CENTER_X)*dirToFocusX + (ray.entry_y - LENS_CENTER_Y)*dirToFocusY);
+                const c2 = (x_refract - LENS_CENTER_X)*(x_refract - LENS_CENTER_X) + 
+                          (ray.entry_y - LENS_CENTER_Y)*(ray.entry_y - LENS_CENTER_Y) - 
+                          currentR*currentR;
+                
+                // Решаем квадратное уравнение
+                const discriminant2 = b2*b2 - 4*a2*c2;
+                
+                if (discriminant2 > 0) {
+                    const t1 = (-b2 + Math.sqrt(discriminant2)) / (2*a2);
+                    const t2 = (-b2 - Math.sqrt(discriminant2)) / (2*a2);
+                    
+                    // Нас интересуют только положительные t, меньшие расстояния до фокуса
+                    const possibleT = [t1, t2].filter(t => t > 0.01 && t < toFocusLength);
+                    
+                    if (possibleT.length > 0) {
+                        shouldDraw = false;
+                    }
+                }
+            }
+            
+            if (shouldDraw) {
+                // Рисуем путь луча внутри линзы и после выхода
+                ctx.beginPath();
+                ctx.moveTo(ray.entry_x, ray.entry_y);
+                
+                // Подбираем цвет луча внутри линзы
+                ctx.strokeStyle = 'rgba(255, 150, 150, 0.5)';
+                ctx.lineTo(x_refract, ray.entry_y);
+                ctx.stroke();
+                
+                // Рисуем луч после выхода из линзы
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                
+                // Рассчитываем точку на экране
+                const screenY = ray.entry_y + Math.tan(rayDirection) * (screenX - x_refract);
+                
+                ctx.moveTo(x_refract, ray.entry_y);
+                
+                // Если фокус внутри линзы из-за высокого n, рисуем лучи без перегиба
+                if (substance.n_actual > maxNForExternalFocus) {
+                    // Просто продолжаем луч от точки выхода
+                    ctx.lineTo(screenX, screenY);
+                } else {
+                    // Обычное поведение - луч идет через фокус
+                    ctx.lineTo(effectiveFocusX, LENS_CENTER_Y);
+                    ctx.lineTo(screenX, screenY);
+                }
+                
+                ctx.stroke();
+                
+                // Сохраняем точку пересечения с экраном
+                ray.screen_x = screenX;
+                ray.screen_y = screenY;
+            } else {
+                // Для лучей, которые не рисуем полностью, рисуем только начальный путь внутри линзы
+                ctx.beginPath();
+                ctx.moveTo(ray.entry_x, ray.entry_y);
+                ctx.strokeStyle = 'rgba(255, 150, 150, 0.3)';
+                const partialPath = ray.entry_x + (x_refract - ray.entry_x) * 0.7;
+                ctx.lineTo(partialPath, ray.entry_y);
+                ctx.stroke();
+                
+                // Помечаем, что этот луч не дошел до экрана
+                ray.screen_x = null;
+                ray.screen_y = null;
+            }
         }
         
+        // Отмечаем фокусную точку
+        ctx.beginPath();
+        ctx.arc(focusPointX, LENS_CENTER_Y, 3, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+        ctx.fill();
+        
+        // Остальной код остается прежним...
+        // Отрисовка экрана
         const screenWidth = 15;
         const screenHeight = canvas.height - 100;
         const screenY = 50;
@@ -263,63 +402,68 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.fill();
         ctx.stroke();
         
+        // Отрисовка точек на экране и светового пятна
         const distanceFromFocus = Math.abs(screenX - focusPointX);
         const maxDistance = canvas.width / 2;
         const relativeDistance = Math.min(1, distanceFromFocus / maxDistance);
         
+        let visibleRays = 0;
         for (let i = 0; i < rayPositions.length; i++) {
             const ray = rayPositions[i];
             
-            if (ray.screen_y >= screenY && ray.screen_y <= screenY + screenHeight) {
-                const rayFocusX = LENS_CENTER_X + F_ideal * ray.aberration_factor;
-                const rayDistanceFromFocus = Math.abs(screenX - rayFocusX);
-                const rayRelativeDistance = Math.min(1, rayDistanceFromFocus / maxDistance);
-                const dotSize = 2 + rayRelativeDistance * 8;
-                const dotOpacity = 0.7 - rayRelativeDistance * 0.5;
+            if (ray.screen_x !== null && ray.screen_y !== null &&
+                ray.screen_y >= screenY && ray.screen_y <= screenY + screenHeight) {
+                const dotSize = 2 + relativeDistance * 8;
+                const dotOpacity = 0.7 - relativeDistance * 0.5;
                 
                 ctx.beginPath();
                 ctx.arc(ray.screen_x, ray.screen_y, dotSize, 0, 2 * Math.PI);
                 ctx.fillStyle = `rgba(255, 220, 150, ${dotOpacity})`;
                 ctx.fill();
+                visibleRays++;
             }
         }
         
-        const minImageSize = 5;
-        const maxImageSize = 60;
-        const imageSize = minImageSize + relativeDistance * (maxImageSize - minImageSize);
-        
-        const minOpacity = 0.1;
-        const maxOpacity = 0.8;
-        const imageOpacity = maxOpacity - relativeDistance * (maxOpacity - minOpacity);
-        
-        const windowX = screenX;
-        const windowY = LENS_CENTER_Y;
-        
-        const gradient = ctx.createRadialGradient(
-            windowX, windowY, 0,
-            windowX, windowY, imageSize
-        );
-        gradient.addColorStop(0, `rgba(255, 215, 0, ${imageOpacity})`);
-        gradient.addColorStop(0.2, `rgba(255, 165, 0, ${imageOpacity * 0.7})`);
-        gradient.addColorStop(1, `rgba(255, 69, 0, 0)`);
-        
-        ctx.beginPath();
-        ctx.arc(windowX, windowY, imageSize, 0, 2 * Math.PI);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        
-        const windowLineSize = imageSize * 0.7;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${imageOpacity * 0.9})`;
-        ctx.lineWidth = 1 + (1 - relativeDistance) * 2;
-        ctx.beginPath();
-        ctx.moveTo(windowX - windowLineSize/2, windowY);
-        ctx.lineTo(windowX + windowLineSize/2, windowY);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(windowX, windowY - windowLineSize/2);
-        ctx.lineTo(windowX, windowY + windowLineSize/2);
-        ctx.stroke();
+        // Создаем световое пятно на экране только если есть видимые лучи
+        if (visibleRays > 0) {
+            const minImageSize = 5;
+            const maxImageSize = 60;
+            const imageSize = minImageSize + relativeDistance * (maxImageSize - minImageSize);
+            
+            const minOpacity = 0.1;
+            const maxOpacity = 0.8;
+            const imageOpacity = maxOpacity - relativeDistance * (maxOpacity - minOpacity);
+            
+            const windowX = screenX;
+            const windowY = LENS_CENTER_Y;
+            
+            const gradient = ctx.createRadialGradient(
+                windowX, windowY, 0,
+                windowX, windowY, imageSize
+            );
+            gradient.addColorStop(0, `rgba(255, 215, 0, ${imageOpacity})`);
+            gradient.addColorStop(0.2, `rgba(255, 165, 0, ${imageOpacity * 0.7})`);
+            gradient.addColorStop(1, `rgba(255, 69, 0, 0)`);
+            
+            ctx.beginPath();
+            ctx.arc(windowX, windowY, imageSize, 0, 2 * Math.PI);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            const windowLineSize = imageSize * 0.7;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${imageOpacity * 0.9})`;
+            ctx.lineWidth = 1 + (1 - relativeDistance) * 2;
+            ctx.beginPath();
+            ctx.moveTo(windowX - windowLineSize/2, windowY);
+            ctx.lineTo(windowX + windowLineSize/2, windowY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(windowX, windowY - windowLineSize/2);
+            ctx.lineTo(windowX, windowY + windowLineSize/2);
+            ctx.stroke();
+        }
     
+        // Отрисовка линии фокусного расстояния
         if (measuredFocus !== null) {
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
