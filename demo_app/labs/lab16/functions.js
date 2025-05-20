@@ -13,6 +13,7 @@ const experimentFunctions = {
         
         trueEmf: 1.5,              // π - электродвижущая сила
         internalResistance: 2.0,   // r - внутреннее сопротивление
+        voltmeterResistance: 100,  // R_V - сопротивление вольтметра
         rheostatResistance: 8.0,   // R - сопротивление реостата
         minResistance: 1.0,        // Минимальное сопротивление реостата
         maxResistance: 20.0,       // Максимальное сопротивление реостата
@@ -482,8 +483,7 @@ const experimentFunctions = {
     
     getEmfWithError() {
         const trueEmf = this.experimentState.trueEmf;
-        const error = (Math.random() - 0.5) * 0.06;
-        return trueEmf + error;
+        return trueEmf * (this.experimentState.voltmeterResistance + this.experimentState.internalResistance) / this.experimentState.voltmeterResistance;
     },
     
     updateExperimentStep(step) {
