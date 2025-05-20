@@ -2,7 +2,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('simulationCanvas');
     const ctx = canvas.getContext('2d');
     const resultsBody = document.getElementById('results-body');
-    const calculateButton = document.getElementById('calculate-button');
     const resetButton = document.getElementById('reset-btn');
     const checkMeasurementsButton = document.getElementById('check-measurements');
     const toggleCaliperButton = document.getElementById('toggle-caliper');
@@ -25,21 +24,21 @@ window.addEventListener('DOMContentLoaded', () => {
     const LENS_CENTER_Y = canvas.height / 2;
 
     // CONFIG
-    const H = 170;
+    const H = 120;
     const D = 250;
-    const h0 = 60;
+    const h0 = 70;
     const n = 1.5;
     
     const R = ((D * D / 4) + Math.pow(H - h0, 2)) / (2 * (H - h0));
-    const F = R / (2 * (n - 1));
     
-    let screenX = LENS_CENTER_X + F * 1.2;
-
+    
     const bulgeAtCenter = (H - h0) / 2;
     const halfDiameter = D / 2;
-    const halfThickness = h0 / 2;
     const adjustedR = (halfDiameter * halfDiameter + bulgeAtCenter * bulgeAtCenter) / (2 * bulgeAtCenter);
-
+    
+    const F = adjustedR / (2 * (n - 1));
+    
+    let screenX = LENS_CENTER_X + F * 1.2;
     let calculatedResults = {};
     
     let showCaliper = false;
@@ -51,11 +50,11 @@ window.addEventListener('DOMContentLoaded', () => {
     let dragStartX = 0;
     let dragStartY = 0;
     let initialScreenX = 0;
-    
+    let measuredFocus = 0;
+
     function init() {
         drawSimulation();
         
-        calculateButton.addEventListener('click', handleCalculation);
         resetButton.addEventListener('click', resetMeasurements);
         checkMeasurementsButton.addEventListener('click', checkMeasurements);
         toggleCaliperButton.addEventListener('click', toggleCaliper);
@@ -154,17 +153,20 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let animationFrameId = null;
+
     function handleMouseMove(event) {
         const rect = canvas.getBoundingClientRect();
         const mouseX = event.clientX - rect.left;
         const mouseY = event.clientY - rect.top;
-        
+    
+        let needsRedraw = false;
+    
         if (isDraggingScreen) {
             const deltaX = mouseX - dragStartX;
             screenX = Math.max(LENS_CENTER_X + 50, Math.min(canvas.width - 10, initialScreenX + deltaX));
-            
             measuredFocus = screenX - LENS_CENTER_X;
-            drawSimulation();
+            needsRedraw = true;
         }
         
         if (isDraggingCaliperPoint) {
@@ -175,7 +177,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 caliperPosition.x2 = mouseX;
                 caliperPosition.y2 = mouseY;
             }
-            drawSimulation();
+            needsRedraw = true;
         }
         
         if (isDraggingCaliper) {
@@ -190,7 +192,18 @@ window.addEventListener('DOMContentLoaded', () => {
             dragStartX = mouseX;
             dragStartY = mouseY;
             
+            needsRedraw = true;
+        }
+    
+        if (needsRedraw) {
             drawSimulation();
+    
+            animationFrameId && cancelAnimationFrame(animationFrameId);
+    
+            animationFrameId = requestAnimationFrame(() => {
+                drawSimulation();
+                animationFrameId = null;
+            });
         }
     }
 
@@ -199,6 +212,9 @@ window.addEventListener('DOMContentLoaded', () => {
         isDraggingScreen = false;
         isDraggingCaliper = false;
         isDraggingCaliperPoint = false;
+
+        animationFrameId && cancelAnimationFrame(animationFrameId);
+        drawSimulation();
     }
 
     function handleMouseLeave() {
@@ -206,6 +222,9 @@ window.addEventListener('DOMContentLoaded', () => {
         isDraggingScreen = false;
         isDraggingCaliper = false;
         isDraggingCaliperPoint = false;
+
+        animationFrameId && cancelAnimationFrame(animationFrameId);
+        drawSimulation();
     }
     
     function isPointInside(px, py, x, y, radius) {
@@ -236,38 +255,6 @@ window.addEventListener('DOMContentLoaded', () => {
             rotatedY >= midY - 40/2 - 10 &&
             rotatedY <= midY + 40/2 + 10
         );
-    }
-
-    function handleCalculation() {
-        if (!areAllMeasurementsValid()) return;
-        
-        const h = parseFloat(userThicknessInput.value);
-        const d = parseFloat(userDiameterInput.value);
-        const h0 = parseFloat(userEdgeThicknessInput.value);
-        const F = parseFloat(userFocusInput.value);
-        const R = parseFloat(userRadiusInput.value);
-        const n = parseFloat(userRefractiveIndexInput.value);
-        
-        calculatedResults = {
-            f: F,
-            F: F,
-            H: h,
-            D: d,
-            h0: h0,
-            R: R,
-            n: n
-        };
-
-        updateTable();
-    }
-    
-    function areAllMeasurementsValid() {
-        return thicknessCheck.classList.contains('correct') &&
-               diameterCheck.classList.contains('correct') &&
-               edgeThicknessCheck.classList.contains('correct') &&
-               focusCheck.classList.contains('correct') &&
-               radiusCheck.classList.contains('correct') &&
-               refractiveIndexCheck.classList.contains('correct');
     }
 
     function checkMeasurements() {
@@ -312,18 +299,6 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.moveTo(screenX, 50);
         ctx.lineTo(screenX, canvas.height - 50);
         ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(0, 100, 0, 0.5)';
-        ctx.setLineDash([5, 3]);
-        ctx.moveTo(LENS_CENTER_X + F, 50);
-        ctx.lineTo(LENS_CENTER_X + F, canvas.height - 50);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        
-        ctx.fillStyle = 'rgba(0, 100, 0, 0.8)';
-        ctx.font = '12px Arial';
-        ctx.fillText(`F = ${F.toFixed(1)}`, LENS_CENTER_X + F + 5, 70);
         
         showCaliper && drawCaliper();
     }
@@ -376,46 +351,203 @@ window.addEventListener('DOMContentLoaded', () => {
         const centerX = LENS_CENTER_X;
         const centerY = LENS_CENTER_Y;
         
-        const leftCenter = centerX - halfThickness;
-        const rightCenter = centerX + halfThickness;
-        
-        const numRays = 7;
-        const raySpacing = (halfDiameter * 1.8) / (numRays - 1);
+        const halfEdgeThickness = h0 / 2;
+        const leftCenter = centerX - halfEdgeThickness;
+        const rightCenter = centerX + halfEdgeThickness;
         
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         
-        const focusX = centerX + F;
-        const focusY = centerY;
+        const leftCurvatureCenter = leftCenter - adjustedR;
+        const rightCurvatureCenter = rightCenter + adjustedR;
         
-        for (let i = 0; i < numRays; i++) {
-            const rayY = centerY - halfDiameter * 0.9 + i * raySpacing;
-            
-            const dy = rayY - centerY;
+        const numRaysPerSide = 4; 
+        const raySpacing = (halfDiameter * 0.8) / numRaysPerSide;
+        
+        let intersectionPointsX = [];
+        let intersectionPointsY = [];
+        
+        // ======= РАСЧЕТ ТОЧЕК ПОВЕРХНОСТИ ЛИНЗЫ =======
+        const lensPointsLeft = [];
+        const lensPointsRight = [];
+        const stepY = 1.0;
+        
+        for (let y = centerY - halfDiameter; y <= centerY + halfDiameter; y += stepY) {
+            const dy = y - centerY;
             const dx = Math.sqrt(Math.max(0, adjustedR * adjustedR - dy * dy)) - Math.sqrt(adjustedR * adjustedR - halfDiameter * halfDiameter);
-            const entryX = leftCenter - dx;
+            lensPointsLeft.push({x: leftCenter - dx, y: y});
+            lensPointsRight.push({x: rightCenter + dx, y: y});
+        }
+        
+        // ======= ФУНКЦИЯ ПОИСКА ТОЧКИ ПЕРЕСЕЧЕНИЯ ЛУЧА С ПОВЕРХНОСТЬЮ ЛИНЗЫ =======
+        function findExactIntersection(rayX, rayY, rayDirX, rayDirY, isLeftSurface) {
+            const points = isLeftSurface ? lensPointsLeft : lensPointsRight;
+            const maxIterations = 1000;
+            let curX = rayX;
+            let curY = rayY;
+            let stepSize = 0.5;
             
-            const innerY = centerY + (rayY - centerY) * 0.9;
-            const innerDy = innerY - centerY;
-            const innerDx = Math.sqrt(Math.max(0, adjustedR * adjustedR - innerDy * innerDy)) - Math.sqrt(adjustedR * adjustedR - halfDiameter * halfDiameter);
-            const exitX = rightCenter + innerDx;
+            for (let i = 0; i < maxIterations; i++) {
+                curX += rayDirX * stepSize;
+                curY += rayDirY * stepSize;
+                
+                let minDist = Infinity;
+                let closestPoint = null;
+                
+                for (const point of points) {
+                    const dist = Math.sqrt((curX - point.x) ** 2 + (curY - point.y) ** 2);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestPoint = point;
+                    }
+                }
+                
+                if (minDist < stepSize) return closestPoint;
+            }
+            return {x: curX, y: curY};
+        }
+        
+        // ======= ОСНОВНОЙ ЦИКЛ ГЕНЕРАЦИИ ЛУЧЕЙ =======
+        for (let side = -1; side <= 1; side += 2) {
+            for (let i = 0; i <= numRaysPerSide; i++) {
+                if (side === 1 && i === 0) continue;
+                
+                const rayY = centerY + side * i * raySpacing;
+                const isCentralRay = Math.abs(rayY - centerY) < 2;
+                const entryPoint = findExactIntersection(0, rayY, 1, 0, true);
+    
+                ctx.beginPath();
+                ctx.moveTo(0, rayY);
+                ctx.lineTo(entryPoint.x, entryPoint.y);
+                ctx.stroke();
+                
+                if (isCentralRay) {
+                    const exitPoint = findExactIntersection(entryPoint.x, entryPoint.y, 1, 0, false);
+                    ctx.beginPath();
+                    ctx.moveTo(entryPoint.x, entryPoint.y);
+                    ctx.lineTo(exitPoint.x, exitPoint.y);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(exitPoint.x, exitPoint.y);
+                    ctx.lineTo(screenX, exitPoint.y);
+                    ctx.stroke();
+                    continue;
+                }
+                
+                // ======= РАСЧЕТ ПРЕЛОМЛЕНИЯ НА ВХОДЕ В ЛИНЗУ =======
+                const entryNormalX = entryPoint.x - leftCurvatureCenter;
+                const entryNormalY = entryPoint.y - centerY;
+                const entryNormalLength = Math.sqrt(entryNormalX * entryNormalX + entryNormalY * entryNormalY);
+                const entryNormalizedX = entryNormalX / entryNormalLength;
+                const entryNormalizedY = -entryNormalY / entryNormalLength;
+                
+                const n1 = 1.0;
+                const n2 = n;
+                
+                const incidentX = 1.0;
+                const incidentY = 0.0;
+                const incidentDotNormal = incidentX * entryNormalizedX + incidentY * entryNormalizedY;
+                
+                const refractedX = (n1/n2) * incidentX - (n1/n2 * incidentDotNormal - 
+                                Math.sqrt(1 - (n1/n2)*(n1/n2) * (1 - incidentDotNormal*incidentDotNormal))) * 
+                                entryNormalizedX;
+                                
+                const refractedY = (n1/n2) * incidentY - (n1/n2 * incidentDotNormal - 
+                                Math.sqrt(1 - (n1/n2)*(n1/n2) * (1 - incidentDotNormal*incidentDotNormal))) * 
+                                entryNormalizedY;
+                
+                const refractedLength = Math.sqrt(refractedX * refractedX + refractedY * refractedY);
+                const refractedNormalizedX = refractedX / refractedLength;
+                const refractedNormalizedY = refractedY / refractedLength;
+                
+                // ======= ТРАССИРОВКА ЛУЧА ВНУТРИ ЛИНЗЫ =======
+                const exitPoint = findExactIntersection(
+                    entryPoint.x, entryPoint.y, 
+                    refractedNormalizedX, refractedNormalizedY, 
+                    false
+                );
+                
+                ctx.beginPath();
+                ctx.moveTo(entryPoint.x, entryPoint.y);
+                ctx.lineTo(exitPoint.x, exitPoint.y);
+                ctx.stroke();
+                
+                // ======= РАСЧЕТ ПРЕЛОМЛЕНИЯ НА ВЫХОДЕ ИЗ ЛИНЗЫ =======
+                // Вычисляем нормаль к поверхности в точке выхода
+                const exitNormalX = rightCurvatureCenter - exitPoint.x;
+                const exitNormalY = centerY - exitPoint.y;
+                const exitNormalLength = Math.sqrt(exitNormalX * exitNormalX + exitNormalY * exitNormalY);
+                const exitNormalizedX = exitNormalX / exitNormalLength;
+                const exitNormalizedY = -exitNormalY / exitNormalLength;
+                
+                const exitIncidentX = refractedNormalizedX;
+                const exitIncidentY = refractedNormalizedY;
+                
+                const n3 = n;
+                const n4 = 1.0;
+                
+                const exitIncidentDotNormal = exitIncidentX * exitNormalizedX + exitIncidentY * exitNormalizedY;
+                
+                const criticalAngle = Math.sqrt(1 - (n4*n4)/(n3*n3));
+                if (Math.abs(exitIncidentDotNormal) < criticalAngle)
+                    continue;
+                
+                const exitRefractedX = (n3/n4) * exitIncidentX - (n3/n4 * exitIncidentDotNormal - 
+                                    Math.sqrt(1 - (n3/n4)*(n3/n4) * (1 - exitIncidentDotNormal*exitIncidentDotNormal))) * 
+                                    exitNormalizedX;
+                                    
+                const exitRefractedY = (n3/n4) * exitIncidentY - (n3/n4 * exitIncidentDotNormal - 
+                                    Math.sqrt(1 - (n3/n4)*(n3/n4) * (1 - exitIncidentDotNormal*exitIncidentDotNormal))) * 
+                                    exitNormalizedY;
+                
+                const exitRefractedLength = Math.sqrt(exitRefractedX * exitRefractedX + exitRefractedY * exitRefractedY);
+                const exitRefractedNormalizedX = exitRefractedX / exitRefractedLength;
+                const exitRefractedNormalizedY = exitRefractedY / exitRefractedLength;
+                
+                // ======= РАСЧЕТ ПУТИ ЛУЧА ДО ЭКРАНА =======
+                const t = (screenX - exitPoint.x) / exitRefractedNormalizedX;
+                const screenY = exitPoint.y + t * exitRefractedNormalizedY;
+                
+                ctx.beginPath();
+                ctx.moveTo(exitPoint.x, exitPoint.y);
+                ctx.lineTo(screenX, screenY);
+                ctx.stroke();
+                
+                // ======= РАСЧЕТ ТОЧЕК ПЕРЕСЕЧЕНИЯ ДЛЯ ФОКУСА =======
+                if (!isCentralRay && Math.abs(exitRefractedNormalizedY) > 0.001) {
+                    const intersectionX = exitPoint.x + exitRefractedNormalizedX * (centerY - exitPoint.y) / exitRefractedNormalizedY;
+                    
+                    if (intersectionX > rightCenter && intersectionX < canvas.width) {
+                        intersectionPointsX.push(intersectionX);
+                        intersectionPointsY.push(centerY);
+                    }
+                }
+            }
+        }
+        
+        // ======= ОТОБРАЖЕНИЕ ФОКУСНОГО РАССТОЯНИЯ =======
+        if (intersectionPointsX.length > 0) {
+            let sumX = 0;
+            for (let i = 0; i < intersectionPointsX.length; i++)
+                sumX += intersectionPointsX[i];
             
-            const slope = (focusY - innerY) / (focusX - exitX);
-            const screenY = innerY + slope * (screenX - exitX);
+            const measuredFocalX = sumX / intersectionPointsX.length;
+            const measuredFocalLength = measuredFocalX - centerX;
             
             ctx.beginPath();
-            ctx.moveTo(0, rayY);
-            ctx.lineTo(entryX, rayY);
-            ctx.lineTo(exitX, innerY);
-            ctx.lineTo(screenX, screenY);
+            ctx.arc(measuredFocalX, centerY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            ctx.fill();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 1;
             ctx.stroke();
             
-            if (i === Math.floor(numRays / 2)) {
-                ctx.beginPath();
-                ctx.arc(focusX, focusY, 3, 0, 2 * Math.PI);
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-                ctx.fill();
-            }
+            window.actualF = measuredFocalLength;
+            
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.font = '12px Arial';
+            ctx.fillText(`Measured F = ${measuredFocalLength.toFixed(1)}`, measuredFocalX + 10, centerY - 15);
         }
     }
 
