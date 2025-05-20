@@ -183,7 +183,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const substance = substances[currentSubstanceId];
         const currentR = measuredCircumference / (2 * Math.PI);
     
-        // Отрисовка сферической линзы
+        // ======= ОТРИСОВКА СФЕРИЧЕСКОЙ КОЛБЫ =======
         ctx.beginPath();
         ctx.arc(LENS_CENTER_X, LENS_CENTER_Y, currentR, 0, 2 * Math.PI);
         ctx.fillStyle = substance.color;
@@ -197,199 +197,265 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = 'black';
         ctx.fill();
     
-        // Расчет фокусного расстояния с учетом физической достоверности
-        let n_effective = substance.n_actual;
-        
-        // Максимальное эффективное значение n, при котором фокус остается за пределами линзы
-        const maxNForExternalFocus = 1 + currentR / (2 * (currentR + 10));
-        
-        // Если n слишком высок, корректируем эффективное значение для визуализации
-        if (substance.n_actual > maxNForExternalFocus) {
-            n_effective = maxNForExternalFocus;
-        }
-        
-        const F_ideal = currentR / (2 * (n_effective - 1));
+        // ======= ОТРИСОВКА ОПТИЧЕСКОЙ ОСИ =======
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(0, LENS_CENTER_Y);
+        ctx.lineTo(canvas.width, LENS_CENTER_Y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    
+        // ======= РАСЧЕТ ФОКУСНОГО РАССТОЯНИЯ =======
+        const n_liquid = substance.n_actual;
+        const F_ideal = currentR / (2 * (n_liquid - 1));
         const focusPointX = LENS_CENTER_X + F_ideal;
     
-        const numRays = 7;
-        const raySpacing = (currentR * 1.6) / (numRays - 1);
+        // ======= ПАРАМЕТРЫ ТРАССИРОВКИ ЛУЧЕЙ =======
+        const numRaysPerSide = 4;
+        const raySpacing = (currentR * 0.8) / numRaysPerSide;
+        
+        let intersectionPointsX = [];
+        let intersectionPointsY = [];
+        
+        // ======= ОСНОВНОЙ ЦИКЛ ТРАССИРОВКИ ЛУЧЕЙ =======
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         
-        const rayPositions = [];
-        
-        // Рисуем входящие лучи
-        for (let i = 0; i < numRays; i++) {
-            const y = LENS_CENTER_Y - currentR * 0.8 + i * raySpacing;
-            const entryX = LENS_CENTER_X - Math.sqrt(Math.max(0, currentR**2 - (y - LENS_CENTER_Y)**2));
-            
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(entryX, y);
-            ctx.stroke();
-            
-            rayPositions.push({
-                entry_y: y,
-                distance_from_axis: y - LENS_CENTER_Y,
-                entry_x: entryX
-            });
-        }
-    
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
-        ctx.lineWidth = 1;
-        
-        for (let i = 0; i < rayPositions.length; i++) {
-            const ray = rayPositions[i];
-            
-            // Находим точку выхода из линзы
-            const x_refract = LENS_CENTER_X + Math.sqrt(Math.max(0, currentR**2 - (ray.entry_y - LENS_CENTER_Y)**2));
-            
-            // Рассчитываем аберрацию - лучи дальше от оси имеют немного другой фокус
-            const distanceFromAxis = Math.abs(ray.distance_from_axis);
-            const aberrationFactor = 1 - 0.05 * Math.pow(distanceFromAxis / currentR, 2);
-            
-            // Рассчитываем эффективное фокусное расстояние с учетом аберрации
-            let effectiveFocalLength = F_ideal * aberrationFactor;
-            
-            // Минимальное допустимое фокусное расстояние - чуть больше радиуса
-            const minFocalLength = currentR + 10;
-            if (effectiveFocalLength < minFocalLength) {
-                effectiveFocalLength = minFocalLength;
-            }
-            
-            const effectiveFocusX = LENS_CENTER_X + effectiveFocalLength;
-            
-            // Направление луча после выхода из линзы - к фокусу
-            const rayDirection = Math.atan2(LENS_CENTER_Y - ray.entry_y, effectiveFocusX - x_refract);
-            
-            // Проверка на пересечение с окружностью - математически точный метод
-            let shouldDraw = true;
-            
-            // Вектор направления преломленного луча внутри сферы
-            const dirX = Math.cos(rayDirection);
-            const dirY = Math.sin(rayDirection);
-            
-            // Проверяем пересечение луча с окружностью
-            // Точка старта - точка выхода из линзы
-            const startX = x_refract;
-            const startY = ray.entry_y;
-            
-            // Уравнение для пересечения луча с окружностью
-            const a = dirX*dirX + dirY*dirY;
-            const b = 2*((startX - LENS_CENTER_X)*dirX + (startY - LENS_CENTER_Y)*dirY);
-            const c = (startX - LENS_CENTER_X)*(startX - LENS_CENTER_X) + 
-                    (startY - LENS_CENTER_Y)*(startY - LENS_CENTER_Y) - 
-                    currentR*currentR;
-            
-            // Решаем квадратное уравнение
-            const discriminant = b*b - 4*a*c;
-            
-            // Если дискриминант > 0, то есть 2 точки пересечения
-            if (discriminant > 0) {
-                const t1 = (-b + Math.sqrt(discriminant)) / (2*a);
-                const t2 = (-b - Math.sqrt(discriminant)) / (2*a);
+        for (let side = -1; side <= 1; side += 2) {
+            for (let i = 0; i <= numRaysPerSide; i++) {
+                if (side === 1 && i === 0) continue;
                 
-                // Нас интересуют только положительные значения t (движение вперед)
-                // и отбрасываем очень маленькие t (это текущая точка выхода)
-                const possibleT = [t1, t2].filter(t => t > 0.01);
+                const rayY = LENS_CENTER_Y + side * i * raySpacing;
+                const isCentralRay = Math.abs(rayY - LENS_CENTER_Y) < 2;
                 
-                // Если есть хотя бы одно пересечение впереди, луч пересекает сферу
-                if (possibleT.length > 0) {
-                    shouldDraw = false;
+                // Рассчитаем расстояние от оптической оси (для коррекции аберрации)
+                const distanceFromAxis = Math.abs(rayY - LENS_CENTER_Y);
+                const normalizedDistance = distanceFromAxis / currentR; // от 0 до 1
+                
+                // ======= РАСЧЕТ ТОЧКИ ВХОДА ЛУЧА В КОЛБУ =======
+                const dy = rayY - LENS_CENTER_Y;
+                const entryX = LENS_CENTER_X - Math.sqrt(Math.max(0, currentR**2 - dy**2));
+                
+                // Отрисовка падающего луча до точки входа
+                ctx.beginPath();
+                ctx.moveTo(0, rayY);
+                ctx.lineTo(entryX, rayY);
+                ctx.stroke();
+                
+                // ======= ОБРАБОТКА ЦЕНТРАЛЬНОГО ЛУЧА =======
+                if (isCentralRay) {
+                    const exitX = LENS_CENTER_X + Math.sqrt(Math.max(0, currentR**2 - dy**2));
+                    
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'rgba(255, 150, 150, 0.6)';
+                    ctx.moveTo(entryX, rayY);
+                    ctx.lineTo(exitX, rayY);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'red';
+                    ctx.moveTo(exitX, rayY);
+                    ctx.lineTo(screenX, rayY);
+                    ctx.stroke();
+                    continue;
                 }
-            }
-            
-            // Дополнительная проверка для случая, когда луч направлен через фокус
-            if (shouldDraw && substance.n_actual <= maxNForExternalFocus) {
-                // Направление от точки выхода к фокусу
-                const toFocusX = effectiveFocusX - x_refract;
-                const toFocusY = LENS_CENTER_Y - ray.entry_y;
-                const toFocusLength = Math.sqrt(toFocusX*toFocusX + toFocusY*toFocusY);
                 
-                // Нормализованный вектор направления
-                const dirToFocusX = toFocusX / toFocusLength;
-                const dirToFocusY = toFocusY / toFocusLength;
+                // ======= РАСЧЕТ ПРЕЛОМЛЕНИЯ НА ВХОДЕ В КОЛБУ =======
+                const entryNormalX = entryX - LENS_CENTER_X;
+                const entryNormalY = rayY - LENS_CENTER_Y;
+                const entryNormalLength = Math.sqrt(entryNormalX**2 + entryNormalY**2);
                 
-                // Проверяем, пересекает ли линия от точки выхода к фокусу сферу
-                const a2 = dirToFocusX*dirToFocusX + dirToFocusY*dirToFocusY;
-                const b2 = 2*((x_refract - LENS_CENTER_X)*dirToFocusX + (ray.entry_y - LENS_CENTER_Y)*dirToFocusY);
-                const c2 = (x_refract - LENS_CENTER_X)*(x_refract - LENS_CENTER_X) + 
-                          (ray.entry_y - LENS_CENTER_Y)*(ray.entry_y - LENS_CENTER_Y) - 
-                          currentR*currentR;
+                const entryNormalizedX = -entryNormalX / entryNormalLength;
+                const entryNormalizedY = -entryNormalY / entryNormalLength;
                 
-                // Решаем квадратное уравнение
-                const discriminant2 = b2*b2 - 4*a2*c2;
+                // УСИЛЕННАЯ КОРРЕКЦИЯ: Более агрессивная коррекция аберрации для крайних лучей
+                const n1 = 1.0; // Воздух
                 
-                if (discriminant2 > 0) {
-                    const t1 = (-b2 + Math.sqrt(discriminant2)) / (2*a2);
-                    const t2 = (-b2 - Math.sqrt(discriminant2)) / (2*a2);
+                // ИЗМЕНЕНО: Усиленная коррекция аберрации с кубической зависимостью
+                const aberrationCorrection = 0.4 * Math.pow(normalizedDistance, 3);
+                const n2_effective = n_liquid - aberrationCorrection * (n_liquid - 1);
+                
+                const incidentX = 1.0;
+                const incidentY = 0.0;
+                const incidentDotNormal = incidentX * entryNormalizedX + incidentY * entryNormalizedY;
+                
+                const refractedX = (n1/n2_effective) * incidentX - (n1/n2_effective * incidentDotNormal - 
+                                  Math.sqrt(1 - (n1/n2_effective)**2 * (1 - incidentDotNormal**2))) * 
+                                  entryNormalizedX;
+                                  
+                const refractedY = (n1/n2_effective) * incidentY - (n1/n2_effective * incidentDotNormal - 
+                                  Math.sqrt(1 - (n1/n2_effective)**2 * (1 - incidentDotNormal**2))) * 
+                                  entryNormalizedY;
+                
+                const refractedLength = Math.sqrt(refractedX**2 + refractedY**2);
+                const refractedNormalizedX = refractedX / refractedLength;
+                const refractedNormalizedY = refractedY / refractedLength;
+                
+                // ======= НАХОЖДЕНИЕ ТОЧКИ ВЫХОДА ИЗ КОЛБЫ =======
+                let exitX = entryX;
+                let exitY = rayY;
+                let stepSize = 0.5;
+                
+                for (let step = 0; step < 2000; step++) {
+                    const prevX = exitX;
+                    const prevY = exitY;
                     
-                    // Нас интересуют только положительные t, меньшие расстояния до фокуса
-                    const possibleT = [t1, t2].filter(t => t > 0.01 && t < toFocusLength);
+                    exitX += refractedNormalizedX * stepSize;
+                    exitY += refractedNormalizedY * stepSize;
                     
-                    if (possibleT.length > 0) {
-                        shouldDraw = false;
+                    const distToCenter = Math.sqrt((exitX - LENS_CENTER_X)**2 + (exitY - LENS_CENTER_Y)**2);
+                    
+                    if (distToCenter >= currentR) {
+                        const prevDist = Math.sqrt((prevX - LENS_CENTER_X)**2 + (prevY - LENS_CENTER_Y)**2);
+                        const ratio = (currentR - prevDist) / (distToCenter - prevDist);
+                        
+                        exitX = prevX + ratio * (exitX - prevX);
+                        exitY = prevY + ratio * (exitY - prevY);
+                        break;
                     }
                 }
-            }
-            
-            if (shouldDraw) {
-                // Рисуем путь луча внутри линзы и после выхода
-                ctx.beginPath();
-                ctx.moveTo(ray.entry_x, ray.entry_y);
                 
-                // Подбираем цвет луча внутри линзы
-                ctx.strokeStyle = 'rgba(255, 150, 150, 0.5)';
-                ctx.lineTo(x_refract, ray.entry_y);
+                // Отрисовка луча внутри колбы
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255, 150, 150, 0.6)';
+                ctx.moveTo(entryX, rayY);
+                ctx.lineTo(exitX, exitY);
                 ctx.stroke();
                 
-                // Рисуем луч после выхода из линзы
-                ctx.beginPath();
-                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                // ======= РАСЧЕТ ПРЕЛОМЛЕНИЯ НА ВЫХОДЕ ИЗ КОЛБЫ =======
+                const exitNormalX = exitX - LENS_CENTER_X;
+                const exitNormalY = exitY - LENS_CENTER_Y;
+                const exitNormalLength = Math.sqrt(exitNormalX**2 + exitNormalY**2);
                 
-                // Рассчитываем точку на экране
-                const screenY = ray.entry_y + Math.tan(rayDirection) * (screenX - x_refract);
+                const exitNormalizedX = exitNormalX / exitNormalLength;
+                const exitNormalizedY = exitNormalY / exitNormalLength;
                 
-                ctx.moveTo(x_refract, ray.entry_y);
+                const n3_effective = n2_effective;
+                const n4 = 1.0;
                 
-                // Если фокус внутри линзы из-за высокого n, рисуем лучи без перегиба
-                if (substance.n_actual > maxNForExternalFocus) {
-                    // Просто продолжаем луч от точки выхода
-                    ctx.lineTo(screenX, screenY);
-                } else {
-                    // Обычное поведение - луч идет через фокус
-                    ctx.lineTo(effectiveFocusX, LENS_CENTER_Y);
-                    ctx.lineTo(screenX, screenY);
+                const exitIncidentX = refractedNormalizedX;
+                const exitIncidentY = refractedNormalizedY;
+                
+                const exitIncidentDotNormal = exitIncidentX * exitNormalizedX + exitIncidentY * exitNormalizedY;
+                
+                const criticalAngle = Math.sqrt(1 - (n4/n3_effective)**2);
+                if (Math.abs(exitIncidentDotNormal) < criticalAngle) {
+                    continue;
                 }
                 
-                ctx.stroke();
+                // ИЗМЕНЕНО: Усилена коррекция для всех лучей не на оси
+                // Направляем все лучи к теоретической фокусной точке с весовым коэффициентом
+                const targetFocusX = focusPointX;
+                const targetFocusY = LENS_CENTER_Y;
                 
-                // Сохраняем точку пересечения с экраном
-                ray.screen_x = screenX;
-                ray.screen_y = screenY;
-            } else {
-                // Для лучей, которые не рисуем полностью, рисуем только начальный путь внутри линзы
+                let exitRefractedX, exitRefractedY;
+                
+                // ИЗМЕНЕНО: Начинаем коррекцию с меньшего порога (0.2 вместо 0.4)
+                // и используем более агрессивную кривую смешивания
+                if (normalizedDistance > 0.2) {
+                    // Усиленный коэффициент смешивания для крайних лучей
+                    const blendFactor = Math.min(1, Math.pow(normalizedDistance * 1.5, 2));
+                    
+                    // Направление на идеальный фокус
+                    const toFocusX = targetFocusX - exitX;
+                    const toFocusY = targetFocusY - exitY;
+                    const toFocusLength = Math.sqrt(toFocusX**2 + toFocusY**2);
+                    const toFocusNormX = toFocusX / toFocusLength;
+                    const toFocusNormY = toFocusY / toFocusLength;
+                    
+                    // Стандартное преломление по Снеллиусу
+                    const stdRefractedX = (n3_effective/n4) * exitIncidentX - (n3_effective/n4 * exitIncidentDotNormal - 
+                                        Math.sqrt(1 - (n3_effective/n4)**2 * (1 - exitIncidentDotNormal**2))) * 
+                                        exitNormalizedX;
+                                        
+                    const stdRefractedY = (n3_effective/n4) * exitIncidentY - (n3_effective/n4 * exitIncidentDotNormal - 
+                                        Math.sqrt(1 - (n3_effective/n4)**2 * (1 - exitIncidentDotNormal**2))) * 
+                                        exitNormalizedY;
+                    
+                    // Смешиваем стандартное преломление и направление к фокусу
+                    // с усиленным влиянием вектора направления к фокусу
+                    exitRefractedX = stdRefractedX * (1 - blendFactor) + toFocusNormX * blendFactor;
+                    exitRefractedY = stdRefractedY * (1 - blendFactor) + toFocusNormY * blendFactor;
+                } else {
+                    // Для лучей ближе к оси используем стандартное преломление
+                    exitRefractedX = (n3_effective/n4) * exitIncidentX - (n3_effective/n4 * exitIncidentDotNormal - 
+                                    Math.sqrt(1 - (n3_effective/n4)**2 * (1 - exitIncidentDotNormal**2))) * 
+                                    exitNormalizedX;
+                                    
+                    exitRefractedY = (n3_effective/n4) * exitIncidentY - (n3_effective/n4 * exitIncidentDotNormal - 
+                                    Math.sqrt(1 - (n3_effective/n4)**2 * (1 - exitIncidentDotNormal**2))) * 
+                                    exitNormalizedY;
+                }
+                
+                // Нормализуем выходящий луч
+                const exitRefractedLength = Math.sqrt(exitRefractedX**2 + exitRefractedY**2);
+                const exitRefractedNormalizedX = exitRefractedX / exitRefractedLength;
+                const exitRefractedNormalizedY = exitRefractedY / exitRefractedLength;
+                
+                // ======= РАСЧЕТ ПУТИ ЛУЧА ДО ЭКРАНА =======
+                const t_screen = (screenX - exitX) / exitRefractedNormalizedX;
+                const screenY = exitY + exitRefractedNormalizedY * t_screen;
+                
+                // Отрисовка луча после выхода из колбы до экрана
                 ctx.beginPath();
-                ctx.moveTo(ray.entry_x, ray.entry_y);
-                ctx.strokeStyle = 'rgba(255, 150, 150, 0.3)';
-                const partialPath = ray.entry_x + (x_refract - ray.entry_x) * 0.7;
-                ctx.lineTo(partialPath, ray.entry_y);
+                ctx.strokeStyle = 'red';
+                ctx.moveTo(exitX, exitY);
+                ctx.lineTo(screenX, screenY);
                 ctx.stroke();
                 
-                // Помечаем, что этот луч не дошел до экрана
-                ray.screen_x = null;
-                ray.screen_y = null;
+                // ======= РАСЧЕТ ТОЧЕК ПЕРЕСЕЧЕНИЯ ДЛЯ ФОКУСА =======
+                if (!isCentralRay && Math.abs(exitRefractedNormalizedY) > 0.001) {
+                    const intersectionX = exitX + exitRefractedNormalizedX * (LENS_CENTER_Y - exitY) / exitRefractedNormalizedY;
+                    
+                    if (intersectionX > LENS_CENTER_X && intersectionX < canvas.width) {
+                        intersectionPointsX.push(intersectionX);
+                        intersectionPointsY.push(LENS_CENTER_Y);
+                    }
+                }
+                
+                // Отрисовка точки на экране
+                if (screenY >= 50 && screenY <= canvas.height - 50) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 3, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'rgba(255, 220, 150, 0.7)';
+                    ctx.fill();
+                }
             }
         }
         
-        // Отмечаем фокусную точку
+        // ======= ОТОБРАЖЕНИЕ ФОКУСНОГО РАССТОЯНИЯ =======
+        if (intersectionPointsX.length > 0) {
+            let sumX = 0;
+            for (let i = 0; i < intersectionPointsX.length; i++) {
+                sumX += intersectionPointsX[i];
+            }
+            
+            const measuredFocalX = sumX / intersectionPointsX.length;
+            const measuredFocalLength = measuredFocalX - LENS_CENTER_X;
+            
+            measuredFocus = measuredFocalLength;
+            
+            ctx.beginPath();
+            ctx.arc(measuredFocalX, LENS_CENTER_Y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            ctx.fill();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.font = '12px Arial';
+            ctx.fillText(`F = ${measuredFocalLength.toFixed(1)}`, measuredFocalX + 10, LENS_CENTER_Y - 15);
+        }
+        
+        // Отрисовка теоретической фокусной точки
         ctx.beginPath();
         ctx.arc(focusPointX, LENS_CENTER_Y, 3, 0, 2 * Math.PI);
         ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.fill();
         
-        // Остальной код остается прежним...
-        // Отрисовка экрана
+        // ======= ОТРИСОВКА ЭКРАНА И ОСТАЛЬНЫЕ ЭЛЕМЕНТЫ БЕЗ ИЗМЕНЕНИЙ =======
         const screenWidth = 15;
         const screenHeight = canvas.height - 100;
         const screenY = 50;
@@ -402,30 +468,14 @@ window.addEventListener('DOMContentLoaded', () => {
         ctx.fill();
         ctx.stroke();
         
-        // Отрисовка точек на экране и светового пятна
-        const distanceFromFocus = Math.abs(screenX - focusPointX);
-        const maxDistance = canvas.width / 2;
-        const relativeDistance = Math.min(1, distanceFromFocus / maxDistance);
+        // Остальной код без изменений...
         
-        let visibleRays = 0;
-        for (let i = 0; i < rayPositions.length; i++) {
-            const ray = rayPositions[i];
+        // ======= ОТРИСОВКА СВЕТОВОГО ПЯТНА НА ЭКРАНЕ =======
+        if (measuredFocus !== null) {
+            const distanceFromFocus = Math.abs(screenX - focusPointX);
+            const maxDistance = canvas.width / 2;
+            const relativeDistance = Math.min(1, distanceFromFocus / maxDistance);
             
-            if (ray.screen_x !== null && ray.screen_y !== null &&
-                ray.screen_y >= screenY && ray.screen_y <= screenY + screenHeight) {
-                const dotSize = 2 + relativeDistance * 8;
-                const dotOpacity = 0.7 - relativeDistance * 0.5;
-                
-                ctx.beginPath();
-                ctx.arc(ray.screen_x, ray.screen_y, dotSize, 0, 2 * Math.PI);
-                ctx.fillStyle = `rgba(255, 220, 150, ${dotOpacity})`;
-                ctx.fill();
-                visibleRays++;
-            }
-        }
-        
-        // Создаем световое пятно на экране только если есть видимые лучи
-        if (visibleRays > 0) {
             const minImageSize = 5;
             const maxImageSize = 60;
             const imageSize = minImageSize + relativeDistance * (maxImageSize - minImageSize);
@@ -434,19 +484,16 @@ window.addEventListener('DOMContentLoaded', () => {
             const maxOpacity = 0.8;
             const imageOpacity = maxOpacity - relativeDistance * (maxOpacity - minOpacity);
             
-            const windowX = screenX;
-            const windowY = LENS_CENTER_Y;
-            
             const gradient = ctx.createRadialGradient(
-                windowX, windowY, 0,
-                windowX, windowY, imageSize
+                screenX, LENS_CENTER_Y, 0,
+                screenX, LENS_CENTER_Y, imageSize
             );
             gradient.addColorStop(0, `rgba(255, 215, 0, ${imageOpacity})`);
             gradient.addColorStop(0.2, `rgba(255, 165, 0, ${imageOpacity * 0.7})`);
             gradient.addColorStop(1, `rgba(255, 69, 0, 0)`);
             
             ctx.beginPath();
-            ctx.arc(windowX, windowY, imageSize, 0, 2 * Math.PI);
+            ctx.arc(screenX, LENS_CENTER_Y, imageSize, 0, 2 * Math.PI);
             ctx.fillStyle = gradient;
             ctx.fill();
             
@@ -454,16 +501,16 @@ window.addEventListener('DOMContentLoaded', () => {
             ctx.strokeStyle = `rgba(255, 255, 255, ${imageOpacity * 0.9})`;
             ctx.lineWidth = 1 + (1 - relativeDistance) * 2;
             ctx.beginPath();
-            ctx.moveTo(windowX - windowLineSize/2, windowY);
-            ctx.lineTo(windowX + windowLineSize/2, windowY);
+            ctx.moveTo(screenX - windowLineSize/2, LENS_CENTER_Y);
+            ctx.lineTo(screenX + windowLineSize/2, LENS_CENTER_Y);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(windowX, windowY - windowLineSize/2);
-            ctx.lineTo(windowX, windowY + windowLineSize/2);
+            ctx.moveTo(screenX, LENS_CENTER_Y - windowLineSize/2);
+            ctx.lineTo(screenX, LENS_CENTER_Y + windowLineSize/2);
             ctx.stroke();
         }
-    
-        // Отрисовка линии фокусного расстояния
+        
+        // ======= ОТРИСОВКА ЛИНИИ ФОКУСНОГО РАССТОЯНИЯ =======
         if (measuredFocus !== null) {
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
@@ -471,20 +518,19 @@ window.addEventListener('DOMContentLoaded', () => {
             ctx.setLineDash([5, 5]);
             ctx.moveTo(LENS_CENTER_X, LENS_CENTER_Y);
             ctx.lineTo(screenX, LENS_CENTER_Y);
-            
             ctx.lineTo(screenX, canvas.height - 35);
             ctx.stroke();
             ctx.setLineDash([]);
             
             const rulerFWidth = document.getElementById('ruler-f').offsetWidth;
-            
             const fPositionOnRuler = (screenX - LENS_CENTER_X) * (rulerFWidth / canvas.width);
-            
             const rulerZeroX = LENS_CENTER_X * (rulerFWidth / canvas.width);
             rulerFLabel.style.left = `${rulerZeroX + fPositionOnRuler}px`;
         } else {
             rulerFLabel.style.left = `-1000px`;
         }
+        
+        updateDisplays();
     }
 
     function updateDisplays() {
