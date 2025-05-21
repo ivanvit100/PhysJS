@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Измерение колебаний с помощью осциллографа</title>
+    <link rel="stylesheet" href="../../static/phys.css">
+    <link rel="stylesheet" href="../../static/css/styles.css">
+    <link rel="stylesheet" href="specific.css">
+</head>
+<body>
+    <div id="experiment-container">
+        <header>
+            <h1>Измерение колебаний с помощью осциллографа</h1>
+        </header>
+
+        <div id="experiment-area">
+            <!-- Осциллограф с обновленным дизайном -->
+            <div id="oscilloscope" class="phys phys-connectors" data-name="Осциллограф">
+                <div class="oscilloscope-body">
+                    <div id="power-button" data-control="power"></div>
+                    <div class="screen">
+                        <div class="screen-grid"></div>
+                        <div class="beam-dot"></div>
+                        <div class="waveform"></div>
+                    </div>
+                    <div class="controls-panel">
+                        <div class="control-section">
+                            <div class="control-group">
+                                <div class="control-knob" id="brightness-knob" data-control="brightness"></div>
+                                <div class="control-label">Яркость</div>
+                            </div>
+                            <div class="control-group">
+                                <div class="control-knob" id="focus-knob" data-control="focus"></div>
+                                <div class="control-label">Фокус</div>
+                            </div>
+                        </div>
+
+                        <div class="control-section">
+                            <div class="control-group">
+                                <div class="control-knob" id="h-position-knob" data-control="h-position"></div>
+                                <div class="control-label">Гориз.</div>
+                            </div>
+                            <div class="control-group">
+                                <div class="control-knob" id="v-position-knob" data-control="v-position"></div>
+                                <div class="control-label">Вертик.</div>
+                            </div>
+                        </div>
+
+                        <div class="control-section">
+                            <div class="control-group">
+                                <div class="control-knob" id="y-gain-knob" data-control="y-gain"></div>
+                                <div class="control-label">Усиление</div>
+                            </div>
+                            <div class="control-group">
+                                <div class="control-knob" id="timebase-knob" data-control="timebase"></div>
+                                <div class="control-label">Развертка</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="device-label">OSCILLOSCOPE</div>
+                    <div class="power-indicator"></div>
+                </div>
+            </div>
+            
+            <!-- Микрофон -->
+            <div id="microphone" class="phys phys-connectors equipment" data-name="Микрофон" data-type="microphone">
+                <div class="microphone-body">
+                    <div class="microphone-head"></div>
+                    <div class="microphone-stand"></div>
+                    <div class="output-connector" id="mic-output" data-type="output"></div>
+                </div>
+            </div>
+            
+            <!-- Камертон -->
+            <div id="tuning-fork" class="phys phys-attachable equipment" data-name="Камертон" data-type="tuning-fork">
+                <div class="tuning-fork-body">
+                    <div class="fork-tines"></div>
+                    <div class="fork-handle"></div>
+                    <div class="fork-base"></div>
+                </div>
+            </div>
+            
+            <!-- Молоток -->
+            <div id="hammer" class="phys phys-attachable equipment" data-name="Молоток" data-type="hammer">
+                <div class="hammer-body">
+                    <div class="hammer-head"></div>
+                    <div class="hammer-handle"></div>
+                </div>
+            </div>
+            
+            <!-- Соединительный кабель -->
+            <div id="cable" class="phys phys-attachable equipment" data-name="Кабель" data-type="cable">
+                <div class="cable-body"></div>
+                <div class="cable-connector left-connector"></div>
+                <div class="cable-connector right-connector"></div>
+            </div>
+            
+            <!-- Линейка для измерений -->
+            <div id="ruler" class="phys phys-attachable equipment" data-name="Линейка" data-type="ruler">
+                <div class="ruler-body">
+                    <div class="ruler-scale"></div>
+                </div>
+            </div>
+
+            <div id="help-text">
+                <div class="help-item"><span class="key-indicator">ЛКМ</span> перетащить объект</div>
+                <div class="help-item"><span class="key-indicator">2х ЛКМ</span> взаимодействие</div>
+            </div>
+
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок выполнения</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step1" class="active">Включите осциллограф и настройте луч (яркость, фокусировка, положение)</li>
+                    <li id="step2">Подключите микрофон к входу Y осциллографа и установите максимальное усиление</li>
+                    <li id="step3">Поставьте камертон перед микрофоном, ударьте по нему и настройте развертку</li>
+                    <li id="step4">Измерьте амплитуду отклонения луча и рассчитайте напряжение на выходе микрофона</li>
+                </ol>
+            </div>
+        </div>
+        <div id="steps-vis" class="info-box info-box-primary mb-0">
+            <p id="current-instruction" class="mb-0">Включите осциллограф двойным щелчком по кнопке питания и настройте луч с помощью ручек управления.</p>
+        </div>
+
+        <div class="panel ui-panel" id="measurement-panel">
+            <div class="panel-header">
+                <h3>Результаты измерений и расчетов</h3>
+            </div>
+            <div class="panel-content">
+                <div class="measurement-row">
+                    <span class="measurement-label">Амплитуда отклонения луча:</span>
+                    <span class="measurement-value"><span id="beam-amplitude">-</span> мм</span>
+                </div>
+                <div class="measurement-row">
+                    <span class="measurement-label">Коэффициент усиления:</span>
+                    <span class="measurement-value"><span id="gain-coefficient">0.1</span> В/мм</span>
+                </div>
+                <div class="measurement-row result">
+                    <span class="measurement-label">Амплитуда напряжения на микрофоне:</span>
+                    <span class="measurement-value"><span id="voltage-amplitude">-</span> В</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel ui-panel" id="theory-panel">
+            <div class="panel-header">
+                <h3>Формулы</h3>
+            </div>
+            <div class="panel-content">
+                <div class="formula">U = k·A</div>
+                <div class="formula-description">
+                    где U - амплитуда напряжения (В), k - коэффициент усиления (В/мм), A - амплитуда отклонения луча (мм)
+                </div>
+            </div>
+        </div>
+        
+        <div id="voltage-calculator" class="panel ui-panel" style="display: none;">
+            <div class="panel-header">
+                <h3>Расчет напряжения</h3>
+            </div>
+            <div class="panel-content">
+                <div class="calculator-form">
+                    <div class="form-group">
+                        <label for="amplitude-input">Амплитуда напряжения на микрофоне (В):</label>
+                        <input type="number" id="amplitude-input" step="0.01" min="0" max="10">
+                    </div>
+                    <button id="check-amplitude" class="btn btn-primary">Проверить</button>
+                    <div id="amplitude-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="buttons-container">
+            <button id="guide-btn" class="btn btn-info">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+                Гайд
+            </button>
+
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
+        </div>
+    </div>
+
+    <div class="small-screen-alert">
+        <div class="alert-container">
+            <div class="content">
+                <div class="text">
+                    <h2>Хьюстон, у нас проблемы!</h2>
+                    <p>Сайт не адаптирован для вашего устройства</p>
+                    <p>Попробуйте зайти с компьютера или другого устройства с большим экраном</p>
+                </div>
+                <div class="image">
+                    <img src="../../static/images/frog.png" alt="Houston, we have a problem!">
+                </div>
+            </div>
+            <div class="ps">«Если не изучать магию, то весь мир будет казаться физикой» ©Жабка</div>
+        </div>
+    </div>
+
+    <script src="../../static/phys.js"></script>
+    <script src="../../static/intro-wrapper.js"></script>
+    <script type="module" src="script.js" defer></script>
+</body>
+</html>

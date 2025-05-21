@@ -1,0 +1,667 @@
+/* Осциллограф - обновленный дизайн */
+#oscilloscope {
+    width: 400px;
+    height: 400px;
+    left: 50px;
+    top: 150px;
+    position: absolute;
+    z-index: 2 !important;
+}
+
+.oscilloscope-body {
+    width: 100%;
+    height: auto;
+    background: linear-gradient(to bottom, #34495e 0%, #2c3e50 100%);
+    border-radius: 15px;
+    position: relative;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 20px 20px 40px 20px;
+    box-sizing: border-box;
+    border: 1px solid #2c3e50;
+}
+
+.screen {
+    width: 500px;
+    height: 300px;
+    background-color: #000;
+    border-radius: 5px;
+    margin-top: 10px;
+    position: relative;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.screen-grid {
+    background-image: 
+        linear-gradient(to right, rgba(0, 255, 0, 0.07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 255, 0, 0.07) 1px, transparent 1px),
+        linear-gradient(to right, rgba(0, 255, 0, 0.15) 25px, transparent 25px),
+        linear-gradient(to bottom, rgba(0, 255, 0, 0.15) 25px, transparent 25px);
+    background-size: 25px 25px, 25px 25px, 100px 100px, 100px 100px;
+}
+
+.beam-dot {
+    box-shadow: 
+        0 0 2px rgba(0, 255, 0, 0.9),
+        0 0 4px rgba(0, 255, 0, 0.7),
+        0 0 6px rgba(0, 255, 0, 0.5),
+        0 0 12px rgba(0, 255, 0, 0.3);
+    filter: blur(0.5px);
+    position: absolute;
+    border-radius: 50%;
+    background-color: rgba(0, 255, 0, 0.9);
+}
+
+.screen-off {
+    background-color: #111;
+}
+
+.screen-on {
+    background-color: #001500;
+    box-shadow: 
+        inset 0 0 20px rgba(0, 255, 0, 0.2),
+        inset 0 0 50px rgba(0, 0, 0, 0.5);
+}
+
+/* Кнопка питания - новый дизайн */
+#power-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(to bottom, #c0392b 0%, #e74c3c 100%);
+    position: absolute;
+    bottom: 20px;
+    right: 85px;
+    transform: translateX(-50%);
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), inset 0 -2px 5px rgba(0, 0, 0, 0.2);
+    border: 3px solid #7f8c8d;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+#power-button:after {
+    content: 'I/O';
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+#power-button:hover {
+    background: linear-gradient(to bottom, #d14233 0%, #ec7063 100%);
+    transform: translateX(-50%) scale(1.05);
+}
+
+#power-button:active {
+    transform: translateX(-50%) scale(0.95);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.powered #power-button {
+    background: linear-gradient(to bottom, #27ae60 0%, #2ecc71 100%);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), inset 0 -2px 5px rgba(0, 0, 0, 0.2), 0 0 15px rgba(46, 204, 113, 0.5);
+}
+
+.powered #power-button:hover {
+    background: linear-gradient(to bottom, #2cc36b 0%, #33d673 100%);
+}
+
+/* Панель управления */
+.controls-panel {
+    width: 100%;
+    height: 40%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    padding: 40px 10px 10px;
+    box-sizing: border-box;
+}
+
+/* Группа регулировок с подписями */
+.control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 5px 10px;
+    position: relative;
+}
+
+.control-label {
+    font-size: 11px;
+    color: #ecf0f1;
+    margin-top: 5px;
+    text-align: center;
+    max-width: 50px;
+    line-height: 1.2;
+}
+
+.control-knob {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    transform: rotate(-135deg);
+}
+
+.control-knob:after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 5px;
+    width: 12px;
+    height: 4px;
+    background: #34495e;
+    border-radius: 2px;
+}
+
+.control-knob:hover {
+    background: linear-gradient(135deg, #f5f7f8 0%, #c5ccd1 100%);
+}
+
+/* Секции панели управления */
+.control-section {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(189, 195, 199, 0.3);
+}
+
+.control-section:last-child {
+    border-bottom: none;
+}
+
+.input-connector {
+    width: 40px;
+    height: 40px;
+    background-color: #2c3e50;
+    border: 2px solid #1abc9c;
+    border-radius: 50%;
+    margin: 5px auto;
+    position: relative;
+    cursor: pointer;
+}
+
+.input-connector:before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #1abc9c;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.connector-label {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: #ecf0f1;
+    white-space: nowrap;
+}
+
+.power-indicator {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #e74c3c;
+    bottom: 15px;
+    right: 15px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.power-indicator.on {
+    background-color: #2ecc71;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.7);
+}
+
+.device-label {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    font-size: 14px;
+    color: #ecf0f1;
+    font-weight: bold;
+}
+
+/* Микрофон */
+#microphone {
+    width: 100px;
+    height: 150px;
+    left: 400px;
+    top: 250px;
+}
+
+.microphone-body {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.microphone-head {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(to bottom, #7f8c8d 0%, #95a5a6 100%);
+    border-radius: 25px;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+.microphone-head:before {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background-color: #34495e;
+    border-radius: 15px;
+    top: 10px;
+    left: 10px;
+}
+
+.microphone-stand {
+    width: 10px;
+    height: 100px;
+    background: linear-gradient(to bottom, #7f8c8d 0%, #95a5a6 100%);
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.microphone-stand:after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 10px;
+    background: linear-gradient(to bottom, #7f8c8d 0%, #95a5a6 100%);
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0 0 5px 5px;
+}
+
+.output-connector {
+    width: 20px;
+    height: 20px;
+    background-color: #7f8c8d;
+    border: 2px solid #95a5a6;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
+}
+
+.output-connector:before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #34495e;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Камертон */
+#tuning-fork {
+    width: 80px;
+    height: 150px;
+    left: 200px;
+    top: 350px;
+}
+
+.tuning-fork-body {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.fork-tines {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 100px;
+}
+
+.fork-tines:before, .fork-tines:after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 100px;
+    background: linear-gradient(to bottom, #bdc3c7 0%, #95a5a6 100%);
+    border-radius: 5px 5px 0 0;
+}
+
+.fork-tines:before {
+    left: 0;
+}
+
+.fork-tines:after {
+    right: 0;
+}
+
+.fork-handle {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 15px;
+    height: 80px;
+    background: linear-gradient(to bottom, #bdc3c7 0%, #95a5a6 100%);
+    border-radius: 0 0 2px 2px;
+}
+
+.fork-base {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 20px;
+    background: linear-gradient(to bottom, #7f8c8d 0%, #95a5a6 100%);
+    border-radius: 5px;
+}
+
+@keyframes fork-vibration {
+    0% { transform: translateX(-50%) rotate(0deg); }
+    10% { transform: translateX(-50%) rotate(5deg); }
+    20% { transform: translateX(-50%) rotate(-5deg); }
+    30% { transform: translateX(-50%) rotate(4deg); }
+    40% { transform: translateX(-50%) rotate(-4deg); }
+    50% { transform: translateX(-50%) rotate(3deg); }
+    60% { transform: translateX(-50%) rotate(-3deg); }
+    70% { transform: translateX(-50%) rotate(2deg); }
+    80% { transform: translateX(-50%) rotate(-2deg); }
+    90% { transform: translateX(-50%) rotate(1deg); }
+    100% { transform: translateX(-50%) rotate(0deg); }
+}
+
+.vibrating {
+    animation: fork-vibration 0.8s infinite;
+    transform-origin: bottom center;
+}
+
+.decay-vibration {
+    animation-duration: 1.5s;
+    animation-timing-function: ease-out;
+}
+
+/* Молоток */
+#hammer {
+    width: 120px;
+    height: 40px;
+    left: 350px;
+    top: 350px;
+    transform: rotate(0deg);
+}
+
+.hammer-body {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.hammer-head {
+    width: 40px;
+    height: 30px;
+    background: linear-gradient(to bottom, #7f8c8d 0%, #95a5a6 100%);
+    border-radius: 5px;
+    position: absolute;
+    top: 5px;
+    right: 0;
+}
+
+.hammer-handle {
+    width: 80px;
+    height: 10px;
+    background: linear-gradient(to bottom, #d35400 0%, #e67e22 100%);
+    border-radius: 5px;
+    position: absolute;
+    top: 15px;
+    right: 40px;
+}
+
+.connection-point-indicator {
+    opacity: 1 !important;
+    z-index: 99999 !important;
+}
+
+/* Анимации и эффекты */
+.connected {
+    border-color: #3498db !important;
+}
+
+.connected:before {
+    background-color: #3498db !important;
+}
+
+.reading-taken {
+    animation: reading-pulse 1s;
+}
+
+@keyframes reading-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+.measurement-ready {
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.7);
+}
+
+.stable-waveform {
+    box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.4);
+}
+
+/* Панели и результаты */
+.panel-content {
+    font-size: 14px;
+    color: #333;
+}
+
+.measurement-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.measurement-row.result {
+    font-weight: bold;
+    background-color: #f1f9f7;
+    padding: 8px;
+    border-radius: 4px;
+    border-bottom: none;
+}
+
+.measurement-label {
+    flex: 1;
+}
+
+.measurement-value {
+    flex: 0 0 100px;
+    text-align: right;
+}
+
+.formula {
+    text-align: center;
+    font-size: 18px;
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+}
+
+.formula-description {
+    font-size: 14px;
+    margin: 10px 0;
+    color: #555;
+}
+
+.success-message {
+    color: #27ae60;
+    background-color: #e8f8f5;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.error-message {
+    color: #c0392b;
+    background-color: #f8e8e8;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+/* Кнопки */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+/* Списки */
+.list-spaced li {
+    margin-bottom: 10px;
+    padding-left: 5px;
+}
+
+.list-spaced li.active {
+    font-weight: bold;
+    color: #2980b9;
+}
+
+/* Подсказки */
+.tooltip {
+    position: absolute;
+    background-color: rgba(44, 62, 80, 0.9);
+    color: #ecf0f1;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+}
+
+.help-item {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.key-indicator {
+    display: inline-block;
+    padding: 2px 5px;
+    background-color: #34495e;
+    color: #ecf0f1;
+    border-radius: 3px;
+    margin-right: 8px;
+    font-size: 10px;
+}
+
+/* Адаптивность для малых экранов */
+.small-screen-alert {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(44, 62, 80, 0.9);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+
+.alert-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    text-align: center;
+}
+
+.content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.text {
+    text-align: left;
+    flex: 1;
+}
+
+.image {
+    flex: 0 0 120px;
+}
+
+.image img {
+    max-width: 100%;
+}
+
+.ps {
+    font-style: italic;
+    color: #7f8c8d;
+    margin-top: 20px;
+    font-size: 12px;
+}
+
+@media screen and (max-width: 768px) {
+    .small-screen-alert {
+        display: flex;
+    }
+}
+
+@media screen and (max-height: 600px) {
+    .small-screen-alert {
+        display: flex;
+    }
+}
+
+#voltage-calculator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
