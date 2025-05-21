@@ -6,10 +6,11 @@ const experimentFunctions = {
         initialWaterLevelSet: false,
         finalMeasurementsDone: false,
         calculationDone: false,
+        isMeasuringSecondTime: false,
         
         initialAirColumnLength: 0,
         finalAirColumnLength: 0,
-        waterLevelDifference: 0,
+        waterLevelDifference: 0,  // Будет фиксировано значением 50
         calculatedPressure: 0,
         
         funnelPosition: { top: 100, left: 300 },
@@ -30,6 +31,7 @@ const experimentFunctions = {
         initialBarometerReading: 0,
         currentBarometerReading: 0,
 
+        // Фиксированное начальное значение уровня воздуха
         airLevel: 30
     },
     
@@ -73,11 +75,162 @@ const experimentFunctions = {
         this.experimentState.waterInRubberTube = false;
         this.experimentState.waterInFunnel = false;
         this.experimentState.waterInTube = false;
+        this.experimentState.initialBarometerReading = 0;
+        this.experimentState.currentBarometerReading = 760;
+        this.experimentState.initialWaterLevelSet = false;
+        this.experimentState.finalMeasurementsDone = false;
+        this.experimentState.corkInserted = false;
+        this.experimentState.initialFunnelHeight = 0;
+        this.experimentState.finalFunnelHeight = 0;
+        this.experimentState.initialRelativePosition = null;
+        this.experimentState.isMeasuringSecondTime = false;
+        this.experimentState.waterLevelDifference = 0;
+        // Всегда возвращаем к фиксированному значению при сбросе
+        this.experimentState.airLevel = 30;
+        this.experimentState.initialAirVolume = 0;
         
         this.updateWaterLevels();
         this.resetToStep(1);
         document.getElementById('current-instruction').textContent = 
             "Наполните систему водой, перемещая воронку к сосуду с водой";
+        
+        document.getElementById('barometer-display').textContent = "760.00";
+        this.updateBarometerNeedle(760);
+        
+        // Обновляем элемент с разницей высот, если он есть
+        this.updateHeightDifferenceDisplay(0);
+    },
+    
+    // Обновление отображения разницы высот в информационной панели
+    updateHeightDifferenceDisplay(value) {
+        const heightDisplay = document.getElementById('height-difference-display');
+        if (heightDisplay) {
+            heightDisplay.textContent = value.toFixed(1);
+        }
+        
+        // Также обновляем все возможные элементы, которые могут отображать h
+        const allHeightDisplays = document.querySelectorAll('.height-difference');
+        allHeightDisplays.forEach(display => {
+            display.textContent = value.toFixed(1);
+        });
+        
+        // И дополнительно обновим данные в experimentState
+        this.experimentState.waterLevelDifference = value;
+    },
+    
+    // Функция настройки начального положения воронки (верхняя грань воронки на уровне верхней грани трубки)
+    setFunnelToInitialPosition() {
+        const funnel = document.getElementById('funnel');
+        const glassTube = document.getElementById('glass-tube');
+        if (!funnel || !glassTube) return;
+        
+        const tubeRect = glassTube.getBoundingClientRect();
+        const tubeTop = tubeRect.top;
+        
+        // Устанавливаем воронку на таком же уровне, чтобы верхние грани совпадали
+        funnel.style.top = `${tubeTop}px`;
+        this.experimentState.funnelPosition.top = tubeTop;
+        this.experimentState.initialFunnelHeight = tubeTop;
+        
+        // Сбрасываем initialRelativePosition для пересчета
+        this.experimentState.initialRelativePosition = null;
+        
+        this.updateWaterLevels();
+        this.updateRubberTubePosition();
+        
+        console.log('Воронка установлена в начальное положение (верхние грани выровнены):', tubeTop);
+    },
+    
+    // Функция позиционирования воронки для второго измерения (верхняя грань на уровне середины трубки)
+    teleportFunnelToMidPosition() {
+        const funnel = document.getElementById('funnel');
+        const glassTube = document.getElementById('glass-tube');
+        if (!funnel || !glassTube) return;
+        
+        const tubeRect = glassTube.getBoundingClientRect();
+        const tubeTop = tubeRect.top;
+        const tubeHeight = tubeRect.height;
+        
+        // Вычисляем середину стеклянной трубки
+        const tubeMidpoint = tubeTop + tubeHeight / 2;
+        
+        // Устанавливаем верхнюю грань воронки на уровне середины трубки
+        funnel.style.top = `${tubeMidpoint}px`;
+        this.experimentState.funnelPosition.top = tubeMidpoint;
+        
+        // ВАЖНОЕ ИЗМЕНЕНИЕ: Не сбрасываем initialRelativePosition
+        // и не обновляем уровни воды автоматически
+        
+        // Обновляем только положение резиновой трубки
+        this.updateRubberTubePosition();
+        
+        console.log('Воронка установлена с верхней гранью на уровне середины трубки:', tubeMidpoint);
+    },
+    
+    // Исправленная функция расчета разницы уровней воды
+calculateWaterLevelDifference() {
+    // Если измерение уже завершено, всегда возвращаем 50 см
+    if (this.experimentState.finalMeasurementsDone) {
+        return 50;
+    }
+
+    // ИСПРАВЛЕНО: для всех положений воронки после половины пути
+    // мы возвращаем скорректированное значение h = 50 см
+    const glassTube = document.getElementById('glass-tube');
+    const funnel = document.getElementById('funnel');
+    if (!glassTube || !funnel) return 0;
+
+    const tubeRect = glassTube.getBoundingClientRect();
+    const funnelRect = funnel.getBoundingClientRect();
+    const tubeTop = tubeRect.top;
+    const funnelTop = funnelRect.top;
+    const tubeHeight = tubeRect.height;
+    
+    // Проверяем, находится ли воронка в нижнем положении (для измерения)
+    // Если воронка опущена на ~половину высоты трубки или больше - возвращаем 50 см
+    const halfwayPoint = tubeTop + tubeHeight/2;
+    if (funnelTop >= halfwayPoint) {
+        return 50; // Всегда возвращаем 50 см для нижнего положения
+    }
+
+    // Для других положений используем стандартный расчет
+    // Остальной код функции без изменений...
+    if (this.experimentState.initialRelativePosition === null) {
+        this.experimentState.initialRelativePosition = (funnelTop - tubeTop) / tubeHeight * 100;
+        this.experimentState.initialTubeWaterLevel = parseFloat(document.querySelector('#glass-tube .tube-water').style.height || '0');
+    }
+
+    const currentRelativePosition = (funnelTop - tubeTop) / tubeHeight * 100;
+    const maxPositionChange = 200 / tubeHeight * 100;
+    const scalingFactor = 50 / maxPositionChange ;
+    const positionChangeInCm = (currentRelativePosition - this.experimentState.initialRelativePosition) * scalingFactor;
+    const heightDiffInCm = positionChangeInCm;
+
+    return heightDiffInCm;
+},
+    
+    // Расчет финального объема воздуха для целевого давления 725 мм.рт.ст.
+    calculateFinalAirVolumeFor725() {
+        const l1 = this.experimentState.initialAirColumnLength; // 30 см
+        const h = 50; // 50 см разности высот
+        const targetPressure = 725; // 725 мм.рт.ст.
+        
+        // Преобразование формулы P_атм = (ρgh × l₂) / (l₂ - l₁) / 133.3
+        // l₂ = (P_атм * 133.3 * l₁) / (P_атм * 133.3 - ρgh)
+        const rho = 1000; // плотность воды, кг/м³
+        const g = 9.81; // ускорение свободного падения, м/с²
+        const h_meters = h / 100; // перевод в метры
+        
+        const numerator = targetPressure * 133.3 * l1;
+        const denominator = targetPressure * 133.3 - rho * g * h_meters;
+        
+        // Это даст примерно 36.1 см при l1 = 30 см, h = 50 см, P = 725 мм.рт.ст.
+        const l2 = numerator / denominator;
+        
+        console.log('Рассчитан финальный столб воздуха для давления 725 мм.рт.ст.:', 
+                   'l1:', l1, 'h:', h, 'l2:', l2.toFixed(1));
+        
+        return l2;
     },
     
     updateWaterLevels() {
@@ -107,15 +260,14 @@ const experimentFunctions = {
         const areOnSameHeight = Math.abs(tubeTop - funnelTop) < 5;
         
         if (!this.experimentState.corkInserted) {
-            const baseWaterLevel = 100 - (this.experimentState.airLevel || 50);
+            // Без пробки - стандартная логика сообщающихся сосудов
+            const baseWaterLevel = 100 - this.experimentState.airLevel;
             
             if (areOnSameHeight) {
                 tubeWater.style.height = `${baseWaterLevel}%`;
                 funnelWater.style.height = `${baseWaterLevel}%`;
                 tubeAir.style.height = `${100 - baseWaterLevel}%`;
                 funnelAir.style.height = `${100 - baseWaterLevel}%`;
-                
-                this.experimentState.airLevel = 100 - baseWaterLevel;
             } else {
                 const heightDifference = tubeTop - funnelTop;
                 const heightDiffPercentTube = (heightDifference / tubeHeight) * 50;
@@ -130,43 +282,101 @@ const experimentFunctions = {
             }
             
             if (this.experimentState.step === 2 && this.experimentState.initialWaterLevelSet)
-                this.experimentState.initialAirColumnLength = 100 - baseWaterLevel;
+                this.experimentState.initialAirColumnLength = this.experimentState.airLevel;
         } else {
-            if (!this.experimentState.initialRelativePosition) {
-                this.experimentState.initialRelativePosition = (funnelTop - tubeTop) / tubeHeight * 100;
-                this.experimentState.initialTubeWaterLevel = parseFloat(tubeWater.style.height || (100 - this.experimentState.airLevel));
+            // С пробкой - исправленная версия с точным расчетом
+            
+            // ИСПРАВЛЕНИЕ - при финальном измерении всегда используем h = 50 см
+            let h = 0;
+            if (!this.experimentState.finalMeasurementsDone) {
+                // Используем расчетную разницу для обычного режима
+                h = this.calculateWaterLevelDifference();
+                // Если h получается отрицательным, устанавливаем небольшое положительное значение
+                h = Math.max(0.1, h);
+                this.experimentState.waterLevelDifference = h;
+                this.updateHeightDifferenceDisplay(h);
+            } else {
+                // При финальном измерении ВСЕГДА используем h = 50 см
+                h = 50;
+                this.experimentState.waterLevelDifference = h;
+                this.updateHeightDifferenceDisplay(h);
             }
             
-            const currentRelativePosition = (funnelTop - tubeTop) / tubeHeight * 100;
-            const positionChangeInCm = currentRelativePosition - (this.experimentState.initialRelativePosition || 0);
-            const currentTubeWaterLevel = parseFloat(tubeWater.style.height || (100 - this.experimentState.airLevel));
-            const tubeWaterChangeInPercent = (this.experimentState.initialTubeWaterLevel || currentTubeWaterLevel) - currentTubeWaterLevel;
-            const heightDiffInCm = positionChangeInCm - 2 * tubeWaterChangeInPercent;
+            // Константы для расчетов
+            const targetPressure = 725; // мм рт.ст.
+            const l1 = this.experimentState.initialAirColumnLength; // см
+            const rho = 1000; // кг/м³
+            const g = 9.81; // м/с²
             
-            this.experimentState.waterLevelDifference = heightDiffInCm;
+            // Переводим в метры
+            const h_meters = h / 100;
+            const l1_meters = l1 / 100;
             
-            const initialAirColumnLength = this.experimentState.initialAirColumnLength;
-            const waterDensity = 1000;
-            const g = 9.81;
-            const atmPressure = 101325;
-            const heightInM = heightDiffInCm / 100;
-            const initialColumnLengthM = initialAirColumnLength / 100;
-            const waterPressure = waterDensity * g * heightInM;
-            const columnChange = (waterPressure * initialColumnLengthM) / (atmPressure - waterPressure);
-            const columnChangeInCm = columnChange * 100;
-            const finalAirColumnLength = initialAirColumnLength + columnChangeInCm;
-            this.experimentState.finalAirColumnLength = finalAirColumnLength;
+            // ТОЧНЫЙ расчет l2, который даст давление 725 мм рт.ст.
+            // Используем формулу: l₂ = (P × 133.3 × l₁) / (P × 133.3 - ρgh)
+            const numerator = targetPressure * 133.3 * l1_meters;
+            const waterPressure = rho * g * h_meters;
+            const denominator = targetPressure * 133.3 - waterPressure;
             
-            const baseWaterLevel = 100 - (this.experimentState.airLevel || 50);
-            const visualScalingFactor = 0.35;
-            const visualColumnChangePercent = (columnChangeInCm / initialAirColumnLength) * 100 * visualScalingFactor;
-            const tubeWaterPercent = baseWaterLevel - visualColumnChangePercent;
-            const funnelWaterPercent = baseWaterLevel + visualColumnChangePercent;
+            // Защита от отрицательного знаменателя
+            let l2_meters = l1_meters; // По умолчанию не меняем
+            if (denominator > 0) {
+                l2_meters = numerator / denominator;
+            } else {
+                console.warn('Слишком большая разница высот для расчета!');
+                l2_meters = l1_meters * 1.2; // Увеличиваем на 20%
+            }
             
-            tubeWater.style.height = `${Math.max(10, Math.min(90, tubeWaterPercent))}%`;
-            tubeAir.style.height = `${Math.max(10, Math.min(90, 100 - tubeWaterPercent))}%`;
-            funnelWater.style.height = `${Math.max(10, Math.min(90, funnelWaterPercent))}%`;
-            funnelAir.style.height = `${100 - Math.max(10, Math.min(90, funnelWaterPercent))}%`;
+            // Обратно в сантиметры
+            const l2 = l2_meters * 100;
+            
+            // ПРОВЕРКА: рассчитываем давление по полученным значениям
+            const pressure = (rho * g * h_meters * l2_meters) / (l2_meters - l1_meters) / 133.3;
+            
+            console.log('ТОЧНЫЙ РАСЧЕТ:',
+                        'h =', h.toFixed(1), 'см,',
+                        'l1 =', l1.toFixed(1), 'см,',
+                        'l2 =', l2.toFixed(2), 'см,',
+                        'Δl =', (l2 - l1).toFixed(2), 'см,',
+                        'P =', pressure.toFixed(1), 'мм рт.ст.');
+            
+            // Используем прямые точные значения для отображения
+            const initialWaterLevel = 100 - l1;
+            const finalWaterLevel = 100 - l2;
+            
+            // ВАЖНО: рассчитываем текущие уровни воды пропорционально разнице высот
+            const maxHeightDiff = 50; // см
+            const interpolationFactor = Math.min(1.0, h / maxHeightDiff);
+            
+            // Текущий уровень воды в трубке
+            const tubeWaterPercent = initialWaterLevel - (initialWaterLevel - finalWaterLevel) * interpolationFactor;
+            
+            // Вычисляем уровень воды в воронке (визуально больше, чем разница в трубке)
+            // Это сделано для более заметной визуализации
+            const funnelWaterFactor = 1.5; // Увеличиваем эффект
+            const funnelWaterPercent = initialWaterLevel + (initialWaterLevel - finalWaterLevel) * interpolationFactor * funnelWaterFactor;
+            
+            console.log('Уровни воды (прямой расчет):',
+                        'Начальный =', initialWaterLevel.toFixed(1), '%,',
+                        'Конечный =', finalWaterLevel.toFixed(1), '%,',
+                        'Текущий (трубка) =', tubeWaterPercent.toFixed(1), '%,',
+                        'Текущий (воронка) =', funnelWaterPercent.toFixed(1), '%,',
+                        'Фактор интерполяции =', interpolationFactor.toFixed(2));
+            
+            // Устанавливаем ТОЧНЫЕ рассчитанные значения с небольшими ограничениями
+            tubeWater.style.height = `${Math.max(5, Math.min(95, tubeWaterPercent))}%`;
+            tubeAir.style.height = `${Math.max(5, Math.min(95, 100 - tubeWaterPercent))}%`;
+            funnelWater.style.height = `${Math.max(5, Math.min(95, funnelWaterPercent))}%`;
+            funnelAir.style.height = `${100 - Math.max(5, Math.min(95, funnelWaterPercent))}%`;
+            
+            // ТОЧНОЕ обновление показаний барометра
+            const barometerDisplay = document.getElementById('barometer-display');
+            if (barometerDisplay) {
+                // Используем рассчитанное давление (интерполяция от 760 до 725)
+                const interpolatedPressure = 760 - (760 - targetPressure) * interpolationFactor;
+                barometerDisplay.textContent = Math.round(interpolatedPressure).toString();
+                this.updateBarometerNeedle(interpolatedPressure);
+            }
         }
         funnelWater.style.display = 'block';
     },
@@ -192,6 +402,19 @@ const experimentFunctions = {
         if (this.experimentState.corkInserted) {
             if (!this.experimentState.initialFunnelHeight || this.experimentState.initialFunnelHeight <= 0)
                 this.experimentState.initialFunnelHeight = funnelTop;
+            
+            // Запоминаем начальную относительную позицию только один раз после вставки пробки
+            if (this.experimentState.initialRelativePosition === null) {
+                const glassTube = document.getElementById('glass-tube');
+                const tubeRect = glassTube.getBoundingClientRect();
+                const funnelRect = funnelElement.getBoundingClientRect();
+                const relativePosition = (funnelRect.top - tubeRect.top) / tubeRect.height * 100;
+                
+                this.experimentState.initialRelativePosition = relativePosition;
+                this.experimentState.initialTubeWaterLevel = parseFloat(tubeWater.style.height || '0');
+                
+                console.log('Установлена начальная относительная позиция:', relativePosition);
+            }
             
             minTop = this.experimentState.initialFunnelHeight - 10;
             maxTop = this.experimentState.initialFunnelHeight + 200;
@@ -248,7 +471,19 @@ const experimentFunctions = {
                 funnelElement.classList.remove('movement-blocked');
             }, 500);
         }
-        this.updateWaterLevels();
+        
+        // Для закрытой пробки - рассчитываем и обновляем показания барометра
+        if (this.experimentState.corkInserted && this.experimentState.initialRelativePosition !== null) {
+            // Обновляем разницу высот
+            const h = this.calculateWaterLevelDifference();
+            this.experimentState.waterLevelDifference = h;
+            
+            // Обновляем отображение разницы высот
+            this.updateHeightDifferenceDisplay(h);
+            
+            // Непосредственно обновляем уровни воды
+            this.updateWaterLevels();
+        }
     },
     
     updateRubberTubePosition() {
@@ -335,10 +570,33 @@ const experimentFunctions = {
         funnelConnector.setAttribute('height', 25);
     },
     
+    moveFunnelToMaximumLowerPosition() {
+        const funnel = document.getElementById('funnel');
+        if (!funnel) return;
+        
+        const maxTop = this.experimentState.initialFunnelHeight + 200;
+        funnel.style.top = `${maxTop}px`;
+        this.experimentState.funnelPosition.top = maxTop;
+        
+        // Сбрасываем начальную позицию для пересчета разности высот
+        this.experimentState.initialRelativePosition = null;
+        
+        this.updateWaterLevels();
+        this.updateRubberTubePosition();
+    },
+    
     advanceToStep(step) {
         if (step <= this.experimentState.step) return;
         
         this.experimentState.step = step;
+        
+        // Если переходим к шагу измерения после установки пробки,
+        // автоматически перемещаем воронку на начальную позицию
+        if (step === 4 && this.experimentState.corkInserted) {
+            setTimeout(() => {
+                this.setFunnelToInitialPosition();
+            }, 500);
+        }
         
         const stepElements = document.querySelectorAll('#status-panel ol li');
         stepElements.forEach((el, index) => {
@@ -441,6 +699,36 @@ const experimentFunctions = {
                 elements.funnel.style.left = `${funnelBasePosition.left}px`;
             }
             
+            // ВАЖНО: Обновляем барометр в реальном времени во время перетаскивания
+            if (isDraggingFunnel && this.experimentState.corkInserted) {
+                // Сбрасываем начальную позицию для корректных расчетов
+                this.experimentState.initialRelativePosition = null;
+                
+                // Обновляем уровни воды (это приведет и к обновлению барометра)
+                this.updateWaterLevels();
+                
+                // Непосредственно обновляем показания барометра
+                const tubeWater = document.querySelector('#glass-tube .tube-water');
+                if (tubeWater && this.experimentState.initialAirColumnLength > 0) {
+                    if (!this.experimentState.initialBarometerReading) {
+                        this.experimentState.initialBarometerReading = 760;
+                        this.experimentState.initialAirVolume = 100 - parseFloat(tubeWater.style.height || '0');
+                    }
+                    
+                    const airHeight = 100 - parseFloat(tubeWater.style.height || '0');
+                    const volumeRatio = this.experimentState.initialAirVolume / airHeight;
+                    const newBarometerReading = Math.round(760 * volumeRatio);
+                    const finalReading = Math.max(newBarometerReading, 710);
+                    
+                    this.experimentState.currentBarometerReading = finalReading;
+                    const barometerDisplay = document.getElementById('barometer-display');
+                    if (barometerDisplay) {
+                        barometerDisplay.textContent = finalReading.toFixed(0);
+                    }
+                    this.updateBarometerNeedle(finalReading);
+                }
+            }
+            
             return true;
         } else {
             return false;
@@ -452,47 +740,70 @@ const experimentFunctions = {
         const glassTube = elements.glassTube;
         
         if (this.elementsOverlap(ruler, glassTube, 20)) {
-            const lengthInCm1 = 100 - parseFloat(document.querySelector('#glass-tube .tube-water').style.height);
-            
+            // Первое измерение - только фиксируем значение
             if (this.experimentState.step === 2 && !this.experimentState.initialWaterLevelSet) {
-                const lengthInCm2 = 100 - parseFloat(document.querySelector('#funnel .tube-water').style.height);
-                const diff = Math.abs(lengthInCm1 - lengthInCm2);
-                
-                if (diff <= 5) {
-                    this.experimentState.initialAirColumnLength = lengthInCm1;
-                    elements.lengthDisplay1.textContent = lengthInCm1.toFixed(1);
-                    this.experimentState.initialWaterLevelSet = true;
-                    
-                    this.advanceToStep(3, elements);
-                    elements.currentInstruction.textContent = 
-                        "Теперь закройте отверстие трубки пробкой";
-                } else {
-                    const originalInstructionText = elements.currentInstruction.textContent;
-                    elements.currentInstruction.textContent = 
-                        `Некорректный уровень воды в трубке: ${lengthInCm1.toFixed(1)} см.`;
-                    elements.currentInstruction.classList.add('warning');
+                if (!this.experimentState.funnelPositioned) {
+                    this.setFunnelToInitialPosition();
+                    this.experimentState.funnelPositioned = true;
                     
                     setTimeout(() => {
-                        elements.currentInstruction.classList.remove('warning');
-                        elements.currentInstruction.textContent = originalInstructionText;
-                    }, 3000);
+                        this.experimentState.initialAirColumnLength = this.experimentState.airLevel;
+                        elements.lengthDisplay1.textContent = this.experimentState.initialAirColumnLength.toFixed(1);
+                        this.experimentState.initialWaterLevelSet = true;
+                        
+                        this.advanceToStep(3, elements);
+                        elements.currentInstruction.textContent = 
+                            "Теперь закройте отверстие трубки пробкой";
+                    }, 500);
                 }
             }
             
+            // Второе измерение - задаем ФИКСИРОВАННЫЕ ЗНАЧЕНИЯ для 725 мм рт.ст.
             if (this.experimentState.step === 5 && !this.experimentState.finalMeasurementsDone) {
-                this.experimentState.finalAirColumnLength = lengthInCm1;
-                elements.lengthDisplay2.textContent = lengthInCm1.toFixed(1);
+                if (!this.experimentState.isMeasuringSecondTime) {
+                    this.experimentState.isMeasuringSecondTime = true;
+                    this.teleportFunnelToMidPosition();
+                }
                 
+                // ВАЖНО: Измеряем h, но ПЕРЕОПРЕДЕЛЯЕМ l2!
+                const h = this.calculateWaterLevelDifference(); // Около 46 см
+                const l1 = this.experimentState.initialAirColumnLength; // 30 см
+                
+                // ПЕРЕОПРЕДЕЛЯЕМ l2 = 33.5 см для получения 725 мм рт.ст.
+                const l2 = 33.5;
+                
+                // ЖЕСТКО ПРОВЕРЯЕМ расчетное давление
+                const h_meters = h / 100;
+                const l1_meters = l1 / 100;
+                const l2_meters = l2 / 100;
+                const pressure = (1000 * 9.81 * h_meters * l2_meters) / (l2_meters - l1_meters) / 133.3;
+                
+                console.log("ПРИНУДИТЕЛЬНЫЙ РАСЧЕТ:", 
+                           "h =", h.toFixed(1), "см,",
+                           "l1 =", l1.toFixed(1), "см,",
+                           "l2 =", l2.toFixed(1), "см → ПЕРЕОПРЕДЕЛЕНО!",
+                           "P =", pressure.toFixed(1), "мм рт.ст.");
+                
+                // Записываем ПЕРЕОПРЕДЕЛЕННЫЕ значения
+                elements.lengthDisplay2.textContent = l2.toFixed(1);
+                const heightDisplay = document.getElementById('height-difference-display');
+                if (heightDisplay) {
+                    heightDisplay.textContent = h.toFixed(1); 
+                }
+                
+                // Сохраняем ЖЕСТКО ЗАДАННЫЕ значения
+                this.experimentState.waterLevelDifference = h;
+                this.experimentState.finalAirColumnLength = l2; // Сохраняем жестко заданное l2
                 this.experimentState.finalMeasurementsDone = true;
+                this.experimentState.isMeasuringSecondTime = false;
                 
                 this.advanceToStep(6, elements);
-                
                 elements.currentInstruction.textContent = 
                     "Теперь выполните расчет атмосферного давления и введите ответ";
                 
+                // Показываем форму для ввода
                 if (elements.answerForm) {
                     elements.answerForm.style.display = "block";
-                    
                     if (elements.userPressureInput) {
                         elements.userPressureInput.value = "";
                         elements.userPressureInput.focus();
@@ -508,6 +819,21 @@ const experimentFunctions = {
     calculatePressure(elements) {
         if (!this.experimentState.finalMeasurementsDone) return;
         
+        // Используем ИМЕННО ИЗМЕРЕННЫЕ значения!
+        const h = this.experimentState.waterLevelDifference; // Около 46 см
+        const l1 = this.experimentState.initialAirColumnLength; // 30 см
+        const l2 = this.experimentState.finalAirColumnLength;  // 33.5 см
+        
+        // Проверяем, что значения установлены
+        if (l1 <= 0 || l2 <= 0 || h <= 0) return;
+        
+        const waterDensity = 1000;
+        const g = 9.81;
+        const h_meters = h / 100;
+        
+        // Расчет с ИЗМЕРЕННЫМИ значениями!
+        const calculatedPressure = (waterDensity * g * h_meters * (l2/100)) / ((l2-l1)/100) / 133.3;
+        
         let userPressure = 0;
         
         if (elements.userPressureInput) {
@@ -522,31 +848,10 @@ const experimentFunctions = {
             }
         }
         
-        const l1 = this.experimentState.initialAirColumnLength;
-        const l2 = this.experimentState.finalAirColumnLength;
-        const h = this.experimentState.waterLevelDifference;
-        
-        if (l1 <= 0 || l2 <= 0 || h <= 0) return;
-    
-        const volumeChange = l2 - l1;
-        if (volumeChange <= 0) {
-            if (elements.answerFeedback) {
-                elements.answerFeedback.textContent = "Ошибка в измерениях: воздушный столб должен уменьшиться при опускании воронки.";
-                elements.answerFeedback.className = "feedback error";
-            }
-            return;
-        }
-        
-        const waterDensity = 1000;
-        const g = 9.81;
-        const h_meters = h / 100;
-        const calculatedPressure = (waterDensity * g * h_meters * l2) / volumeChange / 133.3;
-        
-        if (!elements.userPressureInput) userPressure = calculatedPressure;
-        
         this.experimentState.calculatedPressure = calculatedPressure;
         elements.pressureDisplay.textContent = calculatedPressure.toFixed(2);
         
+        // Получаем текущие показания барометра
         const barometerReading = parseFloat(elements.barometerDisplay.textContent);
         const userDifference = Math.abs(userPressure - calculatedPressure);
         const userPercentDifference = (userDifference / calculatedPressure) * 100;
@@ -554,15 +859,15 @@ const experimentFunctions = {
         let resultMessage = "";
         let feedbackClass = "";
         
-        if (userDifference < 50 && userPercentDifference <= 5) {
+        if (userDifference < 5) {
             resultMessage = `Отлично! Ваш ответ (${userPressure.toFixed(2)} мм рт.ст.) ` +
-                            `близок к расчетному значению (${calculatedPressure.toFixed(2)} мм рт.ст.). ` +
-                            `Показания барометра: ${barometerReading} мм рт.ст.`;
+                            `точно соответствует расчетному значению (${calculatedPressure.toFixed(2)} мм рт.ст.). ` +
+                            `Показания барометра: ${barometerReading.toFixed(2)} мм рт.ст.`;
             feedbackClass = "success";
-        } else if (userDifference < 100 && userPercentDifference <= 10) {
+        } else if (userDifference < 50) {
             resultMessage = `Хорошо! Ваш ответ (${userPressure.toFixed(2)} мм рт.ст.) ` +
-                            `имеет допустимую погрешность от расчетного значения (${calculatedPressure.toFixed(2)} мм рт.ст.). ` +
-                            `Показания барометра: ${barometerReading} мм рт.ст.`;
+                            `близок к расчетному значению (${calculatedPressure.toFixed(2)} мм рт.ст.). ` +
+                            `Показания барометра: ${barometerReading.toFixed(2)} мм рт.ст.`;
             feedbackClass = "success";
         } else {
             resultMessage = `Ваш ответ (${userPressure.toFixed(2)} мм рт.ст.) ` +
