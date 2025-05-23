@@ -94,43 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
     physjs.onConnect((fromId, toId) => {
         experimentFunctions.handleConnection(fromId, toId);
     });
-
-    function handleObjectDetachment(object) {
-        console.log('Отсоединение объекта:', object.id);
-        if (object.id === '#microphone' || object.id === '#oscilloscope') {
-            const wires = physjs.getAllWires();
-            console.log('Все провода:', wires);
-            
-            if (wires && wires.length > 0) {
-                const connectionPoints = [];
-                if (object.id === '#microphone') {
-                    connectionPoints.push('mic-output');
-                } else if (object.id === '#oscilloscope') {
-                    connectionPoints.push('y-input');
-                }
-                
-                wires.forEach(wireId => {
-                    const wireInfo = physjs.getWireInfo(wireId);
-                    console.log('Информация о проводе:', wireInfo);
-                    
-                    if (wireInfo) {
-                        if (connectionPoints.includes(wireInfo.from) || connectionPoints.includes(wireInfo.to)) {
-                            console.log('Удаление провода:', wireId);
-                            physjs.removeWire(wireId);
-                            
-                            if (experimentFunctions.handleWireRemoval) {
-                                experimentFunctions.handleWireRemoval(wireId);
-                            }
-                        }
-                    }
-                });
-            }
-        }
-    }
-
-    physjs.onDetachment((object) => {
-        handleObjectDetachment(object);
-    });
     
     physjs.goToStep('step1');
     
@@ -152,28 +115,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('hammer').addEventListener('dblclick', (e) => {
         e.stopPropagation();
-        experimentFunctions.strikeTheTuningFork();
+
+        const hammer = document.getElementById('hammer');
+        const tuningFork = document.getElementById('tuning-fork');
+
+        if (!hammer || !tuningFork) return;
+
+        const hammerRect = hammer.getBoundingClientRect();
+        const forkRect = tuningFork.getBoundingClientRect();
+
+        const hammerCenterX = hammerRect.left + hammerRect.width/2;
+        const hammerCenterY = hammerRect.top + hammerRect.height/2;
+        const forkCenterX = forkRect.left + forkRect.width/2;
+        const forkCenterY = forkRect.top + forkRect.height/2;
+
+        const distance = Math.sqrt(
+            Math.pow(hammerCenterX - forkCenterX, 2) + 
+            Math.pow(hammerCenterY - forkCenterY, 2)
+        );
+
+        const intersectionThreshold = (hammerRect.width + forkRect.width) / 4;
+        const isIntersecting = distance < intersectionThreshold;
+        const state = experimentFunctions.experimentState;
+
+        if (isIntersecting && state.step >= 3)
+            experimentFunctions.strikeTheTuningFork();
     });
 
     document.getElementById('ruler').addEventListener('dblclick', (e) => {
         e.stopPropagation();
         experimentFunctions.takeMeasurement();
-    });
-
-    document.querySelectorAll('.phys').forEach(element => {
-        element.addEventListener('mouseenter', (e) => {
-            const tooltip = document.getElementById('tooltip');
-            if (tooltip && element.dataset.name) {
-                tooltip.textContent = element.dataset.name;
-                tooltip.style.display = 'block';
-                tooltip.style.left = (e.pageX + 10) + 'px';
-                tooltip.style.top = (e.pageY + 10) + 'px';
-            }
-        });
-        element.addEventListener('mouseleave', () => {
-            const tooltip = document.getElementById('tooltip');
-            if (tooltip) tooltip.style.display = 'none';
-        });
     });
 
     document.getElementById('check-amplitude').addEventListener('click', () => {

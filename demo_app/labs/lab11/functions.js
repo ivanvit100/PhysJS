@@ -10,9 +10,8 @@ const experimentFunctions = {
         waveformStable: false,
         measurementTaken: false,
         beamAmplitude: 0,
-        gainCoefficient: 0.1,
+        gainCoefficient: 0,
         voltageAmplitude: 0,
-        correctVoltageAmplitude: 0.35,
         
         brightness: 0,
         focus: 0,
@@ -24,6 +23,8 @@ const experimentFunctions = {
         timebaseValue: 0,
         
         wireId: null,
+
+        signalVoltageAmplitude: 1.39,
         
         lastRenderTime: 0,
         renderInterval: 20,
@@ -81,108 +82,14 @@ const experimentFunctions = {
     setupEventHandlers() {
         const state = this.experimentState;
         
-        // Обработчик для молотка
-        const hammer = document.getElementById('hammer');
-        if (hammer) {
-            // Удаляем старые обработчики
-            hammer.removeEventListener('dblclick', hammer._dblclickHandler);
-            hammer.removeEventListener('mousedown', hammer._mousedownHandler);
-            
-            // Добавляем новый обработчик двойного клика
-            hammer._dblclickHandler = (e) => {
-                e.stopPropagation();
-                
-                const tuningFork = document.getElementById('tuning-fork');
-                if (!tuningFork) return;
-                
-                // Проверяем расстояние между молотком и камертоном
-                const hammerRect = hammer.getBoundingClientRect();
-                const forkRect = tuningFork.getBoundingClientRect();
-                
-                // Используем расстояние между верхней частью молотка и верхней частью камертона
-                const hammerTop = hammerRect.top;
-                const forkTop = forkRect.top;
-                const verticalDistance = Math.abs(hammerTop - forkTop);
-                
-                const hammerLeft = hammerRect.left + hammerRect.width/2;
-                const forkLeft = forkRect.left + forkRect.width/2;
-                const horizontalDistance = Math.abs(hammerLeft - forkLeft);
-                
-                // Проверяем, находится ли молоток достаточно близко к камертону
-                const isClose = verticalDistance < 100 && horizontalDistance < 100;
-                
-                if (isClose && state.step >= 3 && state.tuningForkPositioned) {
-                    // Вызываем функцию удара по камертону
-                    this.strikeTheTuningFork();
-                }
-            };
-            
-            // Добавляем обработчик перетаскивания
-            hammer._mousedownHandler = (e) => {
-                e.stopPropagation();
-                state.isDragging = true;
-                state.draggedElement = hammer;
-            };
-            
-            hammer.addEventListener('dblclick', hammer._dblclickHandler);
-            hammer.addEventListener('mousedown', hammer._mousedownHandler);
-        }
-        
-        // Обработчик для линейки
-        const ruler = document.getElementById('ruler');
-        if (ruler) {
-            // Удаляем старые обработчики
-            ruler.removeEventListener('dblclick', ruler._dblclickHandler);
-            ruler.removeEventListener('mousedown', ruler._mousedownHandler);
-            
-            // Добавляем новый обработчик двойного клика
-            ruler._dblclickHandler = (e) => {
-                e.stopPropagation();
-                
-                const screen = document.querySelector('.screen');
-                if (!screen) return;
-                
-                // Проверяем пересечение линейки и экрана
-                const rulerRect = ruler.getBoundingClientRect();
-                const screenRect = screen.getBoundingClientRect();
-                
-                // Проверяем пересечение прямоугольников
-                const isIntersecting = !(
-                    rulerRect.right < screenRect.left ||
-                    rulerRect.left > screenRect.right ||
-                    rulerRect.bottom < screenRect.top ||
-                    rulerRect.top > screenRect.bottom
-                );
-                
-                if (isIntersecting && state.step === 4 && state.waveformStable) {
-                    // Вызываем функцию измерения
-                    this.takeMeasurement();
-                }
-            };
-            
-            // Добавляем обработчик перетаскивания
-            ruler._mousedownHandler = (e) => {
-                e.stopPropagation();
-                state.isDragging = true;
-                state.draggedElement = ruler;
-            };
-            
-            ruler.addEventListener('dblclick', ruler._dblclickHandler);
-            ruler.addEventListener('mousedown', ruler._mousedownHandler);
-        }
-        
-        // Обработчик для осциллографа
         const oscilloscope = document.getElementById('oscilloscope');
         if (oscilloscope) {
-            // Удаляем старый обработчик
             oscilloscope.removeEventListener('dblclick', oscilloscope._dblclickHandler);
             
-            // Добавляем новый обработчик двойного клика
             oscilloscope._dblclickHandler = (e) => {
                 e.stopPropagation();
                 const powerButton = document.getElementById('power-button');
                 
-                // Проверяем, был ли клик по кнопке питания
                 if (powerButton) {
                     const rect = powerButton.getBoundingClientRect();
                     const isClickOnButton = (
@@ -192,16 +99,14 @@ const experimentFunctions = {
                         e.clientY <= rect.bottom
                     );
                     
-                    if (isClickOnButton) {
+                    if (isClickOnButton)
                         this.toggleOscilloscope();
-                    }
                 }
             };
             
             oscilloscope.addEventListener('dblclick', oscilloscope._dblclickHandler);
         }
         
-        // Общие обработчики
         document.addEventListener('mousemove', (e) => {
             this.handleDragMove(e);
         });
@@ -212,7 +117,6 @@ const experimentFunctions = {
             state.knobBeingRotated = null;
         });
         
-        // Обработчики для ручек управления
         const controls = document.querySelectorAll('.control-knob');
         controls.forEach(control => {
             control.addEventListener('mousedown', (e) => {
@@ -253,7 +157,6 @@ const experimentFunctions = {
         }
     },
 
-    // Обновляем функцию проверки для dragMove
     handleDragMove(e) {
         const now = performance.now();
         const state = this.experimentState;
@@ -262,14 +165,12 @@ const experimentFunctions = {
             state.lastRenderTime = now;
             
             if (state.draggedElement) {
-                // Камертон рядом с микрофоном
                 if (state.draggedElement.id === 'tuning-fork' && state.step >= 3) {
                     const microphone = document.getElementById('microphone');
                     if (microphone) {
                         const forkRect = state.draggedElement.getBoundingClientRect();
                         const micRect = microphone.getBoundingClientRect();
                         
-                        // Расстояние между центрами
                         const distance = Math.sqrt(
                             Math.pow((forkRect.left + forkRect.width/2) - (micRect.left + micRect.width/2), 2) +
                             Math.pow((forkRect.top + forkRect.height/2) - (micRect.top + micRect.height/2), 2)
@@ -277,25 +178,20 @@ const experimentFunctions = {
                         
                         state.tuningForkPositioned = distance < 100;
                         
-                        // Визуальная обратная связь
-                        if (state.tuningForkPositioned) {
-                            state.draggedElement.classList.add('positioned');
-                        } else {
+                        state.tuningForkPositioned ?
+                            state.draggedElement.classList.add('positioned') :
                             state.draggedElement.classList.remove('positioned');
-                        }
                         
                         this.checkExperimentConditions();
                     }
                 }
                 
-                // Линейка над экраном
                 if (state.draggedElement.id === 'ruler' && state.step === 4) {
                     const screen = document.querySelector('.screen');
                     if (screen) {
                         const rulerRect = state.draggedElement.getBoundingClientRect();
                         const screenRect = screen.getBoundingClientRect();
                         
-                        // Проверяем пересечение
                         const isIntersecting = !(
                             rulerRect.right < screenRect.left ||
                             rulerRect.left > screenRect.right ||
@@ -303,32 +199,9 @@ const experimentFunctions = {
                             rulerRect.top > screenRect.bottom
                         );
                         
-                        if (isIntersecting) {
-                            state.draggedElement.classList.add('measurement-ready');
-                        } else {
+                        isIntersecting ?
+                            state.draggedElement.classList.add('measurement-ready') :
                             state.draggedElement.classList.remove('measurement-ready');
-                        }
-                    }
-                }
-                
-                // Молоток рядом с камертоном
-                if (state.draggedElement.id === 'hammer' && state.step >= 3) {
-                    const tuningFork = document.getElementById('tuning-fork');
-                    if (tuningFork) {
-                        const hammerRect = state.draggedElement.getBoundingClientRect();
-                        const forkRect = tuningFork.getBoundingClientRect();
-                        
-                        // Расстояние между центрами
-                        const distance = Math.sqrt(
-                            Math.pow((hammerRect.left + hammerRect.width/2) - (forkRect.left + forkRect.width/2), 2) +
-                            Math.pow((hammerRect.top + hammerRect.height/2) - (forkRect.top + forkRect.height/2), 2)
-                        );
-                        
-                        if (distance < 100) {
-                            state.draggedElement.classList.add('hammer-ready');
-                        } else {
-                            state.draggedElement.classList.remove('hammer-ready');
-                        }
                     }
                 }
             }
@@ -408,18 +281,97 @@ const experimentFunctions = {
             case 'y-gain':
                 state.yGain = value;
                 state.amplificationValue = (value / 100) * 5;
-                this.updateWaveformAppearance();
+                
+                const gainCoeffElement = document.getElementById('gain-coefficient');
+                if (gainCoeffElement) {
+                    state.gainCoefficient = state.amplificationValue / 10;
+                    gainCoeffElement.textContent = state.gainCoefficient.toFixed(2);
+                }
+                
+                this.updateWaveformAmplitude();
                 break;
             case 'timebase':
                 state.timebase = value;
                 state.timebaseValue = 1 + (value / 100) * 9;
                 state.waveformStable = Math.abs(value - 60) < 20;
-                this.updateWaveformAppearance();
+                this.updateWaveformStability();
                 break;
         }
         this.updateOscilloscopeDisplay();
         this.checkBeamConfiguration();
         this.checkExperimentConditions();
+    },
+
+    updateWaveformStability() {
+        const state = this.experimentState;
+        const screen = document.querySelector('.screen');
+        const waveform = document.querySelector('.waveform');
+        
+        if (!waveform || !screen || !state.waveformVisible) return;
+        
+        state.waveformStable ?
+            screen.classList.add('stable-waveform') :
+            screen.classList.remove('stable-waveform');
+        
+        const svg = waveform.querySelector('svg');
+        if (!svg) return;
+        
+        const path = svg.querySelector('path');
+        if (!path) return;
+        
+        const blurAmount = Math.min(3, Math.abs(state.timebase - 60) / 10);
+        path.setAttribute("filter", `drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) blur(${blurAmount}px)`);
+        
+        let pathClone = svg.querySelector("path:nth-child(2)");
+        if (state.waveformStable) {
+            pathClone && pathClone.remove();
+        } else {
+            if (!pathClone) {
+                pathClone = path.cloneNode(true);
+                svg.appendChild(pathClone);
+            }
+            
+            const offset = (state.timebase > 60) ? 5 : -5;
+            pathClone.setAttribute("transform", `translate(${offset}, 0)`);
+            pathClone.setAttribute("opacity", "0.5");
+            
+            const jitterAmount = Math.min(5, Math.abs(state.timebase - 60) / 8);
+            waveform.style.animation = `oscilloscope-jitter ${0.1}s infinite alternate`;
+            
+            let jitterStyle = document.getElementById('jitter-style');
+            if (!jitterStyle) {
+                jitterStyle = document.createElement('style');
+                jitterStyle.id = 'jitter-style';
+                document.head.appendChild(jitterStyle);
+            }
+            jitterStyle.textContent = `
+                @keyframes oscilloscope-jitter {
+                    0% { transform: translateY(0); }
+                    100% { transform: translateY(${jitterAmount}px); }
+                }
+            `;
+        }
+    },
+
+    updateWaveformAmplitude() {
+        const state = this.experimentState;
+        const screen = document.querySelector('.screen');
+        const waveform = document.querySelector('.waveform');
+        
+        if (!waveform || !screen || !state.waveformVisible) return;
+        
+        const amplificationValue = state.amplificationValue || 0.01;
+        const deflectionInDiv = state.signalVoltageAmplitude / amplificationValue;
+        const pixelsPerDiv = screen.offsetHeight / 8;
+        const deflectionInPixels = deflectionInDiv * pixelsPerDiv;
+        
+        state.waveformAmplitude = deflectionInDiv * 100;
+        state.beamAmplitude = deflectionInPixels * 0.26458;
+        
+        if (screen.offsetHeight) {
+            state.initialAmplitude = deflectionInPixels;
+            state.currentAmplitude = deflectionInPixels;
+        }
     },
     
     handleElementInteraction(element) {
@@ -433,52 +385,15 @@ const experimentFunctions = {
                 }
                 break;
                 
-            case 'hammer':
-                // Проверяем, пересекается ли молоток с камертоном
-                const hammer = document.getElementById('hammer');
-                const tuningFork = document.getElementById('tuning-fork');
-                
-                // Строгая проверка пересечений с порогом
-                if (hammer && tuningFork) {
-                    const rect1 = hammer.getBoundingClientRect();
-                    const rect2 = tuningFork.getBoundingClientRect();
-                    
-                    // Центр молотка
-                    const hammerCenterX = rect1.left + rect1.width / 2;
-                    const hammerCenterY = rect1.top + rect1.height / 2;
-                    
-                    // Центр камертона
-                    const forkCenterX = rect2.left + rect2.width / 2;
-                    const forkCenterY = rect2.top + rect2.height / 2;
-                    
-                    // Вычисляем расстояние между центрами
-                    const distance = Math.sqrt(
-                        Math.pow(hammerCenterX - forkCenterX, 2) + 
-                        Math.pow(hammerCenterY - forkCenterY, 2)
-                    );
-                    
-                    // Если центры достаточно близко, считаем что есть пересечение
-                    const thresholdDistance = (rect1.width + rect2.width) / 4;
-                    const isIntersecting = distance < thresholdDistance;
-                    
-                    if (isIntersecting && state.step >= 3 && state.tuningForkPositioned) {
-                        this.strikeTheTuningFork();
-                        return; // Важно: прерываем выполнение после срабатывания
-                    }
-                }
-                break;
-                
             case 'ruler':
-                // Проверяем, пересекается ли линейка с экраном
                 const ruler = document.getElementById('ruler');
                 const screen = document.querySelector('.screen');
                 
                 if (ruler && screen) {
                     const isIntersecting = this.elementsIntersect(ruler, screen);
                     
-                    if (isIntersecting && state.step === 4 && state.waveformStable) {
+                    if (isIntersecting && state.step === 4 && state.waveformStable)
                         this.takeMeasurement();
-                    }
                 }
                 break;
         }
@@ -523,14 +438,12 @@ const experimentFunctions = {
         switch (controlType) {
             case 'brightness':
             case 'focus':
+            case 'y-gain':
                 optimalValue = 100;
                 break;
             case 'h-position':
             case 'v-position':
                 optimalValue = 50;
-                break;
-            case 'y-gain':
-                optimalValue = 100;
                 break;
             case 'timebase':
                 optimalValue = 60;
@@ -555,6 +468,12 @@ const experimentFunctions = {
             case 'y-gain':
                 state.yGain = optimalValue;
                 state.amplificationValue = (optimalValue / 100) * 5;
+                
+                const gainCoeffElement = document.getElementById('gain-coefficient');
+                if (gainCoeffElement) {
+                    state.gainCoefficient = state.amplificationValue / 10;
+                    gainCoeffElement.textContent = state.gainCoefficient.toFixed(2);
+                }
                 break;
             case 'timebase':
                 state.timebase = optimalValue;
@@ -684,25 +603,19 @@ const experimentFunctions = {
         
         if (!tuningFork || !fork) return;
         
-        // Удаляем предыдущую анимацию
         fork.classList.remove('vibrating');
         fork.classList.remove('decay-vibration');
-        void fork.offsetWidth; // Сброс анимации
+        void fork.offsetWidth;
         
-        // Очищаем предыдущие таймеры, если они существуют
-        if (state.forkAnimationTimer) {
+        if (state.forkAnimationTimer)
             clearTimeout(state.forkAnimationTimer);
-        }
         
-        // Добавляем базовую анимацию вибрации
         fork.classList.add('vibrating');
         
-        // Через 3 секунды, добавляем класс затухания
         state.forkAnimationTimer = setTimeout(() => {
             fork.classList.add('decay-vibration');
         }, 3000);
         
-        // Планируем постепенное замедление анимации
         const decayStart = 3000;
         const decayDuration = 10000;
         const startTime = Date.now();
@@ -715,24 +628,19 @@ const experimentFunctions = {
             if (elapsed > decayStart) {
                 const decayProgress = Math.min(1, (elapsed - decayStart) / decayDuration);
                 
-                // Постепенно увеличиваем длительность анимации
-                const newDuration = 0.8 + decayProgress * 2; // от 0.8s до 2.8s
+                const newDuration = 0.8 + decayProgress * 2;
                 fork.style.animationDuration = `${newDuration}s`;
                 
-                // Постепенно уменьшаем интенсивность колебаний
                 const intensity = Math.max(0.05, 1 - decayProgress);
                 fork.style.animationPlayState = intensity < 0.1 ? 'paused' : 'running';
                 
                 if (decayProgress >= 1) {
-                    // Останавливаем анимацию, когда затухание завершено
                     fork.classList.remove('vibrating');
                     fork.classList.remove('decay-vibration');
-                    fork.style.transform = 'transformX(-50%) rotate(0deg)'; // Возвращаем в исходное положение
+                    fork.style.transform = 'transformX(-50%) rotate(0deg)';
                     fork.style.animationDuration = '';
                     
-                    if (animationFrameId) {
-                        cancelAnimationFrame(animationFrameId);
-                    }
+                    animationFrameId && cancelAnimationFrame(animationFrameId);
                     return;
                 }
             }
@@ -744,20 +652,14 @@ const experimentFunctions = {
         
         state.tuningForkStruck = true;
         
-        // Показываем осциллограмму, если микрофон подключен и осциллограф включен
-        if (state.micConnected && state.oscilloscopePowered) {
-            this.showWaveform();
-        }
+        state.micConnected && state.oscilloscopePowered && this.showWaveform();
         
-        // Устанавливаем таймер для полной остановки через 13 секунд
         setTimeout(() => {
             if (fork.classList.contains('vibrating')) {
                 fork.classList.remove('vibrating');
                 fork.classList.remove('decay-vibration');
                 fork.style.transform = 'translateX(-50%) rotate(0deg)';
-                if (animationFrameId) {
-                    cancelAnimationFrame(animationFrameId);
-                }
+                animationFrameId && cancelAnimationFrame(animationFrameId);
             }
         }, decayStart + decayDuration);
         
@@ -770,13 +672,9 @@ const experimentFunctions = {
         
         if (!screen || !state.oscilloscopePowered) return;
         
-        // Удаляем старую осциллограмму
         let waveform = document.querySelector('.waveform');
-        if (waveform) {
-            waveform.remove();
-        }
+        waveform && waveform.remove();
         
-        // Создаем новый элемент для осциллограммы
         waveform = document.createElement('div');
         waveform.className = 'waveform';
         waveform.style.position = 'absolute';
@@ -790,13 +688,14 @@ const experimentFunctions = {
         
         screen.appendChild(waveform);
         
-        // Рассчитываем параметры осциллограммы
-        const yGainFactor = state.yGain / 100;
-        const yAmplitude = 30 * yGainFactor;
-        state.waveformAmplitude = yAmplitude;
-        state.beamAmplitude = yAmplitude / 100 * screen.offsetHeight;
+        const amplificationValue = state.amplificationValue || 0.01;
+        const deflectionInDiv = state.signalVoltageAmplitude / amplificationValue;
+        const pixelsPerDiv = screen.offsetHeight / 8;
+        const deflectionInPixels = deflectionInDiv * pixelsPerDiv;
         
-        // Создаем SVG для отрисовки осциллограммы
+        state.waveformAmplitude = deflectionInDiv * 100;
+        state.beamAmplitude = deflectionInPixels * 0.26458;
+        
         const svgNS = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNS, "svg");
         svg.setAttribute("width", "100%");
@@ -805,7 +704,6 @@ const experimentFunctions = {
         svg.style.left = "0";
         svg.style.top = "0";
         
-        // Создаем линию осциллограммы
         const path = document.createElementNS(svgNS, "path");
         path.setAttribute("fill", "none");
         path.setAttribute("stroke", "rgb(0, 255, 0)");
@@ -815,29 +713,23 @@ const experimentFunctions = {
         
         waveform.appendChild(svg);
         
-        // Определяем стабильность осциллограммы
         state.waveformStable = Math.abs(state.timebase - 60) < 20;
         
-        // Настраиваем скорость анимации и параметры отображения
         const timebaseFactor = state.timebase / 100;
         
-        // Если осциллограмма не стабильна, добавляем эффекты размытия и двоения
         if (!state.waveformStable) {
             const blurAmount = Math.min(3, Math.abs(state.timebase - 60) / 10);
             path.setAttribute("filter", `drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) blur(${blurAmount}px)`);
             
-            // Добавляем эффект двоения
             const pathClone = path.cloneNode(true);
             const offset = (state.timebase > 60) ? 5 : -5;
             pathClone.setAttribute("transform", `translate(${offset}, 0)`);
             pathClone.setAttribute("opacity", "0.5");
             svg.appendChild(pathClone);
             
-            // Добавляем эффект дрожания
             const jitterAmount = Math.min(5, Math.abs(state.timebase - 60) / 8);
             waveform.style.animation = `oscilloscope-jitter ${0.1}s infinite alternate`;
             
-            // Добавляем стиль для анимации дрожания
             let jitterStyle = document.getElementById('jitter-style');
             if (!jitterStyle) {
                 jitterStyle = document.createElement('style');
@@ -852,71 +744,54 @@ const experimentFunctions = {
             `;
         }
         
-        // Обновляем класс экрана в зависимости от стабильности
-        if (state.waveformStable) {
-            screen.classList.add('stable-waveform');
-        } else {
+        state.waveformStable ?
+            screen.classList.add('stable-waveform') :
             screen.classList.remove('stable-waveform');
-        }
         
-        // Активируем отображение осциллограммы
         state.waveformVisible = true;
         
-        // Параметры для создания синусоиды
         const points = 200;
         const screenHeight = screen.offsetHeight;
-        const amplitude = (yAmplitude / 100) * screenHeight / 4;
+        const amplitude = deflectionInPixels;
         const frequency = 4;
         const centerY = screenHeight * (state.vPosition / 100);
         const speed = 0.05 * (1 - timebaseFactor * 0.5);
         
-        // Начальные параметры затухания и позиции
         state.initialAmplitude = amplitude;
         state.currentAmplitude = amplitude;
         let position = 0;
         
-        // Параметры затухания
-        const decayStart = 3000; // начало затухания (мс)
-        const decayDuration = 10000; // длительность затухания (мс)
-        const minAmplitude = amplitude * 0.05; // минимальная амплитуда (5% от начальной)
+        const decayStart = 3000;
+        const decayDuration = 10000;
+        const minAmplitude = amplitude * 0.05;
         let startTime = Date.now();
         let animationId = null;
         
-        // Функция анимации осциллограммы
+        const spatialDecayFactor = 0.2;
+        
         function animate() {
             if (!state.waveformVisible) {
-                if (animationId) {
-                    cancelAnimationFrame(animationId);
-                }
+                animationId && cancelAnimationFrame(animationId);
                 return;
             }
             
             const now = Date.now();
             const elapsed = now - startTime;
             
-            // Расчет текущей амплитуды с затуханием
+            let globalDecay = 1;
             if (elapsed > decayStart) {
                 const decayProgress = Math.min(1, (elapsed - decayStart) / decayDuration);
-                state.currentAmplitude = state.initialAmplitude * Math.max(0.05, 1 - decayProgress);
+                globalDecay = Math.max(0.05, 1 - decayProgress);
+                state.currentAmplitude = state.initialAmplitude * globalDecay;
                 
-                // Проверяем, достигла ли амплитуда минимального значения
-                if (state.currentAmplitude <= minAmplitude) {
-                    // Создаем финальную прямую линию (горизонтальную)
+                if (state.currentAmplitude <= minAmplitude && state.yGain > 1) {
                     let d = `M 0,${centerY} L ${screen.offsetWidth},${centerY}`;
                     path.setAttribute("d", d);
                     
-                    // Обновляем клон пути, если он есть
                     const pathClone = svg.querySelector("path:nth-child(2)");
-                    if (pathClone) {
-                        pathClone.setAttribute("d", d);
-                    }
+                    pathClone && pathClone.setAttribute("d", d);
+                    animationId && cancelAnimationFrame(animationId);
                     
-                    // Останавливаем анимацию
-                    if (animationId) {
-                        cancelAnimationFrame(animationId);
-                    }
-                    
-                    // Удаляем дрожание, если есть
                     waveform.style.animation = 'none';
                     return;
                 }
@@ -924,57 +799,67 @@ const experimentFunctions = {
             
             position += speed;
             
-            // Создаем путь синусоиды
-            let d = `M 0,${centerY} `;
+            const currentAmplificationValue = state.amplificationValue || 0.01;
+            const currentDeflectionInDiv = state.signalVoltageAmplitude / currentAmplificationValue;
+            const currentAmplitude = currentDeflectionInDiv * pixelsPerDiv * globalDecay;
             
-            for (let i = 0; i <= points; i++) {
-                const x = (i / points) * screen.offsetWidth;
-                const phase = position + (i / points) * Math.PI * 2 * frequency;
-                const y = centerY + Math.sin(phase) * state.currentAmplitude;
-                d += `L ${x},${y} `;
+            let d;
+            if (state.yGain <= 1) {
+                d = `M 0,${centerY} L ${screen.offsetWidth},${centerY}`;
+            } else {
+                d = `M 0,${centerY} `;
+                for (let i = 0; i <= points; i++) {
+                    const x = (i / points) * screen.offsetWidth;
+                    const phase = position + (i / points) * Math.PI * 2 * frequency;
+                    const spatialDecay = Math.exp(-spatialDecayFactor * (i / points) * frequency);
+                    const currentPointAmplitude = currentAmplitude * spatialDecay;
+                    const y = centerY + Math.sin(phase) * currentPointAmplitude;
+                    d += `L ${x},${y} `;
+                }
             }
             
-            // Обновляем путь осциллограммы
             path.setAttribute("d", d);
             
-            // Обновляем клон пути, если он есть
             const pathClone = svg.querySelector("path:nth-child(2)");
-            if (pathClone) {
-                pathClone.setAttribute("d", d);
-            }
+            pathClone && pathClone.setAttribute("d", d);
             
-            // Продолжаем анимацию
             animationId = requestAnimationFrame(animate);
         }
-        
-        // Запускаем анимацию
         animationId = requestAnimationFrame(animate);
-        
         this.checkExperimentConditions();
     },
     
     updateWaveformAppearance() {
         const state = this.experimentState;
-        state.waveformVisible && state.tuningForkStruck && this.showWaveform();
+        state.waveformVisible && state.tuningForkStruck && !document.querySelector('.waveform') && this.showWaveform();
     },
     
     takeMeasurement() {
         const state = this.experimentState;
         const ruler = document.getElementById('ruler');
         const screen = document.querySelector('.screen');
+        const waveform = document.querySelector('.waveform');
         
-        if (!ruler || !screen || !state.waveformStable) return;
+        const minGainRequired = 30;
+    
+        if (!ruler || !screen || !waveform) return;
+        if (!this.elementsIntersect(ruler, screen)) return;
+        if (!state.waveformStable) return;
+        if (!state.waveformVisible) return;
+        if (state.yGain < minGainRequired) return;
         
-        const beamAmplitudePx = state.beamAmplitude;
-        const pxToMm = 0.26458;
-        const beamAmplitudeMm = Math.round(beamAmplitudePx * pxToMm * 10) / 10;
-        const voltageAmplitude = beamAmplitudeMm * state.gainCoefficient;
+        const beamAmplitudeMm = Math.round(state.beamAmplitude * 10) / 10;
+        const voltageAmplitude = beamAmplitudeMm * state.amplificationValue / 10;
         
         state.beamAmplitude = beamAmplitudeMm;
         state.voltageAmplitude = Math.round(voltageAmplitude * 100) / 100;
         
         document.getElementById('beam-amplitude').textContent = state.beamAmplitude.toFixed(1);
-        document.getElementById('voltage-amplitude').textContent = state.voltageAmplitude.toFixed(2);
+        document.getElementById('voltage-amplitude').textContent = '?';
+        
+        const amplificationInfo = document.getElementById('amplification-value');
+        if (amplificationInfo)
+            amplificationInfo.textContent = state.amplificationValue.toFixed(2) + " В/дел";
         
         ruler.classList.add('reading-taken');
         setTimeout(() => {
@@ -991,6 +876,7 @@ const experimentFunctions = {
         const state = this.experimentState;
         const inputElement = document.getElementById('amplitude-input');
         const resultElement = document.getElementById('amplitude-result');
+        const voltageDisplayElement = document.getElementById('voltage-amplitude');
         
         if (!inputElement || !resultElement) return;
         
@@ -1008,15 +894,11 @@ const experimentFunctions = {
         if (isCorrect) {
             resultElement.textContent = 'Правильно! Ваш расчет совпадает с измеренным значением.';
             resultElement.className = 'success-message';
-            
-            if (state.step === 4) {
-                setTimeout(() => {
-                    alert('Поздравляем! Вы успешно выполнили лабораторную работу.');
-                }, 1000);
-            }
+            voltageDisplayElement.textContent = state.voltageAmplitude.toFixed(2);
         } else {
             resultElement.textContent = 'Неверно. Проверьте ваши расчеты и попробуйте снова.';
             resultElement.className = 'error-message';
+            voltageDisplayElement.textContent = '?';
         }
     },
 
@@ -1072,6 +954,7 @@ const experimentFunctions = {
                 if (state.oscilloscopePowered && state.beamConfigured) {
                     this.showStatusMessage("Осциллограф настроен. Перейдите к шагу 2.");
                     physjs.goToStep('step2');
+                    this.updateExperimentStep(2);
                 }
                 break;
                 
