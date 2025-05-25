@@ -669,72 +669,47 @@ const experimentFunctions = {
             return { x: refractedX, y: refractedY };
         }
         
-        function findExactIntersection(lens, rayX, rayY, rayDirX, rayDirY, isLeftSurface) {
+        // Аналитическое вычисление пересечения луча с поверхностью линзы
+        function findLensSurfaceIntersection(lens, rayX, rayY, rayDirX, rayDirY, isLeftSurface) {
             const centerX = lens.x;
             const halfEdgeThickness = state.h0 / 2;
             const leftCenter = centerX - halfEdgeThickness;
             const rightCenter = centerX + halfEdgeThickness;
             
-            const lensPoints = [];
-            for (let y = centerY - state.halfDiameter; y <= centerY + state.halfDiameter; y += 1.0) {
-                const dy = y - centerY;
-                const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
-                
-                if (lens.isConverging) {
-                    if (isLeftSurface) {
-                        lensPoints.push({x: leftCenter + dx, y: y});
-                    } else {
-                        lensPoints.push({x: rightCenter - dx, y: y});
-                    }
-                } else {
-                    if (isLeftSurface) {
-                        lensPoints.push({x: leftCenter - dx, y: y});
-                    } else {
-                        lensPoints.push({x: rightCenter + dx, y: y});
-                    }
-                }
+            // Находим пересечение луча с вертикальной линией, где должна быть поверхность
+            let surfaceCenterX;
+            if (isLeftSurface) {
+                surfaceCenterX = leftCenter;
+            } else {
+                surfaceCenterX = rightCenter;
             }
             
-            const maxIterations = 1000;
-            let curX = rayX;
-            let curY = rayY;
-            let stepSize = 0.5;
+            // Если луч параллелен поверхности, не может пересечь
+            if (Math.abs(rayDirX) < 0.001) return null;
             
-            for (let i = 0; i < maxIterations; i++) {
-                curX += rayDirX * stepSize;
-                curY += rayDirY * stepSize;
-                
-                let minDist = Infinity;
-                let closestPoint = null;
-                
-                for (const point of lensPoints) {
-                    const dist = Math.sqrt(Math.pow(curX - point.x, 2) + Math.pow(curY - point.y, 2));
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closestPoint = point;
-                    }
-                }
-                
-                if (minDist < stepSize)
-                    return closestPoint;
-                
-                if (curX > state.canvas.width || curX < 0 || curY > state.canvas.height || curY < 0)
-                    return null;
-            }
-            return {x: curX, y: curY};
-        }
-        
-        function findLensBoundary(lens, rayY) {
-            const centerX = lens.x;
-            const halfEdgeThickness = state.h0 / 2;
-            const leftCenter = centerX - halfEdgeThickness;
+            // Находим t для пересечения с вертикальной плоскостью поверхности
+            const t = (surfaceCenterX - rayX) / rayDirX;
+            if (t < 0) return null; // Луч идет в обратном направлении
             
-            const dy = rayY - centerY;
+            // Вычисляем y-координату пересечения
+            const intersectionY = rayY + t * rayDirY;
+            
+            // Проверяем, что пересечение в пределах диаметра линзы
+            const dy = intersectionY - centerY;
             if (Math.abs(dy) > state.halfDiameter) return null;
             
-            const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
+            // Вычисляем точную x-координату на поверхности линзы
+            const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - 
+                      Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
             
-            return lens.isConverging ? leftCenter + dx : leftCenter - dx;
+            let actualX;
+            if (lens.isConverging) {
+                actualX = isLeftSurface ? leftCenter + dx : rightCenter - dx;
+            } else {
+                actualX = isLeftSurface ? leftCenter - dx : rightCenter + dx;
+            }
+            
+            return { x: actualX, y: intersectionY };
         }
         
         function limitRayToCanvas(startX, startY, dirX, dirY, maxDistance = state.canvas.width) {
@@ -762,23 +737,12 @@ const experimentFunctions = {
         for (let rayY = startY; rayY <= endY; rayY += 30) {
             const isCentralRay = Math.abs(rayY - centerY) < 15;
             
-            // Первая линза (левая)
-            const lens1Boundary = findLensBoundary(leftLens, rayY);
-            
-            if (!lens1Boundary) {
+            if (isCentralRay) {
                 state.ctx.beginPath();
                 state.ctx.moveTo(0, rayY);
-                state.ctx.lineTo(state.canvas.width, rayY);
+                state.ctx.lineTo(leftLens.x, rayY);
                 state.ctx.stroke();
-                continue;
-            }
-            
-            state.ctx.beginPath();
-            state.ctx.moveTo(0, rayY);
-            state.ctx.lineTo(lens1Boundary, rayY);
-            state.ctx.stroke();
-            
-            if (isCentralRay) {
+                
                 state.ctx.beginPath();
                 state.ctx.moveTo(leftLens.x, rayY);
                 state.ctx.lineTo(rightLens.x, rayY);
@@ -792,8 +756,19 @@ const experimentFunctions = {
             }
             
             // Обработка первой линзы
-            const centerX1 = leftLens.x;
             const halfEdgeThickness = state.h0 / 2;
+            
+            // Вход в первую линзу
+            const entry1 = findLensSurfaceIntersection(leftLens, 0, rayY, 1, 0, true);
+            if (!entry1) continue;
+            
+            state.ctx.beginPath();
+            state.ctx.moveTo(0, rayY);
+            state.ctx.lineTo(entry1.x, entry1.y);
+            state.ctx.stroke();
+            
+            // Нормаль на входе в первую линзу
+            const centerX1 = leftLens.x;
             const leftCenter1 = centerX1 - halfEdgeThickness;
             const rightCenter1 = centerX1 + halfEdgeThickness;
             
@@ -806,9 +781,6 @@ const experimentFunctions = {
                 rightCurvatureCenter1 = rightCenter1 - state.adjustedR;
             }
             
-            const entry1 = findExactIntersection(leftLens, lens1Boundary - 1, rayY, 1, 0, true);
-            if (!entry1) continue;
-            
             let entryNormal1X, entryNormal1Y;
             if (leftLens.isConverging) {
                 entryNormal1X = entry1.x - leftCurvatureCenter1;
@@ -820,7 +792,8 @@ const experimentFunctions = {
             
             const refracted1Entry = calculateRefraction(1, 0, entryNormal1X, entryNormal1Y, 1.0, state.n);
             
-            const exit1 = findExactIntersection(leftLens, entry1.x, entry1.y, refracted1Entry.x, refracted1Entry.y, false);
+            // Выход из первой линзы
+            const exit1 = findLensSurfaceIntersection(leftLens, entry1.x, entry1.y, refracted1Entry.x, refracted1Entry.y, false);
             if (!exit1) continue;
             
             state.ctx.beginPath();
@@ -828,6 +801,7 @@ const experimentFunctions = {
             state.ctx.lineTo(exit1.x, exit1.y);
             state.ctx.stroke();
             
+            // Нормаль на выходе из первой линзы
             let exitNormal1X, exitNormal1Y;
             if (leftLens.isConverging) {
                 exitNormal1X = exit1.x - rightCurvatureCenter1;
@@ -839,8 +813,8 @@ const experimentFunctions = {
             
             const refracted1Exit = calculateRefraction(refracted1Entry.x, refracted1Entry.y, exitNormal1X, exitNormal1Y, state.n, 1.0);
             
-            // Попадание во вторую линзу
-            const entry2 = findExactIntersection(rightLens, exit1.x, exit1.y, refracted1Exit.x, refracted1Exit.y, true);
+            // Вход во вторую линзу - ИСПРАВЛЕНО: используем аналитический метод
+            const entry2 = findLensSurfaceIntersection(rightLens, exit1.x, exit1.y, refracted1Exit.x, refracted1Exit.y, true);
             
             if (!entry2) {
                 const endPoint = limitRayToCanvas(exit1.x, exit1.y, refracted1Exit.x, refracted1Exit.y);
@@ -872,6 +846,7 @@ const experimentFunctions = {
                 rightCurvatureCenter2 = rightCenter2 - state.adjustedR;
             }
             
+            // Нормаль на входе во вторую линзу
             let entryNormal2X, entryNormal2Y;
             if (rightLens.isConverging) {
                 entryNormal2X = entry2.x - leftCurvatureCenter2;
@@ -883,7 +858,8 @@ const experimentFunctions = {
             
             const refracted2Entry = calculateRefraction(refracted1Exit.x, refracted1Exit.y, entryNormal2X, entryNormal2Y, 1.0, state.n);
             
-            const exit2 = findExactIntersection(rightLens, entry2.x, entry2.y, refracted2Entry.x, refracted2Entry.y, false);
+            // Выход из второй линзы - ИСПРАВЛЕНО: используем аналитический метод
+            const exit2 = findLensSurfaceIntersection(rightLens, entry2.x, entry2.y, refracted2Entry.x, refracted2Entry.y, false);
             if (!exit2) continue;
             
             state.ctx.beginPath();
@@ -891,6 +867,7 @@ const experimentFunctions = {
             state.ctx.lineTo(exit2.x, exit2.y);
             state.ctx.stroke();
             
+            // Нормаль на выходе из второй линзы
             let exitNormal2X, exitNormal2Y;
             if (rightLens.isConverging) {
                 exitNormal2X = exit2.x - rightCurvatureCenter2;
@@ -900,13 +877,13 @@ const experimentFunctions = {
                 exitNormal2Y = centerY - exit2.y;
             }
             
+            // Преломление на выходе из второй линзы
             const refracted2Exit = calculateRefraction(refracted2Entry.x, refracted2Entry.y, exitNormal2X, exitNormal2Y, state.n, 1.0);
             
             // Вычисляем точку пересечения с оптической осью для определения фокуса
             if (Math.abs(refracted2Exit.y) > 0.001) {
                 const intersectionX = exit2.x - refracted2Exit.x * (exit2.y - centerY) / refracted2Exit.y;
                 
-                // Проверяем, что пересечение находится в разумных пределах
                 if (intersectionX > rightLens.x && intersectionX < state.canvas.width) {
                     intersectionPointsX.push(intersectionX);
                 }
