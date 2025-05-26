@@ -268,7 +268,7 @@ const experimentFunctions = {
             const initialWaterLevel = 100 - l1;
             const finalWaterLevel = 100 - l2;
             const maxHeightDiff = 50;
-            const interpolationFactor = Math.min(1.0, h / maxHeightDiff);
+            const interpolationFactor = Math.min(1.0, (h / maxHeightDiff) * 2);
             const tubeWaterPercent = initialWaterLevel - (initialWaterLevel - finalWaterLevel) * interpolationFactor;
             const funnelWaterFactor = 1.5;
             const funnelWaterPercent = initialWaterLevel + (initialWaterLevel - finalWaterLevel) * interpolationFactor * funnelWaterFactor;
@@ -651,11 +651,13 @@ const experimentFunctions = {
                     this.teleportFunnelToMidPosition();
                 }
                 
-                const h = this.calculateWaterLevelDifference();
+                // const h = this.calculateWaterLevelDifference();
                 const l1 = this.experimentState.initialAirColumnLength;
                 const barometerDisplay = document.getElementById('barometer-display');
                 const currentBarometerReading = parseFloat(barometerDisplay.textContent);
                 const l2 = (760 * l1) / currentBarometerReading;
+                const h = 760 / (100 * 9.81 * l2 / 100) * (l2 - l1) / 100;
+                console.log(h);
                 
                 elements.lengthDisplay2.textContent = l2.toFixed(1);
                 const heightDisplay = document.getElementById('height-difference-display');

@@ -4,7 +4,6 @@ const experimentFunctions = {
         oscilloscopePowered: false,
         beamConfigured: false,
         micConnected: false,
-        maxGainSet: false,
         tuningForkPositioned: false,
         tuningForkStruck: false,
         waveformStable: false,
@@ -22,108 +21,451 @@ const experimentFunctions = {
         amplificationValue: 0,
         timebaseValue: 0,
         
-        wireId: null,
-
-        signalVoltageAmplitude: 1.39,
+        signalVoltageAmplitude: 5,
+        tuningForkFrequency: 440,
         
         lastRenderTime: 0,
         renderInterval: 20,
         waveformVisible: false,
-        waveformAmplitude: 0,
-        waveformFrequency: 440,
-        waveformDecay: 0,
-        tuningForkSound: null,
-        
         isDragging: false,
-        draggedElement: null
+        draggedElement: null,
+        knobBeingRotated: null,
+        forkAnimationTimer: null
     },
     
     initializeExperiment() {
         physjs.setRotationKeysEnabled(false);
         this.setupEventHandlers();
         
-        document.getElementById('gain-coefficient').textContent = this.experimentState.gainCoefficient.toFixed(2);
-        document.getElementById('beam-amplitude').textContent = '-';
-        document.getElementById('voltage-amplitude').textContent = '-';
+        this.updateDisplay('gain-coefficient', this.experimentState.gainCoefficient.toFixed(2));
+        this.updateDisplay('beam-amplitude', '-');
+        this.updateDisplay('voltage-amplitude', '-');
+        this.updateDisplay('tuning-fork-frequency', `${this.experimentState.tuningForkFrequency} Гц`);
+        
         document.getElementById('voltage-calculator').style.display = 'none';
         
         const screen = document.querySelector('.screen');
         const beamDot = document.querySelector('.beam-dot');
-        const waveform = document.querySelector('.waveform');
         
-        if (screen && beamDot && waveform) {
+        if (screen && beamDot) {
             beamDot.style.display = 'none';
-            waveform.style.display = 'none';
             screen.classList.add('screen-off');
         }
         
         this.updateExperimentStep(1);
-        this.updateInstructions("Включите осциллограф двойным щелчком по кнопке питания и настройте луч с помощью ручек управления.");
     },
-    
-    setupPhysicsObjects() {
-        physjs.detachAll();
+
+    updateDisplay(id, text) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = text;
+    },
+
+    updateControlValue(control, value) {
+        const state = this.experimentState;
         
-        const objects = [
-            { selector: '#oscilloscope', type: 'oscilloscope' },
-            { selector: '#microphone', type: 'microphone' },
-            { selector: '#tuning-fork', type: 'tuning-fork' },
-            { selector: '#hammer', type: 'hammer' },
-            { selector: '#cable', type: 'cable' },
-            { selector: '#ruler', type: 'ruler' }
+        switch (control) {
+            case 'brightness':
+            case 'focus':
+                state[control] = value;
+                this.updateBeamAppearance();
+                this.updateWaveformVisualProperties();
+                break;
+            case 'h-position':
+            case 'v-position':
+                state[control.replace('-', '')] = value;
+                this.updateBeamPosition();
+                break;
+            case 'y-gain':
+                state.yGain = value;
+                state.amplificationValue = (value / 100) * 5;
+                state.gainCoefficient = state.amplificationValue / 10;
+                this.updateDisplay('gain-coefficient', state.gainCoefficient.toFixed(2));
+                this.updateWaveformAmplitude();
+                break;
+            case 'timebase':
+                state.timebase = value;
+                state.timebaseValue = this.calculateOptimalTimebase(state.tuningForkFrequency, value);
+                state.waveformStable = Math.abs(value - 60) < 20;
+                this.updateWaveformStability();
+                break;
+        }
+        this.updateOscilloscopeDisplay();
+        this.checkBeamConfiguration();
+        this.checkExperimentConditions();
+    },
+
+    calculateOptimalTimebase(frequency, controlValue) {
+        const periodsToShow = 2.5;
+        const period = 1000 / frequency;
+        const optimalTimebase = (period * periodsToShow) / 10;
+        const scaleFactor = 0.5 + (controlValue / 100) * 1.5;
+        return optimalTimebase * scaleFactor;
+    },
+
+    getVisualProperties() {
+        const state = this.experimentState;
+        const brightnessValue = Math.max(0, Math.min(100, state.brightness));
+        const alpha = brightnessValue / 100;
+        const focusValue = Math.max(0, Math.min(100, state.focus));
+        const focusBlur = Math.max(0, (100 - focusValue) / 20);
+        const glowIntensity = 3 + (brightnessValue / 20);
+        const strokeWidth = Math.max(1, 2 - (focusBlur / 2));
+        
+        return { alpha, focusBlur, glowIntensity, strokeWidth };
+    },
+
+    showWaveform() {
+        const state = this.experimentState;
+        const screen = document.querySelector('.screen');
+        
+        if (!screen || !state.oscilloscopePowered) return;
+        
+        this.toggleElement('.beam-dot', 'none');
+        
+        let waveform = document.querySelector('.waveform');
+        waveform && waveform.remove();
+        
+        waveform = this.createElement('div', 'waveform', {
+            position: 'absolute',
+            left: '0',
+            top: '0',
+            width: '100%',
+            height: '100%',
+            zIndex: '5',
+            pointerEvents: 'none',
+            display: 'block'
+        });
+        
+        screen.appendChild(waveform);
+        
+        const amplificationValue = state.amplificationValue || 0.01;
+        const deflectionInDiv = state.signalVoltageAmplitude / amplificationValue;
+        const pixelsPerDiv = screen.offsetHeight / 8;
+        const deflectionInPixels = deflectionInDiv * pixelsPerDiv;
+        
+        state.beamAmplitude = deflectionInPixels * 0.26458;
+        
+        const svg = this.createSVG();
+        const { alpha, focusBlur, glowIntensity, strokeWidth } = this.getVisualProperties();
+        
+        const path = this.createSVGPath(alpha, strokeWidth, glowIntensity, focusBlur);
+        svg.appendChild(path);
+        waveform.appendChild(svg);
+        
+        state.waveformStable = Math.abs(state.timebase - 60) < 20;
+        
+        if (!state.waveformStable) {
+            this.addInstabilityEffects(svg, path, alpha, focusBlur, glowIntensity, strokeWidth, waveform);
+        }
+        
+        this.toggleClass(screen, 'stable-waveform', state.waveformStable);
+        state.waveformVisible = true;
+        
+        this.startWaveformAnimation(screen, svg, path, deflectionInPixels, pixelsPerDiv);
+        this.checkExperimentConditions();
+    },
+
+    createElement(tag, className, styles) {
+        const element = document.createElement(tag);
+        element.className = className;
+        Object.assign(element.style, styles);
+        return element;
+    },
+
+    createSVG() {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        
+        svg.setAttribute("width", "100%");
+        svg.setAttribute("height", "100%");
+        
+        Object.assign(svg.style, {
+            position: "absolute",
+            left: "0",
+            top: "0"
+        });
+        return svg;
+    },
+
+    createSVGPath(alpha, strokeWidth, glowIntensity, focusBlur) {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const path = document.createElementNS(svgNS, "path");
+        this.setSVGPathAttributes(path, alpha, strokeWidth, glowIntensity, focusBlur);
+        return path;
+    },
+
+    setSVGPathAttributes(path, alpha, strokeWidth, glowIntensity, focusBlur) {
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", `rgba(0, 255, 0, ${alpha})`);
+        path.setAttribute("stroke-width", strokeWidth);
+        path.setAttribute("filter", `drop-shadow(0 0 ${glowIntensity}px rgba(0, 255, 0, ${alpha * 0.8})) blur(${focusBlur}px)`);
+        path.style.opacity = alpha;
+    },
+
+    addInstabilityEffects(svg, path, alpha, focusBlur, glowIntensity, strokeWidth, waveform) {
+        const state = this.experimentState;
+        const stabilityBlur = Math.min(3, Math.abs(state.timebase - 60) / 10);
+        const totalBlur = Math.max(focusBlur, stabilityBlur);
+        
+        path.setAttribute("filter", `drop-shadow(0 0 ${glowIntensity}px rgba(0, 255, 0, ${alpha * 0.8})) blur(${totalBlur}px)`);
+        
+        const pathClone = path.cloneNode(true);
+        const offset = (state.timebase > 60) ? 5 : -5;
+        pathClone.setAttribute("transform", `translate(${offset}, 0)`);
+        pathClone.setAttribute("opacity", alpha * 0.5);
+        svg.appendChild(pathClone);
+        
+        const jitterAmount = Math.min(5, Math.abs(state.timebase - 60) / 8);
+        waveform.style.animation = `oscilloscope-jitter ${0.1}s infinite alternate`;
+        
+        this.addJitterStyle(jitterAmount);
+    },
+
+    addJitterStyle(jitterAmount) {
+        let jitterStyle = document.getElementById('jitter-style');
+        if (!jitterStyle) {
+            jitterStyle = document.createElement('style');
+            jitterStyle.id = 'jitter-style';
+            document.head.appendChild(jitterStyle);
+        }
+        jitterStyle.textContent = `
+            @keyframes oscilloscope-jitter {
+                0% { transform: translateY(0); }
+                100% { transform: translateY(${jitterAmount}px); }
+            }
+        `;
+    },
+
+    startWaveformAnimation(screen, svg, path, deflectionInPixels, pixelsPerDiv) {
+        const state = this.experimentState;
+        const points = 200;
+        const centerY = screen.offsetHeight * (state.vPosition / 100);
+        const displayFrequency = 0.25;
+        const speed = 0.05 * (state.tuningForkFrequency / 440) / Math.max(0.1, state.timebaseValue / 5);
+        
+        let position = 0;
+        const decayStart = 3000;
+        const decayDuration = 10000;
+        const minAmplitude = deflectionInPixels * 0.05;
+        const startTime = Date.now();
+        const spatialDecayFactor = 0.1 + (state.tuningForkFrequency / 1000) * 0.1;
+        
+        const animate = () => {
+            if (!state.waveformVisible) {
+                this.toggleElement('.beam-dot', state.oscilloscopePowered ? 'block' : 'none');
+                return;
+            }
+            
+            const tuningFork = document.getElementById('tuning-fork');
+            const fork = tuningFork?.querySelector('.fork-tines');
+            const forkStillVibrating = fork && (fork.classList.contains('vibrating') || fork.classList.contains('decay-vibration'));
+            
+            if (!forkStillVibrating) {
+                this.stopWaveformAnimation();
+                return;
+            }
+            
+            const elapsed = Date.now() - startTime;
+            let globalDecay = 1;
+            
+            if (elapsed > decayStart) {
+                const decayProgress = Math.min(1, (elapsed - decayStart) / decayDuration);
+                const frequencyDecayFactor = Math.min(1, state.tuningForkFrequency / 500);
+                globalDecay = Math.max(0.05, 1 - decayProgress * frequencyDecayFactor);
+                
+                if (globalDecay * deflectionInPixels <= minAmplitude && state.yGain > 1) {
+                    this.stopWaveformAnimation();
+                    return;
+                }
+            }
+            
+            position += speed;
+            this.updateWaveformPath(path, svg, position, points, screen, centerY, displayFrequency, 
+                                  spatialDecayFactor, deflectionInPixels, pixelsPerDiv, globalDecay);
+            
+            requestAnimationFrame(animate);
+        };
+        
+        requestAnimationFrame(animate);
+    },
+
+    stopWaveformAnimation() {
+        const state = this.experimentState;
+        const waveform = document.querySelector('.waveform');
+        const screen = document.querySelector('.screen');
+        
+        if (!waveform || !screen) return;
+        
+        const svg = waveform.querySelector('svg');
+        if (!svg) return;
+        
+        const path = svg.querySelector('path');
+        if (!path) return;
+        
+        const centerY = screen.offsetHeight * (state.vPosition / 100);
+        const flatLine = `M 0,${centerY} L ${screen.offsetWidth},${centerY}`;
+        
+        path.setAttribute("d", flatLine);
+        
+        const pathClone = svg.querySelector("path:nth-child(2)");
+        pathClone && pathClone.setAttribute("d", flatLine);
+        
+        waveform.style.animation = 'none';
+        
+        setTimeout(() => {
+            state.waveformVisible = false;
+            this.toggleElement('.beam-dot', state.oscilloscopePowered ? 'block' : 'none');
+        }, 1000);
+    },
+
+    endWaveformAnimation(path, svg, centerY, screenWidth) {
+        const d = `M 0,${centerY} L ${screenWidth},${centerY}`;
+        path.setAttribute("d", d);
+        const pathClone = svg.querySelector("path:nth-child(2)");
+        pathClone && pathClone.setAttribute("d", d);
+        
+        this.toggleElement('.beam-dot', this.experimentState.oscilloscopePowered ? 'block' : 'none');
+        this.experimentState.waveformVisible = false;
+    },
+
+    updateWaveformPath(path, svg, position, points, screen, centerY, displayFrequency, 
+                      spatialDecayFactor, deflectionInPixels, pixelsPerDiv, globalDecay) {
+        const state = this.experimentState;
+        const currentAmplificationValue = state.amplificationValue || 0.01;
+        const currentAmplitude = (state.signalVoltageAmplitude / currentAmplificationValue) * pixelsPerDiv * globalDecay;
+        
+        let d;
+        if (state.yGain <= 1) {
+            d = `M 0,${centerY} L ${screen.offsetWidth},${centerY}`;
+        } else {
+            d = `M 0,${centerY} `;
+            for (let i = 0; i <= points; i++) {
+                const x = (i / points) * screen.offsetWidth;
+                const phase = position + (i / points) * Math.PI * 2 * displayFrequency;
+                const spatialDecay = Math.exp(-spatialDecayFactor * (i / points) * displayFrequency);
+                const currentPointAmplitude = currentAmplitude * spatialDecay;
+                const y = centerY + Math.sin(phase) * currentPointAmplitude;
+                d += `L ${x},${y} `;
+            }
+        }
+        
+        path.setAttribute("d", d);
+        const pathClone = svg.querySelector("path:nth-child(2)");
+        pathClone && pathClone.setAttribute("d", d);
+    },
+
+    toggleElement(selector, display) {
+        const element = document.querySelector(selector);
+        if (element) element.style.display = display;
+    },
+
+    toggleClass(element, className, condition) {
+        element.classList.toggle(className, condition);
+    },
+
+    updateOscilloscopeDisplay() {
+        const screen = document.querySelector('.screen');
+        if (!screen) return;
+        
+        screen.querySelectorAll('.oscilloscope-value').forEach(el => el.remove());
+        
+        let container = screen.querySelector('.oscilloscope-values');
+        if (!container) {
+            container = this.createElement('div', 'oscilloscope-values', {
+                position: 'absolute',
+                bottom: '10px',
+                right: '10px',
+                color: 'rgba(0, 255, 0, 0.8)',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                zIndex: '3',
+                textAlign: 'right',
+                pointerEvents: 'none'
+            });
+            screen.appendChild(container);
+        }
+        
+        const state = this.experimentState;
+        const values = [
+            `Y: ${(state.amplificationValue || 1).toFixed(1)} В/дел`,
+            `X: ${(state.timebaseValue || 1).toFixed(1)} мс/дел`,
+            `f: ${state.tuningForkFrequency} Гц`
         ];
         
-        objects.forEach(obj => {
-            const element = document.querySelector(obj.selector);
-            element && physjs.createObject(obj.selector, { type: obj.type });
+        values.forEach(text => {
+            const div = this.createElement('div', 'oscilloscope-value', {
+                marginBottom: '5px',
+                textShadow: '0 0 2px rgba(0, 255, 0, 0.8)'
+            });
+            div.textContent = text;
+            container.appendChild(div);
         });
+        
+        container.style.display = state.oscilloscopePowered ? 'block' : 'none';
+    },
+
+    takeMeasurement() {
+        const state = this.experimentState;
+        const ruler = document.getElementById('ruler');
+        const screen = document.querySelector('.screen');
+        
+        if (!ruler || !screen || !this.elementsIntersect(ruler, screen) || 
+            !state.waveformStable || !state.waveformVisible || state.yGain < 30) return;
+        
+        const beamAmplitudeMm = Math.round(state.beamAmplitude * 10) / 10;
+        const voltageAmplitude = beamAmplitudeMm * state.amplificationValue / 10;
+        
+        state.beamAmplitude = beamAmplitudeMm;
+        state.voltageAmplitude = Math.round(voltageAmplitude * 100) / 100;
+        
+        this.updateDisplay('beam-amplitude', state.beamAmplitude.toFixed(1));
+        this.updateDisplay('voltage-amplitude', '?');
+        this.updateDisplay('amplification-value', state.amplificationValue.toFixed(2) + " В/дел");
+        this.updateDisplay('frequency-info', `Частота: ${state.tuningForkFrequency} Гц`);
+        
+        this.animateElement(ruler, 'reading-taken', 1000);
+        
+        state.measurementTaken = true;
+        document.getElementById('voltage-calculator').style.display = 'block';
+        this.checkExperimentConditions();
+    },
+
+    animateElement(element, className, duration) {
+        element.classList.add(className);
+        setTimeout(() => element.classList.remove(className), duration);
+    },
+
+    setupPhysicsObjects() {
+        physjs.detachAll();
+        ['#oscilloscope', '#microphone', '#tuning-fork', '#hammer', '#cable', '#ruler']
+            .forEach(selector => {
+                const element = document.querySelector(selector);
+                element && physjs.createObject(selector, { type: selector.slice(1) });
+            });
     },
     
     setupEventHandlers() {
-        const state = this.experimentState;
-        
         const oscilloscope = document.getElementById('oscilloscope');
         if (oscilloscope) {
             oscilloscope.removeEventListener('dblclick', oscilloscope._dblclickHandler);
-            
             oscilloscope._dblclickHandler = (e) => {
                 e.stopPropagation();
                 const powerButton = document.getElementById('power-button');
-                
-                if (powerButton) {
-                    const rect = powerButton.getBoundingClientRect();
-                    const isClickOnButton = (
-                        e.clientX >= rect.left &&
-                        e.clientX <= rect.right &&
-                        e.clientY >= rect.top &&
-                        e.clientY <= rect.bottom
-                    );
-                    
-                    if (isClickOnButton)
-                        this.toggleOscilloscope();
+                if (powerButton && this.isClickOnElement(e, powerButton)) {
+                    this.toggleOscilloscope();
                 }
             };
-            
             oscilloscope.addEventListener('dblclick', oscilloscope._dblclickHandler);
         }
         
-        document.addEventListener('mousemove', (e) => {
-            this.handleDragMove(e);
-        });
+        document.addEventListener('mousemove', (e) => this.handleDragMove(e));
+        document.addEventListener('mouseup', () => this.resetDragState());
         
-        document.addEventListener('mouseup', () => {
-            state.isDragging = false;
-            state.draggedElement = null;
-            state.knobBeingRotated = null;
-        });
-        
-        const controls = document.querySelectorAll('.control-knob');
-        controls.forEach(control => {
+        document.querySelectorAll('.control-knob').forEach(control => {
             control.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
                 this.startKnobRotation(control);
             });
-            
             control.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
                 this.handleControlInteraction(control);
@@ -134,21 +476,19 @@ const experimentFunctions = {
             this.checkVoltageCalculation();
         });
     },
-    
-    handleConnection(fromId, toId) {
+
+    resetDragState() {
         const state = this.experimentState;
-        
+        state.isDragging = false;
+        state.draggedElement = null;
+        state.knobBeingRotated = null;
+    },
+
+    handleConnection(fromId, toId) {
         if ((fromId === 'mic-output' && toId === 'y-input') || 
             (fromId === 'y-input' && toId === 'mic-output')) {
             
-            state.micConnected = true;
-            
-            if (state.yGain > 90) 
-                state.maxGainSet = true;
-            
-            const wires = physjs.getAllWires();
-            if (wires && wires.length > 0)
-                state.wireId = wires[wires.length - 1];
+            this.experimentState.micConnected = true;
             
             const micOutput = document.querySelector('#microphone .output-connector');
             micOutput && micOutput.classList.add('connected');
@@ -158,94 +498,70 @@ const experimentFunctions = {
     },
 
     handleDragMove(e) {
-        const now = performance.now();
         const state = this.experimentState;
+        const now = performance.now();
         
-        if (now - state.lastRenderTime > state.renderInterval && state.isDragging) {
-            state.lastRenderTime = now;
-            
-            if (state.draggedElement) {
-                if (state.draggedElement.id === 'tuning-fork' && state.step >= 3) {
-                    const microphone = document.getElementById('microphone');
-                    if (microphone) {
-                        const forkRect = state.draggedElement.getBoundingClientRect();
-                        const micRect = microphone.getBoundingClientRect();
-                        
-                        const distance = Math.sqrt(
-                            Math.pow((forkRect.left + forkRect.width/2) - (micRect.left + micRect.width/2), 2) +
-                            Math.pow((forkRect.top + forkRect.height/2) - (micRect.top + micRect.height/2), 2)
-                        );
-                        
-                        state.tuningForkPositioned = distance < 100;
-                        
-                        state.tuningForkPositioned ?
-                            state.draggedElement.classList.add('positioned') :
-                            state.draggedElement.classList.remove('positioned');
-                        
-                        this.checkExperimentConditions();
-                    }
-                }
-                
-                if (state.draggedElement.id === 'ruler' && state.step === 4) {
-                    const screen = document.querySelector('.screen');
-                    if (screen) {
-                        const rulerRect = state.draggedElement.getBoundingClientRect();
-                        const screenRect = screen.getBoundingClientRect();
-                        
-                        const isIntersecting = !(
-                            rulerRect.right < screenRect.left ||
-                            rulerRect.left > screenRect.right ||
-                            rulerRect.bottom < screenRect.top ||
-                            rulerRect.top > screenRect.bottom
-                        );
-                        
-                        isIntersecting ?
-                            state.draggedElement.classList.add('measurement-ready') :
-                            state.draggedElement.classList.remove('measurement-ready');
-                    }
-                }
-            }
+        if (now - state.lastRenderTime <= state.renderInterval || !state.isDragging || !state.draggedElement) return;
+        
+        state.lastRenderTime = now;
+        
+        if (state.draggedElement.id === 'tuning-fork' && state.step >= 3) {
+            this.updateTuningForkPosition();
+        }
+        
+        if (state.draggedElement.id === 'ruler' && state.step === 4) {
+            this.updateRulerPosition();
         }
     },
-    
-    updateRulerPosition(e) {
-        const ruler = document.getElementById('ruler');
+
+    updateTuningForkPosition() {
+        const state = this.experimentState;
+        const microphone = document.getElementById('microphone');
+        if (!microphone) return;
+        
+        const distance = this.calculateDistance(state.draggedElement, microphone);
+        state.tuningForkPositioned = distance < 100;
+        
+        this.toggleClass(state.draggedElement, 'positioned', state.tuningForkPositioned);
+        this.checkExperimentConditions();
+    },
+
+    updateRulerPosition() {
         const screen = document.querySelector('.screen');
-        const waveform = document.querySelector('.waveform');
+        if (!screen) return;
         
-        if (ruler && screen && waveform) {
-            const rulerRect = ruler.getBoundingClientRect();
-            const screenRect = screen.getBoundingClientRect();
-            
-            const overlapWithScreen = !(
-                rulerRect.right < screenRect.left ||
-                rulerRect.left > screenRect.right ||
-                rulerRect.bottom < screenRect.top ||
-                rulerRect.top > screenRect.bottom
-            );
-            
-            overlapWithScreen ?
-                ruler.classList.add('measurement-ready') :
-                ruler.classList.remove('measurement-ready');
-        }
+        const isIntersecting = this.elementsIntersect(this.experimentState.draggedElement, screen);
+        this.toggleClass(this.experimentState.draggedElement, 'measurement-ready', isIntersecting);
     },
-    
+
+    calculateDistance(elem1, elem2) {
+        const rect1 = elem1.getBoundingClientRect();
+        const rect2 = elem2.getBoundingClientRect();
+        
+        const centerX1 = rect1.left + rect1.width / 2;
+        const centerY1 = rect1.top + rect1.height / 2;
+        const centerX2 = rect2.left + rect2.width / 2;
+        const centerY2 = rect2.top + rect2.height / 2;
+        
+        return Math.sqrt(Math.pow(centerX1 - centerX2, 2) + Math.pow(centerY1 - centerY2, 2));
+    },
+
     startKnobRotation(knob) {
         this.experimentState.knobBeingRotated = knob;
         
         const moveHandler = (e) => {
-            if (this.experimentState.knobBeingRotated === knob) {
-                const knobRect = knob.getBoundingClientRect();
-                const knobCenterX = knobRect.left + knobRect.width / 2;
-                const knobCenterY = knobRect.top + knobRect.height / 2;        
-                const angle = Math.atan2(e.clientY - knobCenterY, e.clientX - knobCenterX) * 180 / Math.PI;
-                
-                let rotation = Math.max(-135, Math.min(135, angle));
-                const normalizedValue = (rotation + 135) / 270 * 100;
-                
-                knob.style.transform = `rotate(${rotation}deg)`;
-                this.updateControlValue(knob.dataset.control, normalizedValue);
-            }
+            if (this.experimentState.knobBeingRotated !== knob) return;
+            
+            const rect = knob.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+            
+            const rotation = Math.max(-135, Math.min(135, angle));
+            const normalizedValue = (rotation + 135) / 270 * 100;
+            
+            knob.style.transform = `rotate(${rotation}deg)`;
+            this.updateControlValue(knob.dataset.control, normalizedValue);
         };
         
         const upHandler = () => {
@@ -257,146 +573,65 @@ const experimentFunctions = {
         document.addEventListener('mousemove', moveHandler);
         document.addEventListener('mouseup', upHandler);
     },
-    
-    updateControlValue(control, value) {
-        const state = this.experimentState;
-        
-        switch (control) {
-            case 'brightness':
-                state.brightness = value;
-                this.updateBeamAppearance();
-                break;
-            case 'focus':
-                state.focus = value;
-                this.updateBeamAppearance();
-                break;
-            case 'h-position':
-                state.hPosition = value;
-                this.updateBeamPosition();
-                break;
-            case 'v-position':
-                state.vPosition = value;
-                this.updateBeamPosition();
-                break;
-            case 'y-gain':
-                state.yGain = value;
-                state.amplificationValue = (value / 100) * 5;
-                
-                const gainCoeffElement = document.getElementById('gain-coefficient');
-                if (gainCoeffElement) {
-                    state.gainCoefficient = state.amplificationValue / 10;
-                    gainCoeffElement.textContent = state.gainCoefficient.toFixed(2);
-                }
-                
-                this.updateWaveformAmplitude();
-                break;
-            case 'timebase':
-                state.timebase = value;
-                state.timebaseValue = 1 + (value / 100) * 9;
-                state.waveformStable = Math.abs(value - 60) < 20;
-                this.updateWaveformStability();
-                break;
-        }
-        this.updateOscilloscopeDisplay();
-        this.checkBeamConfiguration();
-        this.checkExperimentConditions();
-    },
 
     updateWaveformStability() {
         const state = this.experimentState;
-        const screen = document.querySelector('.screen');
         const waveform = document.querySelector('.waveform');
+        const screen = document.querySelector('.screen');
         
         if (!waveform || !screen || !state.waveformVisible) return;
         
-        state.waveformStable ?
-            screen.classList.add('stable-waveform') :
-            screen.classList.remove('stable-waveform');
+        this.toggleClass(screen, 'stable-waveform', state.waveformStable);
         
         const svg = waveform.querySelector('svg');
-        if (!svg) return;
-        
-        const path = svg.querySelector('path');
+        const path = svg?.querySelector('path');
         if (!path) return;
         
-        const blurAmount = Math.min(3, Math.abs(state.timebase - 60) / 10);
-        path.setAttribute("filter", `drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) blur(${blurAmount}px)`);
+        const { alpha, focusBlur, glowIntensity, strokeWidth } = this.getVisualProperties();
+        const stabilityBlur = Math.min(3, Math.abs(state.timebase - 60) / 10);
+        const totalBlur = Math.max(focusBlur, stabilityBlur);
+        
+        this.setSVGPathAttributes(path, alpha, strokeWidth, glowIntensity, totalBlur);
         
         let pathClone = svg.querySelector("path:nth-child(2)");
         if (state.waveformStable) {
-            pathClone && pathClone.remove();
+            pathClone?.remove();
+            waveform.style.animation = 'none';
         } else {
             if (!pathClone) {
                 pathClone = path.cloneNode(true);
                 svg.appendChild(pathClone);
             }
-            
-            const offset = (state.timebase > 60) ? 5 : -5;
-            pathClone.setAttribute("transform", `translate(${offset}, 0)`);
-            pathClone.setAttribute("opacity", "0.5");
-            
-            const jitterAmount = Math.min(5, Math.abs(state.timebase - 60) / 8);
-            waveform.style.animation = `oscilloscope-jitter ${0.1}s infinite alternate`;
-            
-            let jitterStyle = document.getElementById('jitter-style');
-            if (!jitterStyle) {
-                jitterStyle = document.createElement('style');
-                jitterStyle.id = 'jitter-style';
-                document.head.appendChild(jitterStyle);
-            }
-            jitterStyle.textContent = `
-                @keyframes oscilloscope-jitter {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(${jitterAmount}px); }
-                }
-            `;
+            this.updateInstabilityClone(pathClone, alpha, glowIntensity, totalBlur, strokeWidth, waveform);
         }
+    },
+
+    updateInstabilityClone(pathClone, alpha, glowIntensity, totalBlur, strokeWidth, waveform) {
+        const state = this.experimentState;
+        const offset = (state.timebase > 60) ? 5 : -5;
+        
+        pathClone.setAttribute("transform", `translate(${offset}, 0)`);
+        pathClone.setAttribute("opacity", alpha * 0.5);
+        this.setSVGPathAttributes(pathClone, alpha, strokeWidth, glowIntensity, totalBlur);
+        
+        const jitterAmount = Math.min(5, Math.abs(state.timebase - 60) / 8);
+        waveform.style.animation = `oscilloscope-jitter ${0.1}s infinite alternate`;
+        this.addJitterStyle(jitterAmount);
     },
 
     updateWaveformAmplitude() {
         const state = this.experimentState;
-        const screen = document.querySelector('.screen');
-        const waveform = document.querySelector('.waveform');
+        if (!state.waveformVisible) return;
         
-        if (!waveform || !screen || !state.waveformVisible) return;
+        const screen = document.querySelector('.screen');
+        if (!screen) return;
         
         const amplificationValue = state.amplificationValue || 0.01;
         const deflectionInDiv = state.signalVoltageAmplitude / amplificationValue;
         const pixelsPerDiv = screen.offsetHeight / 8;
         const deflectionInPixels = deflectionInDiv * pixelsPerDiv;
         
-        state.waveformAmplitude = deflectionInDiv * 100;
         state.beamAmplitude = deflectionInPixels * 0.26458;
-        
-        if (screen.offsetHeight) {
-            state.initialAmplitude = deflectionInPixels;
-            state.currentAmplitude = deflectionInPixels;
-        }
-    },
-    
-    handleElementInteraction(element) {
-        const state = this.experimentState;
-        
-        switch (element.id) {
-            case 'oscilloscope':
-                const powerButton = document.getElementById('power-button');
-                if (powerButton && this.isClickOnElement(event, powerButton)) {
-                    this.toggleOscilloscope();
-                }
-                break;
-                
-            case 'ruler':
-                const ruler = document.getElementById('ruler');
-                const screen = document.querySelector('.screen');
-                
-                if (ruler && screen) {
-                    const isIntersecting = this.elementsIntersect(ruler, screen);
-                    
-                    if (isIntersecting && state.step === 4 && state.waveformStable)
-                        this.takeMeasurement();
-                }
-                break;
-        }
     },
 
     elementsIntersect(elem1, elem2) {
@@ -433,121 +668,97 @@ const experimentFunctions = {
         
         if (!state.oscilloscopePowered) return;
         
-        let optimalValue = 0;
+        const optimalValues = {
+            'brightness': 100, 'focus': 100, 'y-gain': 100,
+            'h-position': 50, 'v-position': 50, 'timebase': 60
+        };
         
-        switch (controlType) {
-            case 'brightness':
-            case 'focus':
-            case 'y-gain':
-                optimalValue = 100;
-                break;
-            case 'h-position':
-            case 'v-position':
-                optimalValue = 50;
-                break;
-            case 'timebase':
-                optimalValue = 60;
-                break;
-        }
-        
+        const optimalValue = optimalValues[controlType];
         control.style.transform = `rotate(${-135 + optimalValue * 270 / 100}deg)`;
         
-        switch (controlType) {
-            case 'brightness':
-                state.brightness = optimalValue;
-                break;
-            case 'focus':
-                state.focus = optimalValue;
-                break;
-            case 'h-position':
-                state.hPosition = optimalValue;
-                break;
-            case 'v-position':
-                state.vPosition = optimalValue;
-                break;
-            case 'y-gain':
-                state.yGain = optimalValue;
-                state.amplificationValue = (optimalValue / 100) * 5;
-                
-                const gainCoeffElement = document.getElementById('gain-coefficient');
-                if (gainCoeffElement) {
-                    state.gainCoefficient = state.amplificationValue / 10;
-                    gainCoeffElement.textContent = state.gainCoefficient.toFixed(2);
-                }
-                break;
-            case 'timebase':
-                state.timebase = optimalValue;
-                state.timebaseValue = 1 + (optimalValue / 100) * 9;
-                state.waveformStable = true;
-                break;
-        }
-        
-        this.checkBeamConfiguration();
+        this.updateControlValue(controlType, optimalValue);
         this.updateBeamPosition();
-        this.updateBeamAppearance();
-        this.updateWaveformAppearance();
         this.updateOscilloscopeDisplay();
         this.checkExperimentConditions();
     },
 
     toggleOscilloscope() {
         const state = this.experimentState;
-        const oscilloscope = document.getElementById('oscilloscope');
-        const screen = document.querySelector('.screen');
-        const beamDot = document.querySelector('.beam-dot');
-        const powerIndicator = document.querySelector('.power-indicator');
+        const elements = {
+            oscilloscope: document.getElementById('oscilloscope'),
+            screen: document.querySelector('.screen'),
+            beamDot: document.querySelector('.beam-dot'),
+            powerIndicator: document.querySelector('.power-indicator')
+        };
         
-        if (!oscilloscope || !screen || !beamDot || !powerIndicator) return;
+        if (!Object.values(elements).every(el => el)) return;
     
         state.oscilloscopePowered = !state.oscilloscopePowered;
         
         if (state.oscilloscopePowered) {
-            oscilloscope.classList.add('powered');
-            screen.classList.remove('screen-off');
-            screen.classList.add('screen-on');
-            beamDot.style.display = 'block';
-            powerIndicator.classList.add('on');
-            
-            if (!screen.querySelector('.screen-grid')) {
-                const gridElement = document.createElement('div');
-                gridElement.className = 'screen-grid';
-                gridElement.style.position = 'absolute';
-                gridElement.style.top = '0';
-                gridElement.style.left = '0';
-                gridElement.style.width = '100%';
-                gridElement.style.height = '100%';
-                gridElement.style.opacity = '1';
-                gridElement.style.zIndex = '1';
-                screen.appendChild(gridElement);
-            } else {
-                const gridElement = screen.querySelector('.screen-grid');
-                gridElement.style.opacity = '1';
-            }
-            this.updateBeamPosition();
-            this.updateBeamAppearance();
-            this.updateOscilloscopeDisplay();
+            this.powerOnOscilloscope(elements);
         } else {
-            oscilloscope.classList.remove('powered');
-            screen.classList.remove('screen-on');
-            screen.classList.add('screen-off');
-            beamDot.style.display = 'none';
-            
-            const gridElement = screen.querySelector('.screen-grid');
-            if (gridElement)
-                gridElement.style.opacity = '0';
-            
-            const waveform = document.querySelector('.waveform');
-            if (waveform)
-                waveform.style.display = 'none';
-            
-            powerIndicator.classList.remove('on');
-            
-            state.beamConfigured = false;
-            state.waveformStable = false;
-            state.waveformVisible = false;
+            this.powerOffOscilloscope(elements);
         }
         
         this.checkExperimentConditions();
+    },
+
+    powerOnOscilloscope(elements) {
+        const state = this.experimentState;
+        
+        elements.oscilloscope.classList.add('powered');
+        elements.screen.classList.remove('screen-off');
+        elements.screen.classList.add('screen-on');
+        elements.powerIndicator.classList.add('on');
+        
+        if (!state.waveformVisible) {
+            elements.beamDot.style.display = 'block';
+        }
+        
+        this.setupScreenGrid(elements.screen);
+        this.updateBeamPosition();
+        this.updateBeamAppearance();
+        this.updateOscilloscopeDisplay();
+    },
+
+    powerOffOscilloscope(elements) {
+        const state = this.experimentState;
+        
+        elements.oscilloscope.classList.remove('powered');
+        elements.screen.classList.remove('screen-on');
+        elements.screen.classList.add('screen-off');
+        elements.beamDot.style.display = 'none';
+        elements.powerIndicator.classList.remove('on');
+        
+        const gridElement = elements.screen.querySelector('.screen-grid');
+        if (gridElement) gridElement.style.opacity = '0';
+        
+        this.toggleElement('.waveform', 'none');
+        
+        Object.assign(state, {
+            beamConfigured: false,
+            waveformStable: false,
+            waveformVisible: false
+        });
+    },
+
+    setupScreenGrid(screen) {
+        let gridElement = screen.querySelector('.screen-grid');
+        if (!gridElement) {
+            gridElement = this.createElement('div', 'screen-grid', {
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                opacity: '1',
+                zIndex: '1'
+            });
+            screen.appendChild(gridElement);
+        } else {
+            gridElement.style.opacity = '1';
+        }
     },
     
     checkBeamConfiguration() {
@@ -556,322 +767,137 @@ const experimentFunctions = {
         if (!state.oscilloscopePowered) return false;
         
         const brightnessFocusOk = state.brightness > 60 && state.focus > 60;
-        const positionOk = 
-            Math.abs(state.hPosition - 50) < 20 && 
-            Math.abs(state.vPosition - 50) < 20;
+        const positionOk = Math.abs(state.hPosition - 50) < 20 && Math.abs(state.vPosition - 50) < 20;
         
         state.beamConfigured = brightnessFocusOk && positionOk;
-        
         return state.beamConfigured;
-    },
-    
-    updateBeamPosition() {
-        const state = this.experimentState;
-        const beamDot = document.querySelector('.beam-dot');
-        const waveform = document.querySelector('.waveform');
-        
-        if (!beamDot || !state.oscilloscopePowered) return;
-        
-        beamDot.style.left = `${state.hPosition}%`;
-        beamDot.style.top = `${state.vPosition}%`;
-        
-        if (waveform && state.waveformVisible)
-            waveform.style.top = `${state.vPosition}%`;
     },
     
     updateBeamAppearance() {
         const state = this.experimentState;
         const beamDot = document.querySelector('.beam-dot');
         
-        if (!beamDot || !state.oscilloscopePowered) return;
+        if (!beamDot || !state.oscilloscopePowered || state.waveformVisible) return;
         
-        const brightnessValue = Math.max(0, Math.min(100, state.brightness));
-        const alpha = brightnessValue / 100;
-        const focusValue = Math.max(0, Math.min(100, state.focus));
-        const dotSize = 10 - (focusValue / 100) * 8;
-
-        beamDot.style.opacity = alpha;
-        beamDot.style.width = `${dotSize}px`;
-        beamDot.style.height = `${dotSize}px`;
-        beamDot.style.boxShadow = `0 0 ${5 + (brightnessValue / 20)}px rgba(0, 255, 0, ${alpha})`;
+        const { alpha, strokeWidth } = this.getVisualProperties();
+        const dotSize = 10 - (Math.max(0, Math.min(100, state.focus)) / 100) * 8;
+        const glow = 5 + (Math.max(0, Math.min(100, state.brightness)) / 20);
+    
+        Object.assign(beamDot.style, {
+            opacity: alpha,
+            width: `${dotSize}px`,
+            height: `${dotSize}px`,
+            boxShadow: `0 0 ${glow}px rgba(0, 255, 0, ${alpha})`
+        });
+    
+        this.updateWaveformVisualProperties();
     },
     
+    updateBeamPosition() {
+        const state = this.experimentState;
+        if (!state.oscilloscopePowered) return;
+        
+        const beamDot = document.querySelector('.beam-dot');
+        if (beamDot && !state.waveformVisible) {
+            beamDot.style.left = `${state.hPosition}%`;
+            beamDot.style.top = `${state.vPosition}%`;
+        }
+        
+        const waveform = document.querySelector('.waveform');
+        if (waveform && state.waveformVisible) {
+            waveform.style.top = `${state.vPosition}%`;
+        }
+    },
+    
+    updateWaveformVisualProperties() {
+        const state = this.experimentState;
+        const waveform = document.querySelector('.waveform');
+        
+        if (!waveform || !state.waveformVisible || !state.oscilloscopePowered) return;
+        
+        const { alpha, focusBlur, glowIntensity, strokeWidth } = this.getVisualProperties();
+        const svg = waveform.querySelector('svg');
+        if (!svg) return;
+        
+        svg.querySelectorAll('path').forEach(path => {
+            path.style.opacity = alpha;
+            
+            let filterEffects = `drop-shadow(0 0 ${glowIntensity}px rgba(0, 255, 0, ${alpha * 0.8}))`;
+            
+            if (!state.waveformStable) {
+                const stabilityBlur = Math.min(3, Math.abs(state.timebase - 60) / 10);
+                const totalBlur = Math.max(focusBlur, stabilityBlur);
+                filterEffects = `drop-shadow(0 0 ${glowIntensity}px rgba(0, 255, 0, ${alpha * 0.8})) blur(${totalBlur}px)`;
+            } else if (focusBlur > 0) {
+                filterEffects += ` blur(${focusBlur}px)`;
+            }
+            
+            path.setAttribute("filter", filterEffects);
+            path.setAttribute("stroke-width", strokeWidth);
+            path.setAttribute("stroke", `rgba(0, 255, 0, ${alpha})`);
+        });
+    },
+
     strikeTheTuningFork() {
         const state = this.experimentState;
         const tuningFork = document.getElementById('tuning-fork');
-        const fork = tuningFork.querySelector('.fork-tines');
+        const fork = tuningFork?.querySelector('.fork-tines');
         
-        if (!tuningFork || !fork) return;
+        if (!fork) return;
         
-        fork.classList.remove('vibrating');
-        fork.classList.remove('decay-vibration');
+        fork.classList.remove('vibrating', 'decay-vibration');
         void fork.offsetWidth;
         
-        if (state.forkAnimationTimer)
-            clearTimeout(state.forkAnimationTimer);
+        if (state.forkAnimationTimer) clearTimeout(state.forkAnimationTimer);
         
         fork.classList.add('vibrating');
         
-        state.forkAnimationTimer = setTimeout(() => {
-            fork.classList.add('decay-vibration');
-        }, 3000);
+        const vibrationDuration = Math.max(500, 4000 - (state.tuningForkFrequency - 440) * 2);
+        const decayDuration = 8000 + (880 - state.tuningForkFrequency) * 5;
         
-        const decayStart = 3000;
-        const decayDuration = 10000;
-        const startTime = Date.now();
-        let animationFrameId = null;
+        state.forkAnimationTimer = setTimeout(() => fork.classList.add('decay-vibration'), vibrationDuration);
         
-        function updateForkAnimation() {
-            const now = Date.now();
-            const elapsed = now - startTime;
-            
-            if (elapsed > decayStart) {
-                const decayProgress = Math.min(1, (elapsed - decayStart) / decayDuration);
-                
-                const newDuration = 0.8 + decayProgress * 2;
-                fork.style.animationDuration = `${newDuration}s`;
-                
-                const intensity = Math.max(0.05, 1 - decayProgress);
-                fork.style.animationPlayState = intensity < 0.1 ? 'paused' : 'running';
-                
-                if (decayProgress >= 1) {
-                    fork.classList.remove('vibrating');
-                    fork.classList.remove('decay-vibration');
-                    fork.style.transform = 'transformX(-50%) rotate(0deg)';
-                    fork.style.animationDuration = '';
-                    
-                    animationFrameId && cancelAnimationFrame(animationFrameId);
-                    return;
-                }
-            }
-            
-            animationFrameId = requestAnimationFrame(updateForkAnimation);
-        }
-        
-        animationFrameId = requestAnimationFrame(updateForkAnimation);
+        this.animateForkDecay(fork, vibrationDuration, decayDuration);
         
         state.tuningForkStruck = true;
         
-        state.micConnected && state.oscilloscopePowered && this.showWaveform();
-        
-        setTimeout(() => {
-            if (fork.classList.contains('vibrating')) {
-                fork.classList.remove('vibrating');
-                fork.classList.remove('decay-vibration');
-                fork.style.transform = 'translateX(-50%) rotate(0deg)';
-                animationFrameId && cancelAnimationFrame(animationFrameId);
-            }
-        }, decayStart + decayDuration);
+        if (state.micConnected && state.oscilloscopePowered) {
+            this.showWaveform();
+        }
         
         this.checkExperimentConditions();
     },
-    
-    showWaveform() {
-        const state = this.experimentState;
-        const screen = document.querySelector('.screen');
+
+    animateForkDecay(fork, decayStart, decayDuration) {
+        const startTime = Date.now();
         
-        if (!screen || !state.oscilloscopePowered) return;
-        
-        let waveform = document.querySelector('.waveform');
-        waveform && waveform.remove();
-        
-        waveform = document.createElement('div');
-        waveform.className = 'waveform';
-        waveform.style.position = 'absolute';
-        waveform.style.left = '0';
-        waveform.style.top = '0';
-        waveform.style.width = '100%';
-        waveform.style.height = '100%';
-        waveform.style.zIndex = '5';
-        waveform.style.pointerEvents = 'none';
-        waveform.style.display = 'block';
-        
-        screen.appendChild(waveform);
-        
-        const amplificationValue = state.amplificationValue || 0.01;
-        const deflectionInDiv = state.signalVoltageAmplitude / amplificationValue;
-        const pixelsPerDiv = screen.offsetHeight / 8;
-        const deflectionInPixels = deflectionInDiv * pixelsPerDiv;
-        
-        state.waveformAmplitude = deflectionInDiv * 100;
-        state.beamAmplitude = deflectionInPixels * 0.26458;
-        
-        const svgNS = "http://www.w3.org/2000/svg";
-        const svg = document.createElementNS(svgNS, "svg");
-        svg.setAttribute("width", "100%");
-        svg.setAttribute("height", "100%");
-        svg.style.position = "absolute";
-        svg.style.left = "0";
-        svg.style.top = "0";
-        
-        const path = document.createElementNS(svgNS, "path");
-        path.setAttribute("fill", "none");
-        path.setAttribute("stroke", "rgb(0, 255, 0)");
-        path.setAttribute("stroke-width", "2");
-        path.setAttribute("filter", "drop-shadow(0 0 3px rgba(0, 255, 0, 0.8))");
-        svg.appendChild(path);
-        
-        waveform.appendChild(svg);
-        
-        state.waveformStable = Math.abs(state.timebase - 60) < 20;
-        
-        const timebaseFactor = state.timebase / 100;
-        
-        if (!state.waveformStable) {
-            const blurAmount = Math.min(3, Math.abs(state.timebase - 60) / 10);
-            path.setAttribute("filter", `drop-shadow(0 0 3px rgba(0, 255, 0, 0.8)) blur(${blurAmount}px)`);
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
             
-            const pathClone = path.cloneNode(true);
-            const offset = (state.timebase > 60) ? 5 : -5;
-            pathClone.setAttribute("transform", `translate(${offset}, 0)`);
-            pathClone.setAttribute("opacity", "0.5");
-            svg.appendChild(pathClone);
-            
-            const jitterAmount = Math.min(5, Math.abs(state.timebase - 60) / 8);
-            waveform.style.animation = `oscilloscope-jitter ${0.1}s infinite alternate`;
-            
-            let jitterStyle = document.getElementById('jitter-style');
-            if (!jitterStyle) {
-                jitterStyle = document.createElement('style');
-                jitterStyle.id = 'jitter-style';
-                document.head.appendChild(jitterStyle);
-            }
-            jitterStyle.textContent = `
-                @keyframes oscilloscope-jitter {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(${jitterAmount}px); }
-                }
-            `;
-        }
-        
-        state.waveformStable ?
-            screen.classList.add('stable-waveform') :
-            screen.classList.remove('stable-waveform');
-        
-        state.waveformVisible = true;
-        
-        const points = 200;
-        const screenHeight = screen.offsetHeight;
-        const amplitude = deflectionInPixels;
-        const frequency = 4;
-        const centerY = screenHeight * (state.vPosition / 100);
-        const speed = 0.05 * (1 - timebaseFactor * 0.5);
-        
-        state.initialAmplitude = amplitude;
-        state.currentAmplitude = amplitude;
-        let position = 0;
-        
-        const decayStart = 3000;
-        const decayDuration = 10000;
-        const minAmplitude = amplitude * 0.05;
-        let startTime = Date.now();
-        let animationId = null;
-        
-        const spatialDecayFactor = 0.2;
-        
-        function animate() {
-            if (!state.waveformVisible) {
-                animationId && cancelAnimationFrame(animationId);
-                return;
-            }
-            
-            const now = Date.now();
-            const elapsed = now - startTime;
-            
-            let globalDecay = 1;
             if (elapsed > decayStart) {
                 const decayProgress = Math.min(1, (elapsed - decayStart) / decayDuration);
-                globalDecay = Math.max(0.05, 1 - decayProgress);
-                state.currentAmplitude = state.initialAmplitude * globalDecay;
+                const newDuration = 0.8 + decayProgress * 2;
+                const intensity = Math.max(0.05, 1 - decayProgress);
                 
-                if (state.currentAmplitude <= minAmplitude && state.yGain > 1) {
-                    let d = `M 0,${centerY} L ${screen.offsetWidth},${centerY}`;
-                    path.setAttribute("d", d);
+                fork.style.animationDuration = `${newDuration}s`;
+                fork.style.animationPlayState = intensity < 0.1 ? 'paused' : 'running';
+                
+                if (decayProgress >= 1) {
+                    fork.classList.remove('vibrating', 'decay-vibration');
+                    fork.style.transform = 'translateX(-50%) rotate(0deg)';
+                    fork.style.animationDuration = '';
                     
-                    const pathClone = svg.querySelector("path:nth-child(2)");
-                    pathClone && pathClone.setAttribute("d", d);
-                    animationId && cancelAnimationFrame(animationId);
-                    
-                    waveform.style.animation = 'none';
+                    this.stopWaveformAnimation();
                     return;
                 }
             }
             
-            position += speed;
-            
-            const currentAmplificationValue = state.amplificationValue || 0.01;
-            const currentDeflectionInDiv = state.signalVoltageAmplitude / currentAmplificationValue;
-            const currentAmplitude = currentDeflectionInDiv * pixelsPerDiv * globalDecay;
-            
-            let d;
-            if (state.yGain <= 1) {
-                d = `M 0,${centerY} L ${screen.offsetWidth},${centerY}`;
-            } else {
-                d = `M 0,${centerY} `;
-                for (let i = 0; i <= points; i++) {
-                    const x = (i / points) * screen.offsetWidth;
-                    const phase = position + (i / points) * Math.PI * 2 * frequency;
-                    const spatialDecay = Math.exp(-spatialDecayFactor * (i / points) * frequency);
-                    const currentPointAmplitude = currentAmplitude * spatialDecay;
-                    const y = centerY + Math.sin(phase) * currentPointAmplitude;
-                    d += `L ${x},${y} `;
-                }
-            }
-            
-            path.setAttribute("d", d);
-            
-            const pathClone = svg.querySelector("path:nth-child(2)");
-            pathClone && pathClone.setAttribute("d", d);
-            
-            animationId = requestAnimationFrame(animate);
-        }
-        animationId = requestAnimationFrame(animate);
-        this.checkExperimentConditions();
+            requestAnimationFrame(animate);
+        };
+        
+        requestAnimationFrame(animate);
     },
-    
-    updateWaveformAppearance() {
-        const state = this.experimentState;
-        state.waveformVisible && state.tuningForkStruck && !document.querySelector('.waveform') && this.showWaveform();
-    },
-    
-    takeMeasurement() {
-        const state = this.experimentState;
-        const ruler = document.getElementById('ruler');
-        const screen = document.querySelector('.screen');
-        const waveform = document.querySelector('.waveform');
-        
-        const minGainRequired = 30;
-    
-        if (!ruler || !screen || !waveform) return;
-        if (!this.elementsIntersect(ruler, screen)) return;
-        if (!state.waveformStable) return;
-        if (!state.waveformVisible) return;
-        if (state.yGain < minGainRequired) return;
-        
-        const beamAmplitudeMm = Math.round(state.beamAmplitude * 10) / 10;
-        const voltageAmplitude = beamAmplitudeMm * state.amplificationValue / 10;
-        
-        state.beamAmplitude = beamAmplitudeMm;
-        state.voltageAmplitude = Math.round(voltageAmplitude * 100) / 100;
-        
-        document.getElementById('beam-amplitude').textContent = state.beamAmplitude.toFixed(1);
-        document.getElementById('voltage-amplitude').textContent = '?';
-        
-        const amplificationInfo = document.getElementById('amplification-value');
-        if (amplificationInfo)
-            amplificationInfo.textContent = state.amplificationValue.toFixed(2) + " В/дел";
-        
-        ruler.classList.add('reading-taken');
-        setTimeout(() => {
-            ruler.classList.remove('reading-taken');
-        }, 1000);
-        
-        state.measurementTaken = true;
-        
-        document.getElementById('voltage-calculator').style.display = 'block';
-        this.checkExperimentConditions();
-    },
-    
+
     checkVoltageCalculation() {
         const state = this.experimentState;
         const inputElement = document.getElementById('amplitude-input');
@@ -883,8 +909,8 @@ const experimentFunctions = {
         const userValue = parseFloat(inputElement.value);
         
         if (isNaN(userValue)) {
-            resultElement.textContent = 'Пожалуйста, введите числовое значение';
-            resultElement.className = 'error-message';
+            this.showCalculationResult(resultElement, voltageDisplayElement, 
+                'Пожалуйста, введите числовое значение', 'error-message', '?');
             return;
         }
         
@@ -892,139 +918,76 @@ const experimentFunctions = {
         const isCorrect = Math.abs(userValue - state.voltageAmplitude) <= errorMargin;
         
         if (isCorrect) {
-            resultElement.textContent = 'Правильно! Ваш расчет совпадает с измеренным значением.';
-            resultElement.className = 'success-message';
-            voltageDisplayElement.textContent = state.voltageAmplitude.toFixed(2);
+            this.showCalculationResult(resultElement, voltageDisplayElement,
+                'Правильно! Ваш расчет совпадает с измеренным значением.', 
+                'success-message', state.voltageAmplitude.toFixed(2));
         } else {
-            resultElement.textContent = 'Неверно. Проверьте ваши расчеты и попробуйте снова.';
-            resultElement.className = 'error-message';
-            voltageDisplayElement.textContent = '?';
+            this.showCalculationResult(resultElement, voltageDisplayElement,
+                'Неверно. Проверьте ваши расчеты и попробуйте снова.', 
+                'error-message', '?');
         }
     },
 
-    updateOscilloscopeDisplay() {
-        const screen = document.querySelector('.screen');
-        if (!screen) return;
-        
-        const oldValues = screen.querySelectorAll('.oscilloscope-value');
-        oldValues.forEach(el => el.remove());
-        
-        let valuesContainer = screen.querySelector('.oscilloscope-values');
-        if (!valuesContainer) {
-            valuesContainer = document.createElement('div');
-            valuesContainer.className = 'oscilloscope-values';
-            valuesContainer.style.position = 'absolute';
-            valuesContainer.style.bottom = '10px';
-            valuesContainer.style.right = '10px';
-            valuesContainer.style.color = 'rgba(0, 255, 0, 0.8)';
-            valuesContainer.style.fontFamily = 'monospace';
-            valuesContainer.style.fontSize = '12px';
-            valuesContainer.style.zIndex = '3';
-            valuesContainer.style.textAlign = 'right';
-            valuesContainer.style.pointerEvents = 'none';
-            screen.appendChild(valuesContainer);
-        }
-        
-        const state = this.experimentState;
-        const amplification = state.amplificationValue || 1;
-        const timebase = state.timebaseValue || 1;
-        
-        const ampValue = document.createElement('div');
-        ampValue.className = 'oscilloscope-value';
-        ampValue.textContent = `Y: ${amplification.toFixed(1)} В/дел`;
-        ampValue.style.marginBottom = '5px';
-        ampValue.style.textShadow = '0 0 2px rgba(0, 255, 0, 0.8)';
-        valuesContainer.appendChild(ampValue);
-        
-        const timeValue = document.createElement('div');
-        timeValue.className = 'oscilloscope-value';
-        timeValue.textContent = `X: ${timebase.toFixed(1)} мс/дел`;
-        timeValue.style.textShadow = '0 0 2px rgba(0, 255, 0, 0.8)';
-        valuesContainer.appendChild(timeValue);
-        
-        valuesContainer.style.display = state.oscilloscopePowered ? 'block' : 'none';
+    showCalculationResult(resultElement, voltageElement, message, className, voltageText) {
+        resultElement.textContent = message;
+        resultElement.className = className;
+        voltageElement.textContent = voltageText;
     },
-    
+
     checkExperimentConditions() {
         const state = this.experimentState;
         const currentStep = physjs.getCurrentStep();
         
-        switch (currentStep.id) {
-            case 'step1':
-                if (state.oscilloscopePowered && state.beamConfigured) {
-                    this.showStatusMessage("Осциллограф настроен. Перейдите к шагу 2.");
-                    physjs.goToStep('step2');
-                    this.updateExperimentStep(2);
-                }
-                break;
-                
-            case 'step2':
-                if (state.oscilloscopePowered && state.micConnected) {
-                    this.showStatusMessage("Микрофон подключен. Перейдите к шагу 3.");
-                    physjs.goToStep('step3');
-                    this.updateExperimentStep(3);
-                }
-                break;
-                
-            case 'step3':
-                if (state.oscilloscopePowered && state.micConnected && 
-                    state.tuningForkStruck && state.waveformStable) {
-                    this.showStatusMessage("Звуковые колебания получены. Перейдите к шагу 4.");
-                    physjs.goToStep('step4');
-                    this.updateExperimentStep(4);
-                }
-                break;
-                
-            case 'step4':
-                if (state.measurementTaken) {
-                    this.showStatusMessage("Эксперимент завершен успешно!");
-                }
-                break;
+        const conditions = {
+            'step1': () => state.oscilloscopePowered && state.beamConfigured,
+            'step2': () => state.oscilloscopePowered && state.micConnected,
+            'step3': () => state.oscilloscopePowered && state.micConnected && state.tuningForkStruck && state.waveformStable,
+            'step4': () => state.measurementTaken
+        };
+        
+        const messages = {
+            'step1': "Осциллограф настроен. Перейдите к шагу 2.",
+            'step2': "Микрофон подключен. Перейдите к шагу 3.",
+            'step3': "Звуковые колебания получены. Перейдите к шагу 4.",
+            'step4': "Эксперимент завершен успешно!"
+        };
+        
+        const condition = conditions[currentStep.id];
+        if (condition && condition()) {
+            this.showStatusMessage(messages[currentStep.id]);
+            if (currentStep.id !== 'step4') {
+                const nextStep = parseInt(currentStep.id.slice(-1)) + 1;
+                physjs.goToStep(`step${nextStep}`);
+                this.updateExperimentStep(nextStep);
+            }
         }
     },
     
     updateExperimentStep(step) {
-        const state = this.experimentState;
-        state.step = step;
+        this.experimentState.step = step;
         
         for (let i = 1; i <= 4; i++) {
             const stepElement = document.getElementById(`step${i}`);
-            if (stepElement) {
-                i === step ?
-                    stepElement.classList.add('active') :
-                    stepElement.classList.remove('active');
-            }
+            this.toggleClass(stepElement, 'active', i === step);
         }
         
-        let instructionText = '';
+        const instructions = {
+            1: "Включите осциллограф двойным щелчком по кнопке питания и настройте луч с помощью ручек управления.",
+            2: "Подключите микрофон к входу Y осциллографа и установите максимальное усиление.",
+            3: "Поставьте камертон перед микрофоном и ударьте по нему молотком для получения звуковых колебаний.",
+            4: "Измерьте амплитуду вертикального отклонения луча и рассчитайте напряжение на выходе микрофона."
+        };
         
-        switch (step) {
-            case 1:
-                instructionText = "Включите осциллограф двойным щелчком по кнопке питания и настройте луч с помощью ручек управления.";
-                break;
-            case 2:
-                instructionText = "Подключите микрофон к входу Y осциллографа и установите максимальное усиление.";
-                break;
-            case 3:
-                instructionText = "Поставьте камертон перед микрофоном и ударьте по нему молотком для получения звуковых колебаний.";
-                break;
-            case 4:
-                instructionText = "Измерьте амплитуду вертикального отклонения луча и рассчитайте напряжение на выходе микрофона.";
-                break;
-        }
-        
-        this.updateInstructions(instructionText);
+        this.updateInstructions(instructions[step]);
         physjs.goToStep(`step${step}`);
     },
     
     updateInstructions(text) {
-        const instructionElement = document.getElementById('current-instruction');
-        if (instructionElement) instructionElement.textContent = text;
+        this.updateDisplay('current-instruction', text);
     },
     
     showStatusMessage(message) {
-        const statusElement = document.getElementById('status-message');
-        if (statusElement) statusElement.textContent = message;
+        this.updateDisplay('status-message', message);
     },
     
     resetExperiment() {
