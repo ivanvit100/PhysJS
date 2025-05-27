@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Определение высоты предмета с помощью плоского зеркала</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Лабораторная работа: Определение высоты предмета с помощью плоского зеркала</h1>
+        
+        <div class="theory">
+            <h2>Теоретическая часть</h2>
+            <p>Используя законы отражения света и подобие треугольников, можно определить высоту помещения без прямого измерения.</p>
+            <p>Формула: <strong>H = h × l₁ / l₂</strong></p>
+            <p><strong>Инструкция:</strong> Перетащите концы измерительной ленты для измерения нужных расстояний.</p>
+        </div>
+
+        <div class="experiment-area">
+            <div class="diagram-container">
+                <div class="room" id="room">
+                    <div class="ceiling"></div>
+                    <div class="wall"></div>
+                    <div class="floor"></div>
+                    
+                    <div class="person" id="person">
+                        <div class="head"></div>
+                        <div class="body"></div>
+                    </div>
+                    
+                    <div class="mirror" id="mirror"></div>
+                    
+                    <div class="measuring-tape">
+                        <div class="tape-end start" id="start-point"></div>
+                        <div class="tape-line" id="tape-line"></div>
+                        <div class="tape-end end" id="end-point"></div>
+                        <div class="tape-display" id="display">0.00 м</div>
+                    </div>
+                </div>
+                
+                <div class="instructions">
+                    <h3>Порядок измерений:</h3>
+                    <ol>
+                        <li><strong>h:</strong> От пола до глаз человека</li>
+                        <li><strong>l₁:</strong> От стены до зеркала (горизонтально)</li>
+                        <li><strong>l₂:</strong> От зеркала до человека (горизонтально)</li>
+                    </ol>
+                    <p><strong>Как измерять:</strong> Перетаскивайте жёлтые кружки на концах ленты</p>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="current-measurement">
+                    <h3>Текущее измерение</h3>
+                    <div class="measurement-display" id="current-display">0.00 м</div>
+                </div>
+                
+                <div class="input-section">
+                    <h3>Результаты измерений</h3>
+                    
+                    <div class="input-group">
+                        <label>Высота глаз от пола (h), м:</label>
+                        <div class="input-with-validation">
+                            <input type="number" id="input-h" step="0.01" placeholder="Измерьте и введите">
+                            <div class="validation-icon" id="check-h"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Расстояние от стены до зеркала (l₁), м:</label>
+                        <div class="input-with-validation">
+                            <input type="number" id="input-l1" step="0.01" placeholder="Измерьте и введите">
+                            <div class="validation-icon" id="check-l1"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Расстояние от зеркала до человека (l₂), м:</label>
+                        <div class="input-with-validation">
+                            <input type="number" id="input-l2" step="0.01" placeholder="Измерьте и введите">
+                            <div class="validation-icon" id="check-l2"></div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Высота классной комнаты (H), м:</label>
+                        <div class="input-with-validation">
+                            <input type="number" id="input-H" step="0.01" placeholder="Измерьте и введите">
+                            <div class="validation-icon" id="check-H"></div>
+                        </div>
+                    </div>
+
+                    <button id="check-btn">Проверить результаты</button>
+                    <button id="reset-btn">Начать заново</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results">
+            <h3>Таблица результатов</h3>
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>Параметр</th>
+                        <th>Измеренное значение</th>
+                        <th>Теоретическое значение</th>
+                        <th>Погрешность</th>
+                        <th>Единица</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Высота глаз (h)</td>
+                        <td id="table-h-measured">—</td>
+                        <td id="table-h-theory">—</td>
+                        <td id="table-h-error">—</td>
+                        <td>м</td>
+                    </tr>
+                    <tr>
+                        <td>Расстояние l₁</td>
+                        <td id="table-l1-measured">—</td>
+                        <td id="table-l1-theory">—</td>
+                        <td id="table-l1-error">—</td>
+                        <td>м</td>
+                    </tr>
+                    <tr>
+                        <td>Расстояние l₂</td>
+                        <td id="table-l2-measured">—</td>
+                        <td id="table-l2-theory">—</td>
+                        <td id="table-l2-error">—</td>
+                        <td>м</td>
+                    </tr>
+                    <tr class="result-row">
+                        <td><strong>Высота помещения (H)</strong></td>
+                        <td id="table-H-calculated"><strong>—</strong></td>
+                        <td id="table-H-theory"><strong>—</strong></td>
+                        <td id="table-H-error"><strong>—</strong></td>
+                        <td><strong>м</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="status" id="status">
+            Выполните измерения с помощью ленты и введите результаты в поля выше.
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
