@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Интерактивная лабораторная работа - Уравнение состояния газа</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Проверка уравнения состояния газа</h1>
+        
+        <div class="step-indicator">
+            <div class="step active" id="step-1">1</div>
+            <div class="step" id="step-2">2</div>
+            <div class="step" id="step-3">3</div>
+            <div class="step" id="step-4">4</div>
+            <div class="step" id="step-5">5</div>
+            <div class="step" id="step-6">6</div>
+        </div>
+
+        <div class="instruction-panel">
+            <h3 id="instruction-title">Шаг 1: Подготовка эксперимента</h3>
+            <p id="instruction-text">Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз</p>
+        </div>
+
+        <div class="experiment-area">
+            <div class="tube-draggable" id="dragTube">
+                <div class="tube-body">
+                    <div class="closed-end"></div>
+                    <div class="air-space" id="airSpace"></div>
+                    <div class="open-end"></div>
+                </div>
+            </div>
+
+            <div class="cork-draggable" id="dragCork" style="display: none;">
+                <div class="cork-body"></div>
+            </div>
+
+            <div class="thermometer-draggable" id="dragThermometer">
+                <div class="thermometer-body">
+                    <div class="thermometer-scale">
+                        <div class="scale-mark" style="top: 8%;">100</div>
+                        <div class="scale-mark" style="top: 16%;">90</div>
+                        <div class="scale-mark" style="top: 24%;">80</div>
+                        <div class="scale-mark" style="top: 32%;">70</div>
+                        <div class="scale-mark" style="top: 40%;">60</div>
+                        <div class="scale-mark" style="top: 48%;">50</div>
+                        <div class="scale-mark" style="top: 56%;">40</div>
+                        <div class="scale-mark" style="top: 64%;">30</div>
+                        <div class="scale-mark" style="top: 72%;">20</div>
+                        <div class="scale-mark" style="top: 80%;">10</div>
+                    </div>
+                    <div class="mercury-fill" id="mercuryFill"></div>
+                    <div class="thermometer-bulb"></div>
+                </div>
+            </div>
+
+            <div class="ruler" id="ruler">
+                <div class="ruler-body">
+                    <div class="ruler-marks">
+                        <div class="ruler-mark big" style="left: 0%;" data-value="0"></div>
+                        <div class="ruler-mark" style="left: 10%;"></div>
+                        <div class="ruler-mark big" style="left: 20%;" data-value="5"></div>
+                        <div class="ruler-mark" style="left: 30%;"></div>
+                        <div class="ruler-mark big" style="left: 40%;" data-value="10"></div>
+                        <div class="ruler-mark" style="left: 50%;"></div>
+                        <div class="ruler-mark big" style="left: 60%;" data-value="15"></div>
+                        <div class="ruler-mark" style="left: 70%;"></div>
+                        <div class="ruler-mark big" style="left: 80%;" data-value="20"></div>
+                        <div class="ruler-mark" style="left: 90%;"></div>
+                        <div class="ruler-mark big" style="left: 100%;" data-value="25"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="water-container hot-container" id="hotContainer">
+                <div class="water hot-water"></div>
+                <div class="container-label">Горячая вода</div>
+                <div class="drop-zone hot-zone" id="hotZone"></div>
+            </div>
+
+            <div class="water-container cold-container" id="coldContainer">
+                <div class="water cold-water"></div>
+                <div class="container-label">Холодная вода</div>
+                <div class="drop-zone cold-zone" id="coldZone"></div>
+            </div>
+        </div>
+
+        <div class="measurement-panel" id="measurementPanel" style="display: none;">
+            <h3>Измерения и вычисления</h3>
+            
+            <div class="measurement-step" id="tempMeasurement" style="display: none;">
+                <p>Опустите термометр в горячую воду и измерьте температуру T₁:</p>
+                <input type="number" id="userT1" placeholder="Введите T₁ (°C)" step="0.1">
+                <button onclick="validateTemperature(1)">Проверить</button>
+                <div class="validation-result" id="t1Result"></div>
+            </div>
+
+            <div class="measurement-step" id="tubeLengthMeasurement" style="display: none;">
+                <p>Перетащите трубку к линейке и измерьте её длину l:</p>
+                <input type="number" id="userLength" placeholder="Введите l (см)" step="0.1">
+                <button onclick="validateTubeLength()">Проверить</button>
+                <div class="validation-result" id="lengthResult"></div>
+            </div>
+
+            <div class="measurement-step" id="corkRemovalStep" style="display: none;">
+                <p>Сделайте двойной клик по пробке, чтобы вынуть её из трубки:</p>
+                <div class="validation-result" id="corkRemovalResult"></div>
+            </div>
+
+            <div class="measurement-step" id="coldTempMeasurement" style="display: none;">
+                <p>Измерьте температуру холодной воды T₂ и высоту столба воды в трубке Δl:</p>
+                <div class="input-group">
+                    <input type="number" id="userT2" placeholder="Введите T₂ (°C)" step="0.1">
+                    <input type="number" id="userDeltaL" placeholder="Введите Δl (см)" step="0.1">
+                </div>
+                <button onclick="validateColdMeasurements()">Проверить</button>
+                <div class="validation-result" id="coldResult"></div>
+            </div>
+
+            <div class="measurement-step" id="pressureCalc" style="display: none;">
+                <p>Вычислите давление p₂ во втором состоянии:</p>
+                <p>Формула: p₂ = p₁ + ρgh</p>
+                <p>где ρ = 1000 кг/м³, g = 9.81 м/с²</p>
+                <input type="number" id="userP2" placeholder="Введите p₂ (Па)" step="1">
+                <button onclick="validatePressure()">Проверить</button>
+                <div class="validation-result" id="p2Result"></div>
+            </div>
+
+            <div class="measurement-step" id="ratioCalc" style="display: none;">
+                <p>Вычислите значения дробей:</p>
+                <div class="calc-inputs">
+                    <div>
+                        <label>p₁l/T₁ =</label>
+                        <input type="number" id="userC1" placeholder="Результат" step="0.0001">
+                    </div>
+                    <div>
+                        <label>p₂(l-Δl)/T₂ =</label>
+                        <input type="number" id="userC2" placeholder="Результат" step="0.0001">
+                    </div>
+                </div>
+                <button onclick="validateRatios()">Проверить вычисления</button>
+                <div class="validation-result" id="ratioResult"></div>
+            </div>
+        </div>
+
+        <div class="results-table" id="resultsTable" style="display: none;">
+            <h3>Таблица результатов</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>T₁, K</th>
+                        <th>l, м</th>
+                        <th>T₂, K</th>
+                        <th>Δl, м</th>
+                        <th>p₁, Па</th>
+                        <th>p₂, Па</th>
+                        <th>p₁l/T₁</th>
+                        <th>p₂(l-Δl)/T₂</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
