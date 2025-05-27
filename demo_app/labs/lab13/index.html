@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Определение показателя преломления стекла линзы</title>
+    <title>Определение фокусного расстояния рассеивающей линзы</title>
     <link rel="stylesheet" href="../../static/phys.css">
     <link rel="stylesheet" href="../../static/css/styles.css">
     <link rel="stylesheet" href="specific.css">
@@ -11,7 +11,7 @@
 <body>
     <div id="experiment-container">
         <header>
-            <h1>Определение показателя преломления стекла линзы</h1>
+            <h1>Определение фокусного расстояния рассеивающей линзы</h1>
         </header>
 
         <div id="experiment-area">
@@ -66,127 +66,38 @@
             </div>
             <div class="panel-content">
                 <ol class="list-spaced">
-                    <li id="step1" class="active">Измерьте толщину линзы (H) с помощью штангенциркуля</li>
-                    <li id="step2">Измерьте диаметр линзы (D) с помощью штангенциркуля</li>
-                    <li id="step3">Измерьте толщину края линзы (h₀) с помощью штангенциркуля</li>
-                    <li id="step4">Установите линзу на оптическую скамью между источником света и экраном</li>
-                    <li id="step5">Перемещайте экран до получения четкого изображения и измерьте фокусное расстояние (F)</li>
-                    <li id="step6">Рассчитайте радиус кривизны (R) и показатель преломления (n) по формулам</li>
+                    <li id="step1">Измерьте расстояние f с помощью штангенциркуля</li>
+                    <li id="step2">Установите рассеивающую линзу</li>
+                    <li id="step3">Сфокусируйте изображение на экране</li>
+                    <li id="step4">Измерьте расстояние d с помощью штангенциркуля</li>
+                    <li id="step5">Рассчитайте фокусное расстояние (F)</li>
+                    <li id="step6">Проверьте измерения</li>
                 </ol>
             </div>
         </div>
         <div id="steps-vis" class="info-box info-box-primary mb-0">
-            <p id="current-instruction" class="mb-0">Измерьте показатели линзы с помощью штангенциркуля.</p>
+            <p id="current-instruction" class="mb-0">Измерьте показатели линз с помощью штангенциркуля.</p>
         </div>
 
         <div class="panel ui-panel" id="measurement-panel">
-            <div class="panel-header"><div class="panel ui-panel" id="measurement-panel">
-                <div class="panel-header">
-                    <h3>Результаты измерений и расчетов</h3>
-                </div>
-                <div class="panel-content">
-                    <div class="measurement-row">
-                        <span class="measurement-label">Толщина линзы (H):</span>
-                        <span class="measurement-value"><span id="thickness-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Диаметр линзы (D):</span>
-                        <span class="measurement-value"><span id="diameter-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Толщина края (h₀):</span>
-                        <span class="measurement-value"><span id="edge-thickness-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Фокусное расстояние (F):</span>
-                        <span class="measurement-value"><span id="focus-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Радиус кривизны (R):</span>
-                        <span class="measurement-value"><span id="radius-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row result">
-                        <span class="measurement-label">Показатель преломления (n):</span>
-                        <span class="measurement-value"><span id="refractive-index-value">-</span></span>
-                    </div>
-                    <button id="calculate-button" class="btn btn-primary mt-2">Рассчитать</button>
-                </div>
-            </div>
+            <div class="panel-header">
                 <h3>Результаты измерений и расчетов</h3>
             </div>
             <div class="panel-content">
-                <!-- Добавляем форму для ввода измерений -->
-                <div class="measurement-form">
-                    <div class="measurement-row">
-                        <span class="measurement-label">Толщина линзы (H):</span>
-                        <div class="measurement-input-group">
-                            <input type="number" id="user-thickness" class="measurement-input" step="0.1"> см
-                            <span id="thickness-check" class="check-mark"></span>
-                        </div>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Диаметр линзы (D):</span>
-                        <div class="measurement-input-group">
-                            <input type="number" id="user-diameter" class="measurement-input" step="0.1"> см
-                            <span id="diameter-check" class="check-mark"></span>
-                        </div>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Толщина края (h₀):</span>
-                        <div class="measurement-input-group">
-                            <input type="number" id="user-edge-thickness" class="measurement-input" step="0.1"> см
-                            <span id="edge-thickness-check" class="check-mark"></span>
-                        </div>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Фокусное расстояние (F):</span>
-                        <div class="measurement-input-group">
-                            <input type="number" id="user-focus" class="measurement-input" step="0.1"> см
-                            <span id="focus-check" class="check-mark"></span>
-                        </div>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Радиус кривизны (R):</span>
-                        <div class="measurement-input-group">
-                            <input type="number" id="user-radius" class="measurement-input" step="0.1"> см
-                            <span id="radius-check" class="check-mark"></span>
-                        </div>
-                    </div>
-                    <div class="measurement-row result">
-                        <span class="measurement-label">Показатель преломления (n):</span>
-                        <div class="measurement-input-group">
-                            <input type="number" id="user-refractive-index" class="measurement-input" step="0.01">
-                            <span id="refractive-index-check" class="check-mark"></span>
-                        </div>
-                    </div>
+                <div class="measurement-input-group">
+                    <label class="measurement-label">Расстояние с одной линзой (f):</label>
+                    <input type="number" id="user-one-lens" class="measurement-input" placeholder="см" step="0.1">
+                    <span id="one-lens-check" class="check-mark"></span>
                 </div>
-                
-                <!-- Информационные поля для отображения -->
-                <div class="measurements-display" style="margin-top: 20px;">
-                    <div class="measurement-row">
-                        <span class="measurement-label">Толщина линзы (H):</span>
-                        <span class="measurement-value"><span id="thickness-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Диаметр линзы (D):</span>
-                        <span class="measurement-value"><span id="diameter-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Толщина края (h₀):</span>
-                        <span class="measurement-value"><span id="edge-thickness-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Фокусное расстояние (F):</span>
-                        <span class="measurement-value"><span id="focus-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row">
-                        <span class="measurement-label">Радиус кривизны (R):</span>
-                        <span class="measurement-value"><span id="radius-value">-</span> см</span>
-                    </div>
-                    <div class="measurement-row result">
-                        <span class="measurement-label">Показатель преломления (n):</span>
-                        <span class="measurement-value"><span id="refractive-index-value">-</span></span>
-                    </div>
+                <div class="measurement-input-group">
+                    <label class="measurement-label">Расстояние с двумя линзами (d):</label>
+                    <input type="number" id="user-two-lens" class="measurement-input" placeholder="см" step="0.1">
+                    <span id="two-lens-check" class="check-mark"></span>
+                </div>
+                <div class="measurement-input-group">
+                    <label class="measurement-label">Фокусное расстояние (F):</label>
+                    <input type="number" id="user-focus-distance" class="measurement-input" placeholder="см" step="0.1">
+                    <span id="focus-distance-check" class="check-mark"></span>
                 </div>
             </div>
         </div>
@@ -202,11 +113,10 @@
                 <h3>Формулы</h3>
             </div>
             <div class="panel-content">
-                <div class="formula">n = (R/2F) + 1</div>
-                <div class="formula">R = (D²/4 + (H-h₀)²)/(2*(H-h₀))</div>
+                <div class="formula">F = f * d / (d - f)</div>
                 <div class="theory-description">
-                    <p>R - радиус кривизны сферических поверхностей линзы, F - фокусное расстояние.</p>
-                    <p>D - диаметр линзы, H - толщина линзы в центре, h₀ - толщина линзы на краю.</p>
+                    <p>F - фокусное расстояние рассеивающей линзы.</p>
+                    <p>f - , d - .</p>
                 </div>
             </div>
         </div>

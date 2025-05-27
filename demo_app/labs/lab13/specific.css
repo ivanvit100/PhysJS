@@ -35,23 +35,32 @@
 .measurement-input-group {
     display: flex;
     align-items: center;
-    position: relative;
-    margin-bottom: 5px;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    padding: 8px 0;
+}
+
+.measurement-label {
+    font-weight: 500;
+    color: var(--color-secondary);
+    min-width: 220px;
+    margin-right: 10px;
 }
 
 .measurement-input {
-    width: 90px;
-    padding: 10px 12px;
+    width: 80px;
+    padding: 8px 10px;
     background: rgba(255, 255, 255, 0.8);
     border: 1px solid rgba(52, 152, 219, 0.2);
     border-radius: var(--radius-md);
     font-family: var(--font-mono);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--color-secondary);
     transition: all 0.3s ease;
     box-shadow: var(--shadow-inset);
     backdrop-filter: blur(4px);
-    margin-right: 8px;
+    margin-right: 10px;
+    text-align: center;
 }
 
 .measurement-input:focus {
@@ -76,6 +85,8 @@
     position: relative;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: absolute;
+    right: 5px;
 }
 
 .check-mark.correct {

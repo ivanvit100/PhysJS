@@ -4,88 +4,90 @@ const experimentFunctions = {
         ctx: document.getElementById('simulationCanvas').getContext('2d'),
         resultsBody: document.getElementById('results-body'),
         toggleLensTypeButton: document.getElementById('toggle-lens-type'),
-        userThicknessInput: document.getElementById('user-thickness'),
-        userDiameterInput: document.getElementById('user-diameter'),
-        userEdgeThicknessInput: document.getElementById('user-edge-thickness'),
-        userFocusInput: document.getElementById('user-focus'),
-        userRadiusInput: document.getElementById('user-radius'),
-        userRefractiveIndexInput: document.getElementById('user-refractive-index'),
-        thicknessCheck: document.getElementById('thickness-check'),
-        diameterCheck: document.getElementById('diameter-check'),
-        edgeThicknessCheck: document.getElementById('edge-thickness-check'),
-        focusCheck: document.getElementById('focus-check'),
-        radiusCheck: document.getElementById('radius-check'),
-        refractiveIndexCheck: document.getElementById('refractive-index-check'),
-    
-        H: 120,
-        D: 250,
-        h0: 70,
-        n: 1.5,
-        
-        showBothLenses: false,
-        convergingLens: null,
-        divergingLens: null,
-        
-        screenX: 600,
-        calculatedResults: {},
-    
-        showCaliper: false,
+        userOneLensInput: document.getElementById('user-one-lens'),
+        userTwoLensInput: document.getElementById('user-two-lens'),
+        userFocusDistanceInput: document.getElementById('user-focus-distance'),
+        oneLensCheck: document.getElementById('one-lens-check'),
+        twoLensCheck: document.getElementById('two-lens-check'),
+        focusDistanceCheck: document.getElementById('focus-distance-check'),
+        H: 120, D: 250, h0: 70, n: 1.5,
+        lockLensMovement: true,
+        convergingFocus: 200, divergingFocus: -300,
+        showBothLenses: false, convergingLens: null, divergingLens: null,
+        screenX: 600, calculatedResults: {}, showCaliper: false,
         caliperPosition: { x1: 200, y1: 150, x2: 300, y2: 150 },
-        isDraggingScreen: false,
-        isDraggingCaliper: false,
-        isDraggingCaliperPoint: false,
-        isDraggingLens: false,
-        draggingLensType: null,
-        draggingCaliperPointIndex: null,
-        dragStartX: 0,
-        dragStartY: 0,
-        initialScreenX: 0,
-        measuredFocus: 0,
-        animationFrameId: null,
-
+        isDraggingScreen: false, isDraggingCaliper: false, isDraggingCaliperPoint: false,
+        isDraggingLens: false, draggingLensType: null, draggingCaliperPointIndex: null,
+        dragStartX: 0, dragStartY: 0, initialScreenX: 0, measuredFocus: 0, animationFrameId: null,
+        storedOneLensDistance: 0, storedTwoLensDistance: 0,
         get R() { return ((this.D * this.D / 4) + Math.pow(this.H - this.h0, 2)) / (2 * (this.H - this.h0)); },
         get bulgeAtCenter() { return (this.H - this.h0) / 2; },
         get halfDiameter() { return this.D / 2; },
-        get adjustedR() { return (this.halfDiameter * this.halfDiameter + this.bulgeAtCenter * this.bulgeAtCenter) / (2 * this.bulgeAtCenter); },
-        get F() { return this.adjustedR / (2 * (this.n - 1)); }
+        get adjustedR() { 
+            const halfDiam = this.D / 2;
+            const bulge = (this.H - this.h0) / 2;
+            return (halfDiam * halfDiam + bulge * bulge) / (2 * bulge); 
+        },
+        get F() { 
+            const halfDiam = this.D / 2;
+            const bulge = (this.H - this.h0) / 2;
+            const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
+            return adjR / (2 * (this.n - 1)); 
+        }
     },
 
     init() {
         const canvas = this.experimentState.canvas;
-        // Меняем флаги местами
-        this.experimentState.convergingLens = {
-            x: 200,
-            y: canvas.height / 2,
-            isConverging: false  // Меняем на false
-        };
-        this.experimentState.divergingLens = {
-            x: 400,
-            y: canvas.height / 2,
-            isConverging: true   // Меняем на true
-        };
+        this.experimentState.convergingLens = { x: 200, y: canvas.height / 2, isConverging: false };
+        this.experimentState.divergingLens = { x: 400, y: canvas.height / 2, isConverging: true };
         
+        const checkButton = document.getElementById('check-measurements');
+        if (checkButton) {
+            checkButton.addEventListener('click', () => {
+                this.checkMeasurementInputs();
+            });
+        }
+
         this.drawSimulation();
+        ['mousedown', 'mousemove', 'mouseup'].forEach((event, i) => 
+            canvas.addEventListener(event, [this.handleMouseDown, this.handleMouseMove, this.handleMouseUp][i].bind(this))
+        );
+    },
+
+    getLensProperties(isConverging) {
+        const state = this.experimentState;
+        const focalLength = isConverging ? state.convergingFocus : state.divergingFocus;
+        const halfDiam = state.D / 2;
+        const bulge = (state.H - state.h0) / 2;
+        const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
+        const requiredN = (adjR / (2 * Math.abs(focalLength))) + 1;
         
-        this.experimentState.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-        this.experimentState.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-        this.experimentState.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        return {
+            focalLength: focalLength,
+            refractiveIndex: requiredN,
+            adjustedR: adjR
+        };
     },
 
     toggleBothLenses() {
         const state = experimentFunctions.experimentState;
         
+        !state.showBothLenses ?
+            state.storedOneLensDistance = state.measuredFocus :
+            state.storedTwoLensDistance = state.measuredFocus;
+        
         state.showBothLenses = !state.showBothLenses;
         state.toggleLensTypeButton.textContent = state.showBothLenses ? 'Одна линза' : 'Обе линзы';
         
         if (state.showBothLenses) {
-            state.convergingLens.x = 200;
-            state.divergingLens.x = 400;
-            state.screenX = 650;
+            state.divergingLens.x = state.convergingLens.x + 250;
+            state.screenX = state.divergingLens.x + 250;
         } else {
             state.convergingLens.x = 250;
             state.screenX = state.convergingLens.x + state.F * 1.2;
         }
         
+        experimentFunctions.updateMeasurementDisplay();
         experimentFunctions.drawSimulation();
     },
 
@@ -94,10 +96,8 @@ const experimentFunctions = {
         state.showCaliper = !state.showCaliper;
         if (state.showCaliper) {
             state.caliperPosition = {
-                x1: state.canvas.width / 2 - 50,
-                y1: state.canvas.height / 2,
-                x2: state.canvas.width / 2 + 50,
-                y2: state.canvas.height / 2
+                x1: state.canvas.width / 2 - 50, y1: state.canvas.height / 2,
+                x2: state.canvas.width / 2 + 50, y2: state.canvas.height / 2
             };
         }
         experimentFunctions.drawSimulation();
@@ -105,144 +105,112 @@ const experimentFunctions = {
 
     resetMeasurements() {
         const state = this.experimentState;
-        state.calculatedResults = {};
-        state.resultsBody.innerHTML = '';
-        
-        state.showBothLenses = false;
+        Object.assign(state, {
+            calculatedResults: {}, showBothLenses: false, measuredFocus: 0,
+            screenX: 250 + state.F * 1.2, storedOneLensDistance: 0, storedTwoLensDistance: 0
+        });
+        state.resultsBody && (state.resultsBody.innerHTML = '');
         state.toggleLensTypeButton.textContent = 'Обе линзы';
-        
         state.convergingLens.x = 250;
         state.divergingLens.x = 400;
-        state.screenX = state.convergingLens.x + state.F * 1.2;
-        state.measuredFocus = 0;
         
-        state.userThicknessInput.value = '';
-        state.userDiameterInput.value = '';
-        state.userEdgeThicknessInput.value = '';
-        state.userFocusInput.value = '';
-        state.userRadiusInput.value = '';
-        state.userRefractiveIndexInput.value = '';
-
-        state.thicknessCheck.className = 'check-mark';
-        state.diameterCheck.className = 'check-mark';
-        state.edgeThicknessCheck.className = 'check-mark';
-        state.focusCheck.className = 'check-mark';
-        state.radiusCheck.className = 'check-mark';
-        state.refractiveIndexCheck.className = 'check-mark';
+        [state.userOneLensInput, state.userTwoLensInput, state.userFocusDistanceInput]
+            .forEach(input => input && (input.value = ''));
+        [state.oneLensCheck, state.twoLensCheck, state.focusDistanceCheck]
+            .forEach(check => check && (check.className = 'check-mark'));
         
         this.drawSimulation();
     },
 
+    getMousePos(event) {
+        const rect = this.experimentState.canvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    },
+
+    isPointInside(px, py, x, y, radius) {
+        return Math.sqrt((px - x) ** 2 + (py - y) ** 2) <= radius;
+    },
+
+    isPointInsideLens(px, py, lens) {
+        return this.isPointInside(px, py, lens.x, lens.y, this.experimentState.halfDiameter + 20);
+    },
+
+    isPointInsideCaliper(px, py) {
+        const state = this.experimentState;
+        const { x1, y1, x2, y2 } = state.caliperPosition;
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        const [midX, midY] = [(x1 + x2) / 2, (y1 + y2) / 2];
+        const [cosA, sinA] = [Math.cos(-angle), Math.sin(-angle)];
+        const rotatedX = cosA * (px - midX) - sinA * (py - midY) + midX;
+        const rotatedY = sinA * (px - midX) + cosA * (py - midY) + midY;
+        return rotatedX >= midX - distance/2 - 10 && rotatedX <= midX + distance/2 + 10 &&
+               rotatedY >= midY - 30 && rotatedY <= midY + 30;
+    },
+
     handleMouseDown(event) {
         const state = this.experimentState;
-        const rect = state.canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
+        const { x: mouseX, y: mouseY } = this.getMousePos(event);
         
         if (Math.abs(mouseX - state.screenX) < 10) {
-            state.isDraggingScreen = true;
-            state.dragStartX = mouseX;
-            state.initialScreenX = state.screenX;
-            state.canvas.classList.add('dragging');
-            return;
-        }
+            Object.assign(state, { isDraggingScreen: true, dragStartX: mouseX, initialScreenX: state.screenX });
+        } else if (state.showCaliper) {
+            if (this.isPointInside(mouseX, mouseY, state.caliperPosition.x1, state.caliperPosition.y1, 10))
+                Object.assign(state, { isDraggingCaliperPoint: true, draggingCaliperPointIndex: 1 });
+            else if (this.isPointInside(mouseX, mouseY, state.caliperPosition.x2, state.caliperPosition.y2, 10))
+                Object.assign(state, { isDraggingCaliperPoint: true, draggingCaliperPointIndex: 2 });
+            else if (this.isPointInsideCaliper(mouseX, mouseY))
+                Object.assign(state, { isDraggingCaliper: true, dragStartX: mouseX, dragStartY: mouseY });
+        } else if (this.isPointInsideLens(mouseX, mouseY, state.convergingLens) && !(state.showBothLenses && state.lockLensMovement))
+            Object.assign(state, { isDraggingLens: true, draggingLensType: 'converging', dragStartX: mouseX });
+        else if (state.showBothLenses && this.isPointInsideLens(mouseX, mouseY, state.divergingLens) && !state.lockLensMovement)
+            Object.assign(state, { isDraggingLens: true, draggingLensType: 'diverging', dragStartX: mouseX });
         
-        if (state.showCaliper) {
-            if (this.isPointInside(mouseX, mouseY, state.caliperPosition.x1, state.caliperPosition.y1, 10)) {
-                state.isDraggingCaliperPoint = true;
-                state.draggingCaliperPointIndex = 1;
-                state.canvas.classList.add('dragging');
-                return;
-            }
-            
-            if (this.isPointInside(mouseX, mouseY, state.caliperPosition.x2, state.caliperPosition.y2, 10)) {
-                state.isDraggingCaliperPoint = true;
-                state.draggingCaliperPointIndex = 2;
-                state.canvas.classList.add('dragging');
-                return;
-            }
-            
-            if (this.isPointInsideCaliper(mouseX, mouseY)) {
-                state.isDraggingCaliper = true;
-                state.dragStartX = mouseX;
-                state.dragStartY = mouseY;
-                state.canvas.classList.add('dragging');
-                return;
-            }
-        }
-        
-        if (this.isPointInsideLens(mouseX, mouseY, state.convergingLens)) {
-            state.isDraggingLens = true;
-            state.draggingLensType = 'converging';
-            state.dragStartX = mouseX;
-            state.canvas.classList.add('dragging');
-            return;
-        }
-        
-        if (state.showBothLenses && this.isPointInsideLens(mouseX, mouseY, state.divergingLens)) {
-            state.isDraggingLens = true;
-            state.draggingLensType = 'diverging';
-            state.dragStartX = mouseX;
-            state.canvas.classList.add('dragging');
-            return;
-        }
+        state.isDraggingScreen || state.isDraggingCaliper || state.isDraggingCaliperPoint || state.isDraggingLens && state.canvas.classList.add('dragging');
     },
 
     handleMouseMove(event) {
         const state = this.experimentState;
-        const rect = state.canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-    
+        const { x: mouseX, y: mouseY } = this.getMousePos(event);
         let needsRedraw = false;
     
         if (state.isDraggingScreen) {
             const deltaX = mouseX - state.dragStartX;
             state.screenX = Math.max(100, Math.min(state.canvas.width - 10, state.initialScreenX + deltaX));
-            state.measuredFocus = state.screenX - state.convergingLens.x;
-            needsRedraw = true;
-        }
-        
-        if (state.isDraggingLens) {
-            const deltaX = mouseX - state.dragStartX;
-            if (state.draggingLensType === 'converging') {
-                state.convergingLens.x = Math.max(50, Math.min(state.canvas.width - 150, state.convergingLens.x + deltaX));
-            } else if (state.draggingLensType === 'diverging') {
-                state.divergingLens.x = Math.max(50, Math.min(state.canvas.width - 150, state.divergingLens.x + deltaX));
-            }
-            state.dragStartX = mouseX;
-            needsRedraw = true;
-        }
-        
-        if (state.isDraggingCaliperPoint) {
-            if (state.draggingCaliperPointIndex === 1) {
-                state.caliperPosition.x1 = mouseX;
-                state.caliperPosition.y1 = mouseY;
+            
+            if (state.showBothLenses) {
+                const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
+                state.measuredFocus = Math.abs(state.screenX - rightLens.x);
+                state.storedTwoLensDistance = state.measuredFocus;
             } else {
-                state.caliperPosition.x2 = mouseX;
-                state.caliperPosition.y2 = mouseY;
+                state.measuredFocus = Math.abs(state.screenX - state.convergingLens.x);
+                state.storedOneLensDistance = state.measuredFocus;
             }
+            
             needsRedraw = true;
-        }
-        
-        if (state.isDraggingCaliper) {
+        } else if (state.isDraggingLens) {
             const deltaX = mouseX - state.dragStartX;
-            const deltaY = mouseY - state.dragStartY;
-            
-            state.caliperPosition.x1 += deltaX;
-            state.caliperPosition.y1 += deltaY;
-            state.caliperPosition.x2 += deltaX;
-            state.caliperPosition.y2 += deltaY;
-            
+            const lens = state.draggingLensType === 'converging' ? state.convergingLens : state.divergingLens;
+            lens.x = Math.max(50, Math.min(state.canvas.width - 150, lens.x + deltaX));
             state.dragStartX = mouseX;
-            state.dragStartY = mouseY;
-            
+            needsRedraw = true;
+        } else if (state.isDraggingCaliperPoint) {
+            const point = state.draggingCaliperPointIndex === 1 ? 'x1' : 'x2';
+            const pointY = state.draggingCaliperPointIndex === 1 ? 'y1' : 'y2';
+            state.caliperPosition[point] = mouseX;
+            state.caliperPosition[pointY] = mouseY;
+            needsRedraw = true;
+        } else if (state.isDraggingCaliper) {
+            const [deltaX, deltaY] = [mouseX - state.dragStartX, mouseY - state.dragStartY];
+            ['x1', 'y1', 'x2', 'y2'].forEach(coord => {
+                state.caliperPosition[coord] += coord.includes('x') ? deltaX : deltaY;
+            });
+            Object.assign(state, { dragStartX: mouseX, dragStartY: mouseY });
             needsRedraw = true;
         }
     
         if (needsRedraw) {
             state.animationFrameId && cancelAnimationFrame(state.animationFrameId);
-    
             state.animationFrameId = requestAnimationFrame(() => {
                 this.drawSimulation();
                 state.animationFrameId = null;
@@ -253,382 +221,245 @@ const experimentFunctions = {
     handleMouseUp() {
         const state = this.experimentState;
         state.canvas.classList.remove('dragging');
-        state.isDraggingScreen = false;
-        state.isDraggingCaliper = false;
-        state.isDraggingCaliperPoint = false;
-        state.isDraggingLens = false;
-        state.draggingLensType = null;
-
+        Object.assign(state, {
+            isDraggingScreen: false, isDraggingCaliper: false, isDraggingCaliperPoint: false,
+            isDraggingLens: false, draggingLensType: null
+        });
         state.animationFrameId && cancelAnimationFrame(state.animationFrameId);
         this.drawSimulation();
     },
 
-    isPointInside(px, py, x, y, radius) {
-        return Math.sqrt(Math.pow(px - x, 2) + Math.pow(py - y, 2)) <= radius;
-    },
-    
-    isPointInsideLens(px, py, lens) {
-        const state = this.experimentState;
-        const distance = Math.sqrt(Math.pow(px - lens.x, 2) + Math.pow(py - lens.y, 2));
-        return distance <= state.halfDiameter + 20;
-    },
-
-    isPointInsideCaliper(px, py) {
-        const state = this.experimentState;
-        const angle = Math.atan2(state.caliperPosition.y2 - state.caliperPosition.y1, 
-                                state.caliperPosition.x2 - state.caliperPosition.x1);
-        
-        const distance = Math.sqrt(
-            Math.pow(state.caliperPosition.x2 - state.caliperPosition.x1, 2) + 
-            Math.pow(state.caliperPosition.y2 - state.caliperPosition.y1, 2)
-        );
-        
-        const midX = (state.caliperPosition.x1 + state.caliperPosition.x2) / 2;
-        const midY = (state.caliperPosition.y1 + state.caliperPosition.y2) / 2;
-        
-        const cosA = Math.cos(-angle);
-        const sinA = Math.sin(-angle);
-        
-        const rotatedX = cosA * (px - midX) - sinA * (py - midY) + midX;
-        const rotatedY = sinA * (px - midX) + cosA * (py - midY) + midY;
-        
-        return (
-            rotatedX >= midX - distance/2 - 10 &&
-            rotatedX <= midX + distance/2 + 10 &&
-            rotatedY >= midY - 40/2 - 10 &&
-            rotatedY <= midY + 40/2 + 10
-        );
-    },
-
-    checkMeasurements() {
-        const state = experimentFunctions.experimentState;
-        const tolerance = 8;
-        const nTolerance = 0.05;
-        const FTolerance = 10;
-        
-        const userThickness = parseFloat(state.userThicknessInput.value) || 0;
-        const userDiameter = parseFloat(state.userDiameterInput.value) || 0;
-        const userEdgeThickness = parseFloat(state.userEdgeThicknessInput.value) || 0;
-        const userFocus = parseFloat(state.userFocusInput.value) || 0;
-        const userR = parseFloat(state.userRadiusInput.value) || 0;
-        const userN = parseFloat(state.userRefractiveIndexInput.value) || 0;
-        
-        experimentFunctions.checkValue(userThickness, state.H, tolerance, state.thicknessCheck);
-        experimentFunctions.checkValue(userDiameter, state.D, tolerance, state.diameterCheck);
-        experimentFunctions.checkValue(userEdgeThickness, state.h0, tolerance, state.edgeThicknessCheck);
-        experimentFunctions.checkValue(userFocus, state.F, FTolerance, state.focusCheck);
-        experimentFunctions.checkValue(userR, state.R, tolerance, state.radiusCheck);
-        experimentFunctions.checkValue(userN, state.n, nTolerance, state.refractiveIndexCheck);
-    },
-
     checkValue(userValue, actualValue, tolerance, checkElement) {
-        if (Math.abs(userValue - actualValue) <= tolerance) {
-            checkElement.className = 'check-mark correct';
-            return true;
-        } else {
-            checkElement.className = 'check-mark incorrect';
-            return false;
-        }
+        if (!checkElement) return;
+        
+        const isCorrect = Math.abs(userValue - actualValue) <= tolerance;
+        const newClassName = `check-mark ${isCorrect ? 'correct' : 'incorrect'}`;
+        
+        checkElement.className = newClassName;
+        checkElement.classList.remove('check-mark', 'correct', 'incorrect');
+        checkElement.classList.add('check-mark');
+        checkElement.classList.add(isCorrect ? 'correct' : 'incorrect');
+        checkElement.style.display = 'none';
+        checkElement.offsetHeight;
+        checkElement.style.display = '';
     },
 
     drawSimulation() {
         const state = this.experimentState;
         state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
-        state.ctx.beginPath();
-        state.ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-        state.ctx.setLineDash([5, 5]);
-        state.ctx.moveTo(0, state.convergingLens.y);
-        state.ctx.lineTo(state.canvas.width, state.convergingLens.y);
-        state.ctx.stroke();
-        state.ctx.setLineDash([]);
-    
+        this.drawLine(0, state.convergingLens.y, state.canvas.width, state.convergingLens.y, 'rgba(0, 0, 0, 0.3)', [5, 5]);
+        
         if (state.showBothLenses) {
             this.drawLens(state.convergingLens);
             this.drawLens(state.divergingLens);
             this.drawLightRaysForBothLenses();
         } else {
-            // В режиме одной линзы показываем собирающую (которая теперь convergingLens с isConverging: false)
             this.drawLens(state.convergingLens);
             this.drawLightRays(state.convergingLens);
         }
         
-        state.ctx.beginPath();
-        state.ctx.strokeStyle = '#00008B';
-        state.ctx.lineWidth = state.isDraggingScreen ? 4 : 2;
-        state.ctx.moveTo(state.screenX, 50);
-        state.ctx.lineTo(state.screenX, state.canvas.height - 50);
-        state.ctx.stroke();
-        
+        this.updateMeasurementDisplay();
+        this.drawLine(state.screenX, 50, state.screenX, state.canvas.height - 50, '#00008B', [], state.isDraggingScreen ? 4 : 2);
         state.showCaliper && this.drawCaliper();
+    },
+
+    drawLine(x1, y1, x2, y2, color, dash = [], width = 1) {
+        const state = this.experimentState;
+        state.ctx.beginPath();
+        state.ctx.strokeStyle = color;
+        state.ctx.lineWidth = width;
+        state.ctx.setLineDash(dash);
+        state.ctx.moveTo(x1, y1);
+        state.ctx.lineTo(x2, y2);
+        state.ctx.stroke();
+        state.ctx.setLineDash([]);
     },
 
     drawLens(lens) {
         const state = this.experimentState;
+        const { x: centerX, y: centerY, isConverging } = lens;
         const halfEdgeThickness = state.h0 / 2;
-        const centerX = lens.x;
-        const centerY = lens.y;
-        const leftCenter = centerX - halfEdgeThickness;
-        const rightCenter = centerX + halfEdgeThickness;
+        const [leftCenter, rightCenter] = [centerX - halfEdgeThickness, centerX + halfEdgeThickness];
         
         state.ctx.beginPath();
-    
-        if (!lens.isConverging) {
-            state.ctx.moveTo(leftCenter, centerY - state.halfDiameter);
-            for (let y = centerY - state.halfDiameter; y <= centerY + state.halfDiameter; y++) {
-                const dy = y - centerY;
-                const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
-                state.ctx.lineTo(leftCenter - dx, y);
-            }
+        
+        for (let side = 0; side < 2; side++) {
+            const isLeft = side === 0;
+            const center = isLeft ? leftCenter : rightCenter;
+            const yStart = isLeft ? centerY - state.halfDiameter : centerY + state.halfDiameter;
+            const yEnd = isLeft ? centerY + state.halfDiameter : centerY - state.halfDiameter;
+            const yStep = isLeft ? 1 : -1;
             
-            for (let y = centerY + state.halfDiameter; y >= centerY - state.halfDiameter; y--) {
-                const dy = y - centerY;
-                const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
-                state.ctx.lineTo(rightCenter + dx, y);
-            }
-        } else {
-            state.ctx.moveTo(leftCenter, centerY - state.halfDiameter);
-            for (let y = centerY - state.halfDiameter; y <= centerY + state.halfDiameter; y++) {
-                const dy = y - centerY;
-                const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
-                state.ctx.lineTo(leftCenter + dx, y);
-            }
+            if (isLeft) state.ctx.moveTo(center, yStart);
             
-            for (let y = centerY + state.halfDiameter; y >= centerY - state.halfDiameter; y--) {
+            for (let y = yStart; isLeft ? y <= yEnd : y >= yEnd; y += yStep) {
                 const dy = y - centerY;
-                const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
-                state.ctx.lineTo(rightCenter - dx, y);
+                const dx = Math.sqrt(Math.max(0, state.adjustedR ** 2 - dy ** 2)) - 
+                          Math.sqrt(state.adjustedR ** 2 - state.halfDiameter ** 2);
+                const x = isConverging ? 
+                    (isLeft ? center + dx : center - dx) : 
+                    (isLeft ? center - dx : center + dx);
+                state.ctx.lineTo(x, y);
             }
         }
         
         state.ctx.closePath();
-        state.ctx.fillStyle = lens.isConverging ? 'rgba(200, 220, 255, 0.7)' : 'rgba(255, 200, 200, 0.7)';
+        state.ctx.fillStyle = isConverging ? 'rgba(200, 220, 255, 0.7)' : 'rgba(255, 200, 200, 0.7)';
         state.ctx.fill();
         state.ctx.strokeStyle = '#000';
         state.ctx.lineWidth = 1;
         state.ctx.stroke();
+        this.drawCircle(centerX, centerY, 3, 'black');
+    },
+
+    drawCircle(x, y, radius, color) {
+        const state = this.experimentState;
         state.ctx.beginPath();
-        state.ctx.arc(centerX, centerY, 3, 0, 2 * Math.PI);
-        state.ctx.fillStyle = 'black';
+        state.ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        state.ctx.fillStyle = color;
         state.ctx.fill();
+    },
+
+    calculateRefraction(rayDirX, rayDirY, normalX, normalY, n1, n2) {
+        const rayLength = Math.sqrt(rayDirX ** 2 + rayDirY ** 2);
+        const [rayNormX, rayNormY] = [rayDirX / rayLength, rayDirY / rayLength];
+        const normalLength = Math.sqrt(normalX ** 2 + normalY ** 2);
+        const [normX, normY] = [normalX / normalLength, normalY / normalLength];
+        const cosTheta1 = -(rayNormX * normX + rayNormY * normY);
+        const actualCosTheta1 = Math.abs(cosTheta1);
+        const [actualNormX, actualNormY] = [cosTheta1 < 0 ? -normX : normX, cosTheta1 < 0 ? -normY : normY];
+        const sinTheta1 = Math.sqrt(1 - actualCosTheta1 ** 2);
+        const sinTheta2 = (n1 / n2) * sinTheta1;
+        
+        if (sinTheta2 > 1) return { x: rayNormX, y: rayNormY };
+        
+        const cosTheta2 = Math.sqrt(1 - sinTheta2 ** 2);
+        const ratio = n1 / n2;
+        return {
+            x: ratio * rayNormX + (ratio * actualCosTheta1 - cosTheta2) * actualNormX,
+            y: ratio * rayNormY + (ratio * actualCosTheta1 - cosTheta2) * actualNormY
+        };
+    },
+
+    findLensSurfaceIntersection(lens, rayX, rayY, rayDirX, rayDirY, isLeftSurface) {
+        const state = this.experimentState;
+        const centerX = lens.x;
+        const halfEdgeThickness = state.h0 / 2;
+        const surfaceCenterX = isLeftSurface ? centerX - halfEdgeThickness : centerX + halfEdgeThickness;
+        
+        if (Math.abs(rayDirX) < 0.001) return null;
+        
+        const t = (surfaceCenterX - rayX) / rayDirX;
+        if (t < 0) return null;
+        
+        const intersectionY = rayY + t * rayDirY;
+        const dy = intersectionY - lens.y;
+        
+        if (Math.abs(dy) > state.halfDiameter) return null;
+        
+        const dx = Math.sqrt(Math.max(0, state.adjustedR ** 2 - dy ** 2)) - 
+                  Math.sqrt(state.adjustedR ** 2 - state.halfDiameter ** 2);
+        
+        const actualX = lens.isConverging ?
+            (isLeftSurface ? surfaceCenterX + dx : surfaceCenterX - dx) :
+            (isLeftSurface ? surfaceCenterX - dx : surfaceCenterX + dx);
+        
+        return { x: actualX, y: intersectionY };
     },
 
     drawLightRays(lens) {
         const state = this.experimentState;
-        const centerX = lens.x;
-        const centerY = lens.y;
+        const { x: centerX, y: centerY } = lens;
         const halfEdgeThickness = state.h0 / 2;
-        const leftCenter = centerX - halfEdgeThickness;
-        const rightCenter = centerX + halfEdgeThickness;
+        const [leftCenter, rightCenter] = [centerX - halfEdgeThickness, centerX + halfEdgeThickness];
+        
+        const lensProps = this.getLensProperties(lens.isConverging);
+        const lensN = lensProps.refractiveIndex;
         
         state.ctx.strokeStyle = 'red';
         state.ctx.lineWidth = 1;
         
-        let leftCurvatureCenter, rightCurvatureCenter;
-        if (lens.isConverging) {
-            leftCurvatureCenter = leftCenter - state.adjustedR;
-            rightCurvatureCenter = rightCenter + state.adjustedR;
-        } else {
-            leftCurvatureCenter = leftCenter + state.adjustedR;
-            rightCurvatureCenter = rightCenter - state.adjustedR;
-        }
+        const [leftCurvatureCenter, rightCurvatureCenter] = lens.isConverging ?
+            [leftCenter - state.adjustedR, rightCenter + state.adjustedR] :
+            [leftCenter + state.adjustedR, rightCenter - state.adjustedR];
         
         let intersectionPointsX = [];
+        const lensPointsLeft = [], lensPointsRight = [];
         
-        const lensPointsLeft = [];
-        const lensPointsRight = [];
-        const stepY = 1.0;
-        
-        for (let y = centerY - state.halfDiameter; y <= centerY + state.halfDiameter; y += stepY) {
+        for (let y = centerY - state.halfDiameter; y <= centerY + state.halfDiameter; y += 1) {
             const dy = y - centerY;
-            const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
+            const dx = Math.sqrt(Math.max(0, state.adjustedR ** 2 - dy ** 2)) - 
+                     Math.sqrt(state.adjustedR ** 2 - state.halfDiameter ** 2);
             
             if (!lens.isConverging) {
-                lensPointsLeft.push({x: leftCenter - dx, y: y});
-                lensPointsRight.push({x: rightCenter + dx, y: y});
+                lensPointsLeft.push({x: leftCenter - dx, y});
+                lensPointsRight.push({x: rightCenter + dx, y});
             } else {
-                lensPointsLeft.push({x: leftCenter + dx, y: y});
-                lensPointsRight.push({x: rightCenter - dx, y: y});
+                lensPointsLeft.push({x: leftCenter + dx, y});
+                lensPointsRight.push({x: rightCenter - dx, y});
             }
         }
         
-        function findExactIntersection(rayX, rayY, rayDirX, rayDirY, isLeftSurface) {
+        const findExactIntersection = (rayX, rayY, rayDirX, rayDirY, isLeftSurface) => {
             const points = isLeftSurface ? lensPointsLeft : lensPointsRight;
-            const maxIterations = 1000;
-            let curX = rayX;
-            let curY = rayY;
-            let stepSize = 0.5;
+            let [curX, curY, stepSize] = [rayX, rayY, 0.5];
             
-            for (let i = 0; i < maxIterations; i++) {
+            for (let i = 0; i < 1000; i++) {
                 curX += rayDirX * stepSize;
                 curY += rayDirY * stepSize;
                 
-                let minDist = Infinity;
-                let closestPoint = null;
+                const closestPoint = points.reduce((closest, point) => {
+                    const dist = Math.sqrt((curX - point.x) ** 2 + (curY - point.y) ** 2);
+                    return !closest || dist < closest.dist ? {point, dist} : closest;
+                }, null);
                 
-                for (const point of points) {
-                    const dist = Math.sqrt(Math.pow(curX - point.x, 2) + Math.pow(curY - point.y, 2));
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closestPoint = point;
-                    }
-                }
-                
-                if (minDist < stepSize)
-                    return closestPoint;
-                
-                if (curX > state.canvas.width || curX < 0 || curY > state.canvas.height || curY < 0)
-                    break;
+                if (closestPoint.dist < stepSize) return closestPoint.point;
+                if (curX > state.canvas.width || curX < 0 || curY > state.canvas.height || curY < 0) break;
             }
             return {x: curX, y: curY};
-        }
+        };
         
-        function calculateRefraction(rayDirX, rayDirY, normalX, normalY, n1, n2) {
-            const rayLength = Math.sqrt(rayDirX * rayDirX + rayDirY * rayDirY);
-            const rayNormX = rayDirX / rayLength;
-            const rayNormY = rayDirY / rayLength;
-            const normalLength = Math.sqrt(normalX * normalX + normalY * normalY);
-            const normX = normalX / normalLength;
-            const normY = normalY / normalLength;
-            const cosTheta1 = -(rayNormX * normX + rayNormY * normY);
-            const actualCosTheta1 = Math.abs(cosTheta1);
-            const actualNormX = cosTheta1 < 0 ? -normX : normX;
-            const actualNormY = cosTheta1 < 0 ? -normY : normY;
-            const sinTheta1 = Math.sqrt(1 - actualCosTheta1 * actualCosTheta1);
-            const sinTheta2 = (n1 / n2) * sinTheta1;
-            
-            if (sinTheta2 > 1)
-                return { x: rayNormX, y: rayNormY };
-            
-            const cosTheta2 = Math.sqrt(1 - sinTheta2 * sinTheta2);
-            const refractedX = (n1 / n2) * rayNormX + ((n1 / n2) * actualCosTheta1 - cosTheta2) * actualNormX;
-            const refractedY = (n1 / n2) * rayNormY + ((n1 / n2) * actualCosTheta1 - cosTheta2) * actualNormY;
-            
-            return { x: refractedX, y: refractedY };
-        }
-        
-        const startY = centerY - state.halfDiameter + 20;
-        const endY = centerY + state.halfDiameter - 20;
-        
-        for (let rayY = startY; rayY <= endY; rayY += 30) {
-            let rayDirX = 1;
-            let rayDirY = 0;
-            
+        for (let rayY = centerY - state.halfDiameter + 20; rayY <= centerY + state.halfDiameter - 20; rayY += 30) {
             const isCentralRay = Math.abs(rayY - centerY) < 15;
-            const entryPoint = findExactIntersection(0, rayY, rayDirX, rayDirY, true);
-    
-            state.ctx.beginPath();
-            state.ctx.moveTo(0, rayY);
-            state.ctx.lineTo(entryPoint.x, entryPoint.y);
-            state.ctx.stroke();
+            const entryPoint = findExactIntersection(0, rayY, 1, 0, true);
+            
+            this.drawLine(0, rayY, entryPoint.x, entryPoint.y, 'red');
             
             if (isCentralRay) {
-                state.ctx.beginPath();
-                state.ctx.moveTo(entryPoint.x, entryPoint.y);
-                state.ctx.lineTo(rightCenter, centerY);
-                state.ctx.stroke();     
-                state.ctx.beginPath();
-                state.ctx.moveTo(rightCenter, centerY);
-                state.ctx.lineTo(state.screenX, centerY);
-                state.ctx.stroke();
+                this.drawLine(entryPoint.x, entryPoint.y, rightCenter, centerY, 'red');
+                this.drawLine(rightCenter, centerY, state.screenX, centerY, 'red');
                 continue;
             }
             
-            let entryNormalX, entryNormalY;
-            if (lens.isConverging) {
-                entryNormalX = entryPoint.x - leftCurvatureCenter;
-                entryNormalY = entryPoint.y - centerY;
-            } else {
-                entryNormalX = leftCurvatureCenter - entryPoint.x;
-                entryNormalY = centerY - entryPoint.y;
-            }
+            const [entryNormalX, entryNormalY] = lens.isConverging ?
+                [entryPoint.x - leftCurvatureCenter, entryPoint.y - centerY] :
+                [leftCurvatureCenter - entryPoint.x, centerY - entryPoint.y];
             
-            const refractedEntry = calculateRefraction(rayDirX, rayDirY, entryNormalX, entryNormalY, 1.0, state.n);
+            const refractedEntry = this.calculateRefraction(1, 0, entryNormalX, entryNormalY, 1.0, lensN);
+            const exitPoint = findExactIntersection(entryPoint.x, entryPoint.y, refractedEntry.x, refractedEntry.y, false);
             
-            const exitPoint = findExactIntersection(
-                entryPoint.x, entryPoint.y, 
-                refractedEntry.x, refractedEntry.y, 
-                false
-            );
+            this.drawLine(entryPoint.x, entryPoint.y, exitPoint.x, exitPoint.y, 'red');
             
-            state.ctx.beginPath();
-            state.ctx.moveTo(entryPoint.x, entryPoint.y);
-            state.ctx.lineTo(exitPoint.x, exitPoint.y);
-            state.ctx.stroke();
+            const [exitNormalX, exitNormalY] = lens.isConverging ?
+                [exitPoint.x - rightCurvatureCenter, exitPoint.y - centerY] :
+                [rightCurvatureCenter - exitPoint.x, centerY - exitPoint.y];
             
-            let exitNormalX, exitNormalY;
-            if (lens.isConverging) {
-                exitNormalX = exitPoint.x - rightCurvatureCenter;
-                exitNormalY = exitPoint.y - centerY;
-            } else {
-                exitNormalX = rightCurvatureCenter - exitPoint.x;
-                exitNormalY = centerY - exitPoint.y;
-            }
+            const refractedExit = this.calculateRefraction(refractedEntry.x, refractedEntry.y, exitNormalX, exitNormalY, lensN, 1.0);
             
-            const refractedExit = calculateRefraction(
-                refractedEntry.x, refractedEntry.y, 
-                exitNormalX, exitNormalY, 
-                state.n, 1.0
-            );
-            
-            const maxDistance = state.canvas.width - exitPoint.x;
             const screenT = (state.screenX - exitPoint.x) / refractedExit.x;
-            
-            if (screenT > 0 && screenT < maxDistance) {
+            if (screenT > 0) {
                 const screenY = exitPoint.y + screenT * refractedExit.y;
-                
-                state.ctx.beginPath();
-                state.ctx.moveTo(exitPoint.x, exitPoint.y);
-                state.ctx.lineTo(state.screenX, screenY);
-                state.ctx.stroke();
+                this.drawLine(exitPoint.x, exitPoint.y, state.screenX, screenY, 'red');
                 
                 if (Math.abs(refractedExit.y) > 0.001) {
-                    let intersectionX;
-                    if (lens.isConverging) {
-                        intersectionX = exitPoint.x - refractedExit.x * (exitPoint.y - centerY) / refractedExit.y;
-                    } else {
-                        intersectionX = exitPoint.x + refractedExit.x * (exitPoint.y - centerY) / refractedExit.y;
-                    }
+                    const intersectionX = lens.isConverging ?
+                        exitPoint.x - refractedExit.x * (exitPoint.y - centerY) / refractedExit.y :
+                        exitPoint.x + refractedExit.x * (exitPoint.y - centerY) / refractedExit.y;
                     
                     if ((lens.isConverging && intersectionX > centerX && intersectionX < state.canvas.width) ||
                         (!lens.isConverging && intersectionX > 0 && intersectionX < centerX))
                         intersectionPointsX.push(intersectionX);
                 }
-            }
-        }
-        
-        if (intersectionPointsX.length > 0) {
-            let sumX = 0;
-            for (let i = 0; i < intersectionPointsX.length; i++)
-                sumX += intersectionPointsX[i];
-            
-            const measuredFocalX = sumX / intersectionPointsX.length;
-            const measuredFocalLength = lens.isConverging ? 
-                measuredFocalX - centerX : 
-                centerX - measuredFocalX;
-            
-            state.ctx.beginPath();
-            state.ctx.arc(measuredFocalX, centerY, 5, 0, Math.PI * 2);
-            state.ctx.fillStyle = lens.isConverging ? 'rgba(255, 0, 0, 0.7)' : 'rgba(0, 0, 255, 0.7)';
-            state.ctx.fill();
-            state.ctx.strokeStyle = lens.isConverging ? 'red' : 'blue';
-            state.ctx.lineWidth = 1;
-            state.ctx.stroke();
-            
-            window.actualF = measuredFocalLength;
-            
-            state.ctx.fillStyle = lens.isConverging ? 'rgba(255, 0, 0, 0.8)' : 'rgba(0, 0, 255, 0.8)';
-            state.ctx.font = '12px Arial';
-            const focalType = lens.isConverging ? 'F' : 'F (мнимый)';
-            state.ctx.fillText(`${focalType} = ${measuredFocalLength.toFixed(1)}`, measuredFocalX + 10, centerY - 15);
-            
-            if (!lens.isConverging) {
-                state.ctx.setLineDash([3, 3]);
-                state.ctx.strokeStyle = 'rgba(0, 0, 255, 0.5)';
-                state.ctx.beginPath();
-                state.ctx.moveTo(measuredFocalX, centerY - 20);
-                state.ctx.lineTo(measuredFocalX, centerY + 20);
-                state.ctx.stroke();
-                state.ctx.setLineDash([]);
             }
         }
     },
@@ -639,251 +470,95 @@ const experimentFunctions = {
         state.ctx.lineWidth = 1;
         
         const centerY = state.convergingLens.y;
-        const startY = centerY - state.halfDiameter + 20;
-        const endY = centerY + state.halfDiameter - 20;
+        const [leftLens, rightLens] = state.convergingLens.x < state.divergingLens.x ? 
+            [state.convergingLens, state.divergingLens] : [state.divergingLens, state.convergingLens];
         
-        // Массив для хранения точек пересечения лучей (для вычисления фокуса)
+        const leftLensProps = this.getLensProperties(leftLens.isConverging);
+        const rightLensProps = this.getLensProperties(rightLens.isConverging);
+        
         let intersectionPointsX = [];
         
-        function calculateRefraction(rayDirX, rayDirY, normalX, normalY, n1, n2) {
-            const rayLength = Math.sqrt(rayDirX * rayDirX + rayDirY * rayDirY);
-            const rayNormX = rayDirX / rayLength;
-            const rayNormY = rayDirY / rayLength;
-            const normalLength = Math.sqrt(normalX * normalX + normalY * normalY);
-            const normX = normalX / normalLength;
-            const normY = normalY / normalLength;
-            const cosTheta1 = -(rayNormX * normX + rayNormY * normY);
-            const actualCosTheta1 = Math.abs(cosTheta1);
-            const actualNormX = cosTheta1 < 0 ? -normX : normX;
-            const actualNormY = cosTheta1 < 0 ? -normY : normY;
-            const sinTheta1 = Math.sqrt(1 - actualCosTheta1 * actualCosTheta1);
-            const sinTheta2 = (n1 / n2) * sinTheta1;
-            
-            if (sinTheta2 > 1)
-                return { x: rayNormX, y: rayNormY };
-            
-            const cosTheta2 = Math.sqrt(1 - sinTheta2 * sinTheta2);
-            const refractedX = (n1 / n2) * rayNormX + ((n1 / n2) * actualCosTheta1 - cosTheta2) * actualNormX;
-            const refractedY = (n1 / n2) * rayNormY + ((n1 / n2) * actualCosTheta1 - cosTheta2) * actualNormY;
-            
-            return { x: refractedX, y: refractedY };
-        }
-        
-        // Аналитическое вычисление пересечения луча с поверхностью линзы
-        function findLensSurfaceIntersection(lens, rayX, rayY, rayDirX, rayDirY, isLeftSurface) {
-            const centerX = lens.x;
-            const halfEdgeThickness = state.h0 / 2;
-            const leftCenter = centerX - halfEdgeThickness;
-            const rightCenter = centerX + halfEdgeThickness;
-            
-            // Находим пересечение луча с вертикальной линией, где должна быть поверхность
-            let surfaceCenterX;
-            if (isLeftSurface) {
-                surfaceCenterX = leftCenter;
-            } else {
-                surfaceCenterX = rightCenter;
-            }
-            
-            // Если луч параллелен поверхности, не может пересечь
-            if (Math.abs(rayDirX) < 0.001) return null;
-            
-            // Находим t для пересечения с вертикальной плоскостью поверхности
-            const t = (surfaceCenterX - rayX) / rayDirX;
-            if (t < 0) return null; // Луч идет в обратном направлении
-            
-            // Вычисляем y-координату пересечения
-            const intersectionY = rayY + t * rayDirY;
-            
-            // Проверяем, что пересечение в пределах диаметра линзы
-            const dy = intersectionY - centerY;
-            if (Math.abs(dy) > state.halfDiameter) return null;
-            
-            // Вычисляем точную x-координату на поверхности линзы
-            const dx = Math.sqrt(Math.max(0, state.adjustedR * state.adjustedR - dy * dy)) - 
-                      Math.sqrt(state.adjustedR * state.adjustedR - state.halfDiameter * state.halfDiameter);
-            
-            let actualX;
-            if (lens.isConverging) {
-                actualX = isLeftSurface ? leftCenter + dx : rightCenter - dx;
-            } else {
-                actualX = isLeftSurface ? leftCenter - dx : rightCenter + dx;
-            }
-            
-            return { x: actualX, y: intersectionY };
-        }
-        
-        function limitRayToCanvas(startX, startY, dirX, dirY, maxDistance = state.canvas.width) {
+        const limitRayToCanvas = (startX, startY, dirX, dirY, maxDistance = state.canvas.width) => {
             let t = maxDistance;
-            
-            if (dirX > 0)
-                t = Math.min(t, (state.canvas.width - startX) / dirX);
-            
-            if (dirY > 0)
-                t = Math.min(t, (state.canvas.height - startY) / dirY);
-            else if (dirY < 0)
-                t = Math.min(t, -startY / dirY);
-            
-            return {
-                x: startX + t * dirX,
-                y: startY + t * dirY,
-                withinBounds: t > 0
-            };
-        }
+            if (dirX > 0) t = Math.min(t, (state.canvas.width - startX) / dirX);
+            if (dirY > 0) t = Math.min(t, (state.canvas.height - startY) / dirY);
+            else if (dirY < 0) t = Math.min(t, -startY / dirY);
+            return { x: startX + t * dirX, y: startY + t * dirY, withinBounds: t > 0 };
+        };
         
-        // Определяем порядок линз по x-координатам
-        const leftLens = state.convergingLens.x < state.divergingLens.x ? state.convergingLens : state.divergingLens;
-        const rightLens = state.convergingLens.x < state.divergingLens.x ? state.divergingLens : state.convergingLens;
-        
-        for (let rayY = startY; rayY <= endY; rayY += 30) {
+        for (let rayY = centerY - state.halfDiameter + 20; rayY <= centerY + state.halfDiameter - 20; rayY += 30) {
             const isCentralRay = Math.abs(rayY - centerY) < 15;
             
             if (isCentralRay) {
-                state.ctx.beginPath();
-                state.ctx.moveTo(0, rayY);
-                state.ctx.lineTo(leftLens.x, rayY);
-                state.ctx.stroke();
-                
-                state.ctx.beginPath();
-                state.ctx.moveTo(leftLens.x, rayY);
-                state.ctx.lineTo(rightLens.x, rayY);
-                state.ctx.stroke();
-                
-                state.ctx.beginPath();
-                state.ctx.moveTo(rightLens.x, rayY);
-                state.ctx.lineTo(Math.min(state.screenX, state.canvas.width), rayY);
-                state.ctx.stroke();
+                this.drawLine(0, rayY, leftLens.x, rayY, 'red');
+                this.drawLine(leftLens.x, rayY, rightLens.x, rayY, 'red');
+                this.drawLine(rightLens.x, rayY, Math.min(state.screenX, state.canvas.width), rayY, 'red');
                 continue;
             }
             
-            // Обработка первой линзы
-            const halfEdgeThickness = state.h0 / 2;
-            
-            // Вход в первую линзу
-            const entry1 = findLensSurfaceIntersection(leftLens, 0, rayY, 1, 0, true);
+            const entry1 = this.findLensSurfaceIntersection(leftLens, 0, rayY, 1, 0, true);
             if (!entry1) continue;
             
-            state.ctx.beginPath();
-            state.ctx.moveTo(0, rayY);
-            state.ctx.lineTo(entry1.x, entry1.y);
-            state.ctx.stroke();
+            this.drawLine(0, rayY, entry1.x, entry1.y, 'red');
             
-            // Нормаль на входе в первую линзу
-            const centerX1 = leftLens.x;
-            const leftCenter1 = centerX1 - halfEdgeThickness;
-            const rightCenter1 = centerX1 + halfEdgeThickness;
+            const halfEdgeThickness = state.h0 / 2;
+            const leftCenter1 = leftLens.x - halfEdgeThickness;
+            const rightCenter1 = leftLens.x + halfEdgeThickness;
             
-            let leftCurvatureCenter1, rightCurvatureCenter1;
-            if (leftLens.isConverging) {
-                leftCurvatureCenter1 = leftCenter1 - state.adjustedR;
-                rightCurvatureCenter1 = rightCenter1 + state.adjustedR;
-            } else {
-                leftCurvatureCenter1 = leftCenter1 + state.adjustedR;
-                rightCurvatureCenter1 = rightCenter1 - state.adjustedR;
-            }
+            const [leftCurvatureCenter1, rightCurvatureCenter1] = leftLens.isConverging ?
+                [leftCenter1 - state.adjustedR, rightCenter1 + state.adjustedR] :
+                [leftCenter1 + state.adjustedR, rightCenter1 - state.adjustedR];
             
-            let entryNormal1X, entryNormal1Y;
-            if (leftLens.isConverging) {
-                entryNormal1X = entry1.x - leftCurvatureCenter1;
-                entryNormal1Y = entry1.y - centerY;
-            } else {
-                entryNormal1X = leftCurvatureCenter1 - entry1.x;
-                entryNormal1Y = centerY - entry1.y;
-            }
+            const [entryNormal1X, entryNormal1Y] = leftLens.isConverging ?
+                [entry1.x - leftCurvatureCenter1, entry1.y - centerY] :
+                [leftCurvatureCenter1 - entry1.x, centerY - entry1.y];
             
-            const refracted1Entry = calculateRefraction(1, 0, entryNormal1X, entryNormal1Y, 1.0, state.n);
-            
-            // Выход из первой линзы
-            const exit1 = findLensSurfaceIntersection(leftLens, entry1.x, entry1.y, refracted1Entry.x, refracted1Entry.y, false);
+            const refracted1Entry = this.calculateRefraction(1, 0, entryNormal1X, entryNormal1Y, 1.0, leftLensProps.refractiveIndex);
+            const exit1 = this.findLensSurfaceIntersection(leftLens, entry1.x, entry1.y, refracted1Entry.x, refracted1Entry.y, false);
             if (!exit1) continue;
             
-            state.ctx.beginPath();
-            state.ctx.moveTo(entry1.x, entry1.y);
-            state.ctx.lineTo(exit1.x, exit1.y);
-            state.ctx.stroke();
+            this.drawLine(entry1.x, entry1.y, exit1.x, exit1.y, 'red');
             
-            // Нормаль на выходе из первой линзы
-            let exitNormal1X, exitNormal1Y;
-            if (leftLens.isConverging) {
-                exitNormal1X = exit1.x - rightCurvatureCenter1;
-                exitNormal1Y = exit1.y - centerY;
-            } else {
-                exitNormal1X = rightCurvatureCenter1 - exit1.x;
-                exitNormal1Y = centerY - exit1.y;
-            }
+            const [exitNormal1X, exitNormal1Y] = leftLens.isConverging ?
+                [exit1.x - rightCurvatureCenter1, exit1.y - centerY] :
+                [rightCurvatureCenter1 - exit1.x, centerY - exit1.y];
             
-            const refracted1Exit = calculateRefraction(refracted1Entry.x, refracted1Entry.y, exitNormal1X, exitNormal1Y, state.n, 1.0);
-            
-            // Вход во вторую линзу - ИСПРАВЛЕНО: используем аналитический метод
-            const entry2 = findLensSurfaceIntersection(rightLens, exit1.x, exit1.y, refracted1Exit.x, refracted1Exit.y, true);
+            const refracted1Exit = this.calculateRefraction(refracted1Entry.x, refracted1Entry.y, exitNormal1X, exitNormal1Y, leftLensProps.refractiveIndex, 1.0);
+            const entry2 = this.findLensSurfaceIntersection(rightLens, exit1.x, exit1.y, refracted1Exit.x, refracted1Exit.y, true);
             
             if (!entry2) {
                 const endPoint = limitRayToCanvas(exit1.x, exit1.y, refracted1Exit.x, refracted1Exit.y);
-                if (endPoint.withinBounds) {
-                    state.ctx.beginPath();
-                    state.ctx.moveTo(exit1.x, exit1.y);
-                    state.ctx.lineTo(endPoint.x, endPoint.y);
-                    state.ctx.stroke();
-                }
+                if (endPoint.withinBounds) this.drawLine(exit1.x, exit1.y, endPoint.x, endPoint.y, 'red');
                 continue;
             }
             
-            state.ctx.beginPath();
-            state.ctx.moveTo(exit1.x, exit1.y);
-            state.ctx.lineTo(entry2.x, entry2.y);
-            state.ctx.stroke();
+            this.drawLine(exit1.x, exit1.y, entry2.x, entry2.y, 'red');
             
-            // Обработка второй линзы
-            const centerX2 = rightLens.x;
-            const leftCenter2 = centerX2 - halfEdgeThickness;
-            const rightCenter2 = centerX2 + halfEdgeThickness;
+            const leftCenter2 = rightLens.x - halfEdgeThickness;
+            const rightCenter2 = rightLens.x + halfEdgeThickness;
             
-            let leftCurvatureCenter2, rightCurvatureCenter2;
-            if (rightLens.isConverging) {
-                leftCurvatureCenter2 = leftCenter2 - state.adjustedR;
-                rightCurvatureCenter2 = rightCenter2 + state.adjustedR;
-            } else {
-                leftCurvatureCenter2 = leftCenter2 + state.adjustedR;
-                rightCurvatureCenter2 = rightCenter2 - state.adjustedR;
-            }
+            const [leftCurvatureCenter2, rightCurvatureCenter2] = rightLens.isConverging ?
+                [leftCenter2 - state.adjustedR, rightCenter2 + state.adjustedR] :
+                [leftCenter2 + state.adjustedR, rightCenter2 - state.adjustedR];
             
-            // Нормаль на входе во вторую линзу
-            let entryNormal2X, entryNormal2Y;
-            if (rightLens.isConverging) {
-                entryNormal2X = entry2.x - leftCurvatureCenter2;
-                entryNormal2Y = entry2.y - centerY;
-            } else {
-                entryNormal2X = leftCurvatureCenter2 - entry2.x;
-                entryNormal2Y = centerY - entry2.y;
-            }
+            const [entryNormal2X, entryNormal2Y] = rightLens.isConverging ?
+                [entry2.x - leftCurvatureCenter2, entry2.y - centerY] :
+                [leftCurvatureCenter2 - entry2.x, centerY - entry2.y];
             
-            const refracted2Entry = calculateRefraction(refracted1Exit.x, refracted1Exit.y, entryNormal2X, entryNormal2Y, 1.0, state.n);
-            
-            // Выход из второй линзы - ИСПРАВЛЕНО: используем аналитический метод
-            const exit2 = findLensSurfaceIntersection(rightLens, entry2.x, entry2.y, refracted2Entry.x, refracted2Entry.y, false);
+            const refracted2Entry = this.calculateRefraction(refracted1Exit.x, refracted1Exit.y, entryNormal2X, entryNormal2Y, 1.0, rightLensProps.refractiveIndex);
+            const exit2 = this.findLensSurfaceIntersection(rightLens, entry2.x, entry2.y, refracted2Entry.x, refracted2Entry.y, false);
             if (!exit2) continue;
             
-            state.ctx.beginPath();
-            state.ctx.moveTo(entry2.x, entry2.y);
-            state.ctx.lineTo(exit2.x, exit2.y);
-            state.ctx.stroke();
+            this.drawLine(entry2.x, entry2.y, exit2.x, exit2.y, 'red');
             
-            // Нормаль на выходе из второй линзы
-            let exitNormal2X, exitNormal2Y;
-            if (rightLens.isConverging) {
-                exitNormal2X = exit2.x - rightCurvatureCenter2;
-                exitNormal2Y = exit2.y - centerY;
-            } else {
-                exitNormal2X = rightCurvatureCenter2 - exit2.x;
-                exitNormal2Y = centerY - exit2.y;
-            }
+            const [exitNormal2X, exitNormal2Y] = rightLens.isConverging ?
+                [exit2.x - rightCurvatureCenter2, exit2.y - centerY] :
+                [rightCurvatureCenter2 - exit2.x, centerY - exit2.y];
             
-            // Преломление на выходе из второй линзы
-            const refracted2Exit = calculateRefraction(refracted2Entry.x, refracted2Entry.y, exitNormal2X, exitNormal2Y, state.n, 1.0);
+            const refracted2Exit = this.calculateRefraction(refracted2Entry.x, refracted2Entry.y, exitNormal2X, exitNormal2Y, rightLensProps.refractiveIndex, 1.0);
             
-            // Вычисляем точку пересечения с оптической осью для определения фокуса
             if (Math.abs(refracted2Exit.y) > 0.001) {
                 const intersectionX = exit2.x - refracted2Exit.x * (exit2.y - centerY) / refracted2Exit.y;
-                
                 if (intersectionX > rightLens.x && intersectionX < state.canvas.width) {
                     intersectionPointsX.push(intersectionX);
                 }
@@ -892,81 +567,64 @@ const experimentFunctions = {
             const screenT = (state.screenX - exit2.x) / refracted2Exit.x;
             const endPoint = limitRayToCanvas(exit2.x, exit2.y, refracted2Exit.x, refracted2Exit.y, screenT);
             
-            if (endPoint.withinBounds) {
-                state.ctx.beginPath();
-                state.ctx.moveTo(exit2.x, exit2.y);
-                state.ctx.lineTo(endPoint.x, endPoint.y);
-                state.ctx.stroke();
-            }
+            if (endPoint.withinBounds) this.drawLine(exit2.x, exit2.y, endPoint.x, endPoint.y, 'red');
         }
         
-        // Отображаем фокус системы двух линз
         if (intersectionPointsX.length > 0) {
-            let sumX = 0;
-            for (let i = 0; i < intersectionPointsX.length; i++) {
-                sumX += intersectionPointsX[i];
-            }
-            
-            const measuredFocalX = sumX / intersectionPointsX.length;
+            const measuredFocalX = intersectionPointsX.reduce((sum, x) => sum + x, 0) / intersectionPointsX.length;
             const systemFocalLength = measuredFocalX - rightLens.x;
             
-            // Рисуем точку фокуса системы
-            state.ctx.beginPath();
-            state.ctx.arc(measuredFocalX, centerY, 6, 0, Math.PI * 2);
-            state.ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
-            state.ctx.fill();
+            this.drawCircle(measuredFocalX, centerY, 6, 'rgba(0, 255, 0, 0.8)');
             state.ctx.strokeStyle = 'green';
             state.ctx.lineWidth = 2;
             state.ctx.stroke();
             
-            // Подписываем фокус системы
-            state.ctx.fillStyle = 'rgba(0, 150, 0, 0.9)';
-            state.ctx.font = '14px Arial';
-            state.ctx.fillText(`F_система = ${systemFocalLength.toFixed(1)}`, measuredFocalX + 10, centerY - 20);
-            
-            // Сохраняем измеренное фокусное расстояние
             window.actualF = systemFocalLength;
-            
-            // Рисуем вертикальную линию через фокус
-            state.ctx.setLineDash([3, 3]);
-            state.ctx.strokeStyle = 'rgba(0, 150, 0, 0.6)';
-            state.ctx.lineWidth = 1;
-            state.ctx.beginPath();
-            state.ctx.moveTo(measuredFocalX, centerY - 30);
-            state.ctx.lineTo(measuredFocalX, centerY + 30);
+            this.drawLine(measuredFocalX, centerY - 30, measuredFocalX, centerY + 30, 'rgba(0, 150, 0, 0.6)', [3, 3]);
+        }
+        
+        const rightTheoreticalFocalX = rightLens.isConverging ? 
+            rightLens.x + Math.abs(rightLensProps.focalLength) : 
+            rightLens.x - Math.abs(rightLensProps.focalLength);
+        
+        if (rightTheoreticalFocalX > 0 && rightTheoreticalFocalX < state.canvas.width) {
+            this.drawCircle(rightTheoreticalFocalX, centerY, 6, 'blue');
+            state.ctx.strokeStyle = '#0000FF';
+            state.ctx.lineWidth = 2;
             state.ctx.stroke();
-            state.ctx.setLineDash([]);
+            
+            this.drawLine(rightTheoreticalFocalX, centerY - 25, rightTheoreticalFocalX, centerY + 25, 'blue', [2, 2]);
         }
     },
 
     drawCaliper() {
         const state = this.experimentState;
-        const x1 = state.caliperPosition.x1;
-        const y1 = state.caliperPosition.y1;
-        const x2 = state.caliperPosition.x2;
-        const y2 = state.caliperPosition.y2;
-        
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-        const midX = (x1 + x2) / 2;
-        const midY = (y1 + y2) / 2;
+        const { x1, y1, x2, y2 } = state.caliperPosition;
+        const [angle, distance, midX, midY] = [
+            Math.atan2(y2 - y1, x2 - x1),
+            Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2),
+            (x1 + x2) / 2,
+            (y1 + y2) / 2
+        ];
         
         state.ctx.save();
         state.ctx.translate(midX, midY);
         state.ctx.rotate(angle);
         
         const caliperHeight = 30;
-        state.ctx.fillStyle = "#d1d1d1";
-        state.ctx.strokeStyle = "#808080";
-        state.ctx.lineWidth = 1;
         
-        state.ctx.fillRect(-distance/2, -caliperHeight/2, distance, caliperHeight);
-        state.ctx.strokeRect(-distance/2, -caliperHeight/2, distance, caliperHeight);
-        state.ctx.fillStyle = "#808080";
-        state.ctx.fillRect(-distance/2 - 5, -caliperHeight/2 - 20, 5, caliperHeight + 40);
-        state.ctx.fillRect(distance/2, -caliperHeight/2 - 20, 5, caliperHeight + 40);
-        state.ctx.fillStyle = "#000";
+        ['#d1d1d1', '#808080'].forEach((color, i) => {
+            state.ctx[i ? 'strokeStyle' : 'fillStyle'] = color;
+            state.ctx[i ? 'strokeRect' : 'fillRect'](-distance/2, -caliperHeight/2, distance, caliperHeight);
+        });
         
+        state.ctx.fillStyle = '#808080';
+        [[-distance/2 - 5, distance/2]].forEach(([left, right]) => {
+            state.ctx.fillRect(left, -caliperHeight/2 - 20, 5, caliperHeight + 40);
+            state.ctx.fillRect(right, -caliperHeight/2 - 20, 5, caliperHeight + 40);
+        });
+        
+        state.ctx.fillStyle = '#000';
         const markCount = Math.floor(distance / 10);
         for (let i = 0; i <= markCount; i++) {
             const x = -distance/2 + i * 10;
@@ -977,44 +635,95 @@ const experimentFunctions = {
                 state.ctx.save();
                 state.ctx.translate(x, -caliperHeight/2 - 5);
                 state.ctx.rotate(-angle);
-                state.ctx.font = "8px Arial";
-                state.ctx.textAlign = "center";
+                state.ctx.font = '8px Arial';
+                state.ctx.textAlign = 'center';
                 state.ctx.fillText((i * 10).toString(), 0, 0);
                 state.ctx.restore();
             }
         }
         
-        const vernierLength = 20;
-        state.ctx.fillStyle = "#b8b8b8";
-        state.ctx.fillRect(-distance/2, caliperHeight/2 - 10, vernierLength, 10);
+        state.ctx.fillStyle = '#b8b8b8';
+        state.ctx.fillRect(-distance/2, caliperHeight/2 - 10, 20, 10);
         state.ctx.save();
         state.ctx.translate(0, caliperHeight/2 + 15);
         state.ctx.rotate(-angle);
-        state.ctx.fillStyle = "white";
-        state.ctx.fillRect(-40, -10, 80, 20);
-        state.ctx.strokeStyle = "black";
-        state.ctx.strokeRect(-40, -10, 80, 20);
-        state.ctx.fillStyle = "black";
-        state.ctx.font = "12px Arial";
-        state.ctx.textAlign = "center";
+        
+        ['white', 'black'].forEach((color, i) => {
+            state.ctx[i ? 'strokeStyle' : 'fillStyle'] = color;
+            state.ctx[i ? 'strokeRect' : 'fillRect'](-40, -10, 80, 20);
+        });
+        
+        state.ctx.fillStyle = 'black';
+        state.ctx.font = '12px Arial';
+        state.ctx.textAlign = 'center';
         state.ctx.fillText(`${distance.toFixed(1)} пикс`, 0, 5);
         state.ctx.restore();
         state.ctx.restore();
         
-        this.drawDragPoint(x1, y1, "#FF4444");
-        this.drawDragPoint(x2, y2, "#4444FF");
+        this.drawDragPoint(x1, y1, '#FF4444');
+        this.drawDragPoint(x2, y2, '#4444FF');
     },
 
     drawDragPoint(x, y, color) {
+        this.drawCircle(x, y, 8, color);
         const state = this.experimentState;
-        state.ctx.beginPath();
-        state.ctx.arc(x, y, 8, 0, 2 * Math.PI);
-        state.ctx.fillStyle = color;
-        state.ctx.fill();
-        state.ctx.strokeStyle = "#000";
+        state.ctx.strokeStyle = '#000';
         state.ctx.lineWidth = 2;
         state.ctx.stroke();
-    }
-}
+    },
+
+    checkMeasurementInputs() {
+        const state = this.experimentState;
+        this.updateMeasurementDisplay();
+        
+        const oneLensDistance = state.storedOneLensDistance || 0;
+        const twoLensDistance = state.storedTwoLensDistance || 0;
+        const currentOneLens = state.showBothLenses ? oneLensDistance : (oneLensDistance || state.measuredFocus);
+        const currentTwoLens = state.showBothLenses ? (twoLensDistance || state.measuredFocus) : twoLensDistance;
+        
+        let calculatedFocus = 0;
+        if (currentOneLens > 0 && currentTwoLens > 0)
+            calculatedFocus = this.calculateDivergingLensFocus(currentOneLens, currentTwoLens);
+        
+        const userOneLens = parseFloat(document.getElementById('user-one-lens').value) || 0;
+        const userTwoLens = parseFloat(document.getElementById('user-two-lens').value) || 0;
+        const userFocus = parseFloat(document.getElementById('user-focus-distance').value) || 0;
+    
+        console.log('Correct values:', { 
+            oneLens: currentOneLens, 
+            twoLens: currentTwoLens, 
+            focus: Math.abs(calculatedFocus) 
+        });
+    
+        this.checkValue(userOneLens, currentOneLens, 10, document.getElementById('one-lens-check'));
+        this.checkValue(userTwoLens, currentTwoLens, 10, document.getElementById('two-lens-check'));
+        calculatedFocus !== 0 ?
+            this.checkValue(userFocus, Math.abs(calculatedFocus), 10, document.getElementById('focus-distance-check')) :
+            this.checkValue(userFocus, -999, 10, document.getElementById('focus-distance-check'));
+    },
+
+    calculateDivergingLensFocus(f, d) {
+        if (f === 0 || d === 0 || d === f) return 0;
+        return (f * d) / (d - f);
+    },
+
+    updateMeasurementDisplay() {
+        const state = this.experimentState;
+        
+        if (state.showBothLenses) {
+            const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
+            state.measuredFocus = Math.abs(state.screenX - rightLens.x);
+        } else {
+            state.measuredFocus = Math.abs(state.screenX - state.convergingLens.x);
+        }
+        
+        state.currentOneLensDistance = state.showBothLenses ? 0 : state.measuredFocus;
+        state.currentTwoLensDistance = state.showBothLenses ? state.measuredFocus : 0;
+        state.currentCalculatedFocus = this.calculateDivergingLensFocus(
+            state.currentOneLensDistance, 
+            state.currentTwoLensDistance
+        );
+    },
+};
 
 export default experimentFunctions;
