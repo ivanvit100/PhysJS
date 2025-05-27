@@ -17,19 +17,21 @@ const experimentFunctions = {
 
     setupScaleInteraction() {
         window.scalePlate.addEventListener('click', () => {
-            if ((window.experimentState.step === 2 || window.experimentState.step === 5) && 
+            if ((window.experimentState.step === 2 || window.experimentState.step === 6) && 
                 window.experimentState.hoseAttachedToSphere) {
                 this.placeOnScale();
             }
         });
         
+        window.clamp.addEventListener('mousedown', this.handleSphereDragStart);
+        window.hose.addEventListener('mousedown', this.handleSphereDragStart);
         window.sphere.addEventListener('mousedown', this.handleSphereDragStart);
         document.addEventListener('mouseup', this.handleSphereDragEnd);
     },
 
     setupWaterContainerInteraction() {
         window.waterContainer.addEventListener('click', () => {
-            if (window.experimentState.step === 6 && 
+            if (window.experimentState.step === 7 && 
                 window.experimentState.sphereReweighed && 
                 !window.experimentState.hoseInWater) {
                 this.placeInWaterContainer();
@@ -41,7 +43,7 @@ const experimentFunctions = {
 
     setupCylinderInteraction() {
         window.cylinder.addEventListener('click', () => {
-            if (window.experimentState.step === 7 && 
+            if (window.experimentState.step === 8 && 
                 window.experimentState.sphereFilledWithWater && 
                 !window.experimentState.waterInCylinder && 
                 !window.experimentState.animatingWaterTransfer) {
@@ -126,7 +128,7 @@ const experimentFunctions = {
         
         window.experimentState.sphereOnScale = true;
         
-        if (window.experimentState.step === 5 && window.experimentState.airPumpedOut) {
+        if (window.experimentState.step === 6 && window.experimentState.airPumpedOut) {
             const currentMass = (
                 window.experimentState.initialMass - 
                 (window.experimentState.initialAirMass - window.experimentState.currentAirMass)
@@ -213,7 +215,7 @@ const experimentFunctions = {
         window.experimentState.sphereFilledWithWater = true;
         window.experimentState.animatingWaterFill = false;
         
-        this.advanceToStep(7);
+        this.advanceToStep(8);
         this.updateInstructions("Переместите шланг к измерительному цилиндру, чтобы перелить воду из сферы");
     }, 2000);
     },
@@ -298,7 +300,7 @@ const experimentFunctions = {
                     (sphereObj.attachedObjects && sphereObj.attachedObjects.has(hoseObj)) || 
                     (hoseObj.attachedObjects && hoseObj.attachedObjects.has(sphereObj));
                 
-                this.advanceToStep(8);
+                this.advanceToStep(9);
                 this.showDensityCalculator();
                 this.updateInstructions("Теперь рассчитайте плотность воздуха и введите результат для проверки");
 
@@ -308,7 +310,7 @@ const experimentFunctions = {
     },
 
     processWeighing() {
-        if (!window.experimentState.sphereWeighed && window.experimentState.step === 2) {
+        if (!window.experimentState.sphereWeighed && window.experimentState.step === 3) {
             setTimeout(() => {
                 window.mass1Display.textContent = window.experimentState.initialMass.toFixed(2);
                 window.experimentState.sphereWeighed = true;
@@ -317,14 +319,14 @@ const experimentFunctions = {
                     window.scaleDisplay.style.color = '';
                 }, 500);
                 
-                this.advanceToStep(3);
+                this.advanceToStep(4);
                 this.updateInstructions("Подсоедините шланг к насосу и нажмите на ручку насоса");
             }, 1000);
             
             return;
         }
         
-        if (window.experimentState.clampAttachedToHose && !window.experimentState.sphereReweighed && window.experimentState.step === 5) {
+        if (window.experimentState.clampAttachedToHose && !window.experimentState.sphereReweighed && window.experimentState.step === 6) {
             window.experimentState.sphereReweighed = true;
             
             const currentMass = (
@@ -338,7 +340,8 @@ const experimentFunctions = {
                 window.mass2Display.textContent = currentMass;
             }
             
-            this.advanceToStep(6);
+            this.advanceToStep(7);
+            this.updateInstructions("Отпустите шланг в воду и снимите зажим");
         }
         
         setTimeout(() => {
@@ -348,16 +351,17 @@ const experimentFunctions = {
 
     setupLabSteps() {
         const step1 = physjs.createStep('step1', 'Присоедините шланг к сфере', ['#glass-sphere', '#hose']);
-        const step2 = physjs.createStep('step2', 'Взвесьте сферу на весах');
-        const step3 = physjs.createStep('step3', 'Подсоедините шланг к насосу', ['#pump', '#hose']);
-        const step4 = physjs.createStep('step4', 'Закройте шланг зажимом', ['#clamp', '#hose'], ['#pump']);
-        const step5 = physjs.createStep('step5', 'Повторно взвесьте сферу');
-        const step6 = physjs.createStep('step6', 'Поместите шланг в контейнер с водой', ['#hose', '#glass-sphere'], ['#water-container', '#clamp']);
-        const step7 = physjs.createStep('step7', 'Перелейте воду в цилиндр', ['#hose', '#glass-sphere'], ['#water-container']);
-        const step8 = physjs.createStep('step8', 'Рассчитайте плотность воздуха', ['#hose', '#glass-sphere'], ['#water-container']);
+        const step2 = physjs.createStep('step2', 'Присоедините шланг к зажиму', ['#clamp', '#hose']);
+        const step3 = physjs.createStep('step3', 'Взвесьте сферу на весах');
+        const step4 = physjs.createStep('step4', 'Подсоедините шланг к насосу', ['#pump', '#hose']);
+        const step5 = physjs.createStep('step5', 'Отсоедините шланг от насоса', [], ['#pump'])
+        const step6 = physjs.createStep('step6', 'Повторно взвесьте сферу');
+        const step7 = physjs.createStep('step7', 'Поместите шланг в контейнер с водой', ['#hose', '#glass-sphere'], ['#water-container', '#clamp']);
+        const step8 = physjs.createStep('step8', 'Перелейте воду в цилиндр', ['#hose', '#glass-sphere'], ['#water-container']);
+        const step9 = physjs.createStep('step9', 'Рассчитайте плотность воздуха', ['#hose', '#glass-sphere'], ['#water-container']);
         
         physjs.addStep(step1).addStep(step2).addStep(step3).addStep(step4)
-              .addStep(step5).addStep(step6).addStep(step7).addStep(step8);
+              .addStep(step5).addStep(step6).addStep(step7).addStep(step8).addStep(step9);
         
         physjs.goToStep('step1');
     },
@@ -406,11 +410,11 @@ const experimentFunctions = {
         
         const experimentFuncs = experimentFunctions;
         
-        if ((window.experimentState.step === 2 || window.experimentState.step === 5) && 
+        if ((window.experimentState.step === 3 || window.experimentState.step === 6) && 
             !window.experimentState.animatingWaterFill) {
             
-            if (window.experimentState.step === 2 && window.experimentState.sphereWeighed) return;
-            if (window.experimentState.step === 5 && window.experimentState.sphereReweighed) return;
+            if (window.experimentState.step === 3 && window.experimentState.sphereWeighed) return;
+            if (window.experimentState.step === 6 && window.experimentState.sphereReweighed) return;
             
             if (experimentFuncs.elementsOverlap(window.sphere, window.scalePlate, 30)) {
                 experimentFuncs.placeOnScale();
@@ -432,7 +436,7 @@ const experimentFunctions = {
             }
         }
         
-        if (window.experimentState.step === 6 && window.experimentState.sphereReweighed &&
+        if (window.experimentState.step === 7 && window.experimentState.sphereReweighed &&
            !window.experimentState.hoseInWater && !window.experimentState.animatingWaterFill && 
            !window.experimentState.clampAttachedToHose) {
             
@@ -447,7 +451,7 @@ const experimentFunctions = {
             }
         }
         
-        if (window.experimentState.step === 7 && window.experimentState.sphereFilledWithWater &&
+        if (window.experimentState.step === 8 && window.experimentState.sphereFilledWithWater &&
            !window.experimentState.waterInCylinder && !window.experimentState.animatingWaterTransfer && 
            !window.experimentState.clampAttachedToHose) {
             
@@ -513,7 +517,7 @@ const experimentFunctions = {
             this.handleDetachment(object);
         });
         
-        this.updateInstructions("Присоедините шланг к сфере, используя правую кнопку мыши");
+        this.updateInstructions("Присоедините шланг к сфере");
     },
 
     showTooltip(e) {
@@ -540,53 +544,26 @@ const experimentFunctions = {
             if (!window.experimentState.hoseAttachedToSphere) {
                 window.experimentState.hoseAttachedToSphere = true;
                 this.advanceToStep(2);
-                this.updateInstructions("Поместите сферу со шлангом на весы");
+                this.updateInstructions("Присоедините шланг к зажиму.");
             }
         }
         
         if ((sourceElement.id === 'clamp' && targetElement.id === 'hose') ||
             (sourceElement.id === 'hose' && targetElement.id === 'clamp')) {
             
-            if (window.experimentState.hoseAttachedToPump) {
-                this.updateInstructions("Сначала отсоедините насос от шланга, затем прикрепите зажим");
-                
-                setTimeout(() => {
-                    const clampObj = physjs.getObject('#clamp');
-                    if (clampObj) {
-                        clampObj.detach();
-                    }
-                }, 500);
+            if (!window.experimentState.clampAttachedToHose) {
+                window.experimentState.clampAttachedToHose = true;
+
+                this.advanceToStep(3);
+
+                this.updateInstructions("Поместите сферу со шлангом на весы");
                 
                 return;
-            }
-            
-            if (window.experimentState.airPumpedOut && !window.experimentState.clampAttachedToHose) {
-                window.experimentState.clampAttachedToHose = true;
-                window.clamp.style.backgroundColor = '#d00';
-                this.advanceToStep(5);
-                this.updateInstructions("Поместите сферу на весы для повторного взвешивания");
             }
         }
         
         if ((sourceElement.id === 'hose' && targetElement.id === 'pump') ||
             (sourceElement.id === 'pump' && targetElement.id === 'hose')) {
-            
-            if (window.experimentState.clampAttachedToHose) {
-                this.updateInstructions("Сначала снимите зажим со шланга, затем прикрепите шланг к насосу");
-                
-                setTimeout(() => {
-                    const pumpObj = physjs.getObject('#pump');
-                    const hoseObj = physjs.getObject('#hose');
-                    if (pumpObj && pumpObj.attachedObjects.has(hoseObj)) {
-                        pumpObj.detach();
-                    }
-                    if (hoseObj && hoseObj.attachedObjects.has(pumpObj)) {
-                        hoseObj.detach();
-                    }
-                }, 500);
-                
-                return;
-            }
             
             if (window.experimentState.sphereWeighed && !window.experimentState.hoseAttachedToPump) {
                 window.experimentState.hoseAttachedToPump = true;
@@ -612,7 +589,8 @@ const experimentFunctions = {
             window.experimentState.hoseAttachedToPump = false;
             
             if (window.experimentState.airPumpedOut) {
-                this.updateInstructions("Теперь прикрепите зажим к шлангу");
+                this.advanceToStep(6);
+                this.updateInstructions("Теперь снова взвесьте шар на весах");
             }
         }
     },
@@ -638,7 +616,7 @@ const experimentFunctions = {
     
             if (!window.experimentState.airPumpedOut) {
                 window.experimentState.airPumpedOut = true;
-                this.advanceToStep(4);
+                this.advanceToStep(5);
                 this.updateInstructions("Отсоедините насос, затем закройте шланг сферы, прикрепив зажим");
             }
         }, 200);
@@ -652,7 +630,7 @@ const experimentFunctions = {
         setTimeout(() => {
             window.sphere.style.backgroundColor = 'rgba(64, 164, 223, 0.5)';
             window.experimentState.sphereFilledWithWater = true;
-            this.advanceToStep(7);
+            this.advanceToStep(8);
             this.updateInstructions("Переместите шланг к измерительному цилиндру, чтобы перелить воду из сферы");
             
             setTimeout(() => {
@@ -806,7 +784,7 @@ const experimentFunctions = {
         window.pumpHandle.style.transform = 'translate(-50%, -25px)';
 
         this.advanceToStep(1);
-        this.updateInstructions("Присоедините шланг к сфере, используя правую кнопку мыши");
+        this.updateInstructions("Присоедините шланг к сфере.");
     },
 
     goBack() {
