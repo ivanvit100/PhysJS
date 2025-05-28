@@ -9,7 +9,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('reset-btn').addEventListener('click', experimentFunctions.resetMeasurements);
     document.getElementById('check-measurements').addEventListener('click', experimentFunctions.checkMeasurements);
-    document.getElementById('toggle-caliper').addEventListener('click', experimentFunctions.toggleCaliper);
+    document.getElementById('toggle-caliper').addEventListener('click', experimentFunctions.toggleRuler);
     document.getElementById('toggle-lens-type').addEventListener('click', experimentFunctions.toggleBothLenses);
 
     const tabsContent = intro.createTabContent([

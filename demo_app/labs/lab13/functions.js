@@ -10,16 +10,23 @@ const experimentFunctions = {
         oneLensCheck: document.getElementById('one-lens-check'),
         twoLensCheck: document.getElementById('two-lens-check'),
         focusDistanceCheck: document.getElementById('focus-distance-check'),
-        H: 120, D: 250, h0: 70, n: 1.5,
+        H: 120, D: 250, h0: 70, n: 1.8,
+        
         lockLensMovement: true,
-        convergingFocus: 200, divergingFocus: -300,
-        showBothLenses: false, convergingLens: null, divergingLens: null,
-        screenX: 600, calculatedResults: {}, showCaliper: false,
-        caliperPosition: { x1: 200, y1: 150, x2: 300, y2: 150 },
-        isDraggingScreen: false, isDraggingCaliper: false, isDraggingCaliperPoint: false,
-        isDraggingLens: false, draggingLensType: null, draggingCaliperPointIndex: null,
+        convergingFocus: 350, 
+        divergingFocus: -700,
+        lensDistance: 150,
+        
+        showBothLenses: false, 
+        convergingLens: null, 
+        divergingLens: null,
+        screenX: 600, calculatedResults: {}, showRuler: false,
+        rulerPosition: { x: 200, y: 150, width: 200, height: 30 },
+        isDraggingScreen: false, isDraggingRuler: false,
+        isDraggingLens: false, draggingLensType: null,
         dragStartX: 0, dragStartY: 0, initialScreenX: 0, measuredFocus: 0, animationFrameId: null,
         storedOneLensDistance: 0, storedTwoLensDistance: 0,
+        singleLensFocalPoint: null,
         get R() { return ((this.D * this.D / 4) + Math.pow(this.H - this.h0, 2)) / (2 * (this.H - this.h0)); },
         get bulgeAtCenter() { return (this.H - this.h0) / 2; },
         get halfDiameter() { return this.D / 2; },
@@ -39,7 +46,14 @@ const experimentFunctions = {
     init() {
         const canvas = this.experimentState.canvas;
         this.experimentState.convergingLens = { x: 200, y: canvas.height / 2, isConverging: false };
-        this.experimentState.divergingLens = { x: 400, y: canvas.height / 2, isConverging: true };
+        this.experimentState.divergingLens = { 
+            x: this.experimentState.convergingLens.x + this.experimentState.lensDistance, 
+            y: canvas.height / 2, 
+            isConverging: true 
+        };
+        
+        this.experimentState.screenX = this.experimentState.convergingLens.x + this.experimentState.F * 1.5;
+        this.experimentState.storedOneLensDistance = Math.abs(this.experimentState.screenX - this.experimentState.convergingLens.x);
         
         const checkButton = document.getElementById('check-measurements');
         if (checkButton) {
@@ -47,7 +61,7 @@ const experimentFunctions = {
                 this.checkMeasurementInputs();
             });
         }
-
+    
         this.drawSimulation();
         ['mousedown', 'mousemove', 'mouseup'].forEach((event, i) => 
             canvas.addEventListener(event, [this.handleMouseDown, this.handleMouseMove, this.handleMouseUp][i].bind(this))
@@ -56,48 +70,94 @@ const experimentFunctions = {
 
     getLensProperties(isConverging) {
         const state = this.experimentState;
-        const focalLength = isConverging ? state.convergingFocus : state.divergingFocus;
-        const halfDiam = state.D / 2;
-        const bulge = (state.H - state.h0) / 2;
-        const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
-        const requiredN = (adjR / (2 * Math.abs(focalLength))) + 1;
         
-        return {
-            focalLength: focalLength,
-            refractiveIndex: requiredN,
-            adjustedR: adjR
-        };
+        if (isConverging) {
+            const focalLength = state.convergingFocus;
+            const halfDiam = state.D / 2;
+            const bulge = (state.H - state.h0) / 2;
+            const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
+            const requiredN = (adjR / (2 * Math.abs(focalLength))) + 1;
+            
+            return {
+                focalLength: focalLength,
+                refractiveIndex: requiredN,
+                adjustedR: adjR
+            };
+        } else {
+            const halfDiam = state.D / 2;
+            const bulge = (state.H - state.h0) / 2;
+            const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
+            
+            let calculatedF = Math.abs(state.divergingFocus);
+            
+            const d = state.storedOneLensDistance > 0 ? 
+                state.storedOneLensDistance : 
+                Math.abs(state.screenX - state.convergingLens.x);
+                
+            if (d > 0) {
+                const targetF = state.convergingFocus;
+                calculatedF = Math.abs((targetF * d) / (d + targetF));
+            }
+            
+            const requiredN = (adjR / (2 * calculatedF)) + 1;
+            
+            return {
+                focalLength: -calculatedF,
+                refractiveIndex: requiredN,
+                adjustedR: adjR
+            };
+        }
     },
 
     toggleBothLenses() {
         const state = experimentFunctions.experimentState;
         
-        !state.showBothLenses ?
-            state.storedOneLensDistance = state.measuredFocus :
-            state.storedTwoLensDistance = state.measuredFocus;
+        if (!state.showBothLenses) {
+            if (state.storedOneLensDistance === 0)
+                state.storedOneLensDistance = Math.abs(state.screenX - state.convergingLens.x);
+            
+            state.divergingLens.x = state.convergingLens.x + state.lensDistance;
+            
+            if (state.singleLensFocalPoint) {
+                const d = state.storedOneLensDistance;
+                const targetF = state.convergingFocus;
+                const calculatedF = Math.abs((targetF * d) / (d + targetF));
+                state.screenX = state.divergingLens.x + calculatedF;
+            } else {
+                state.screenX = state.divergingLens.x + 250;
+            }
+            
+            const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
+            state.storedTwoLensDistance = Math.abs(state.screenX - rightLens.x);
+            
+        } else {
+            const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
+            state.storedTwoLensDistance = Math.abs(state.screenX - rightLens.x);
+            
+            if (state.storedOneLensDistance > 0) {
+                state.screenX = state.convergingLens.x + state.storedOneLensDistance;
+            } else {
+                state.screenX = state.convergingLens.x + state.F * 1.5;
+                state.storedOneLensDistance = Math.abs(state.screenX - state.convergingLens.x);
+            }
+        }
         
         state.showBothLenses = !state.showBothLenses;
         state.toggleLensTypeButton.textContent = state.showBothLenses ? 'Одна линза' : 'Обе линзы';
-        
-        if (state.showBothLenses) {
-            state.divergingLens.x = state.convergingLens.x + 250;
-            state.screenX = state.divergingLens.x + 250;
-        } else {
-            state.convergingLens.x = 250;
-            state.screenX = state.convergingLens.x + state.F * 1.2;
-        }
         
         experimentFunctions.updateMeasurementDisplay();
         experimentFunctions.drawSimulation();
     },
 
-    toggleCaliper() {
+    toggleRuler() {
         const state = experimentFunctions.experimentState;
-        state.showCaliper = !state.showCaliper;
-        if (state.showCaliper) {
-            state.caliperPosition = {
-                x1: state.canvas.width / 2 - 50, y1: state.canvas.height / 2,
-                x2: state.canvas.width / 2 + 50, y2: state.canvas.height / 2
+        state.showRuler = !state.showRuler;
+        if (state.showRuler) {
+            state.rulerPosition = {
+                x: state.canvas.width / 2 - 100,
+                y: state.canvas.height / 2 - 15,
+                width: 200,
+                height: 30
             };
         }
         experimentFunctions.drawSimulation();
@@ -107,12 +167,15 @@ const experimentFunctions = {
         const state = this.experimentState;
         Object.assign(state, {
             calculatedResults: {}, showBothLenses: false, measuredFocus: 0,
-            screenX: 250 + state.F * 1.2, storedOneLensDistance: 0, storedTwoLensDistance: 0
+            storedOneLensDistance: 0, storedTwoLensDistance: 0,
+            singleLensFocalPoint: null
         });
         state.resultsBody && (state.resultsBody.innerHTML = '');
         state.toggleLensTypeButton.textContent = 'Обе линзы';
         state.convergingLens.x = 250;
-        state.divergingLens.x = 400;
+        state.divergingLens.x = state.convergingLens.x + state.lensDistance;
+        state.screenX = state.convergingLens.x + state.F * 1.5;
+        state.storedOneLensDistance = Math.abs(state.screenX - state.convergingLens.x);
         
         [state.userOneLensInput, state.userTwoLensInput, state.userFocusDistanceInput]
             .forEach(input => input && (input.value = ''));
@@ -135,17 +198,10 @@ const experimentFunctions = {
         return this.isPointInside(px, py, lens.x, lens.y, this.experimentState.halfDiameter + 20);
     },
 
-    isPointInsideCaliper(px, py) {
+    isPointInsideRuler(px, py) {
         const state = this.experimentState;
-        const { x1, y1, x2, y2 } = state.caliperPosition;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        const [midX, midY] = [(x1 + x2) / 2, (y1 + y2) / 2];
-        const [cosA, sinA] = [Math.cos(-angle), Math.sin(-angle)];
-        const rotatedX = cosA * (px - midX) - sinA * (py - midY) + midX;
-        const rotatedY = sinA * (px - midX) + cosA * (py - midY) + midY;
-        return rotatedX >= midX - distance/2 - 10 && rotatedX <= midX + distance/2 + 10 &&
-               rotatedY >= midY - 30 && rotatedY <= midY + 30;
+        const { x, y, width, height } = state.rulerPosition;
+        return px >= x && px <= x + width && py >= y && py <= y + height;
     },
 
     handleMouseDown(event) {
@@ -154,19 +210,17 @@ const experimentFunctions = {
         
         if (Math.abs(mouseX - state.screenX) < 10) {
             Object.assign(state, { isDraggingScreen: true, dragStartX: mouseX, initialScreenX: state.screenX });
-        } else if (state.showCaliper) {
-            if (this.isPointInside(mouseX, mouseY, state.caliperPosition.x1, state.caliperPosition.y1, 10))
-                Object.assign(state, { isDraggingCaliperPoint: true, draggingCaliperPointIndex: 1 });
-            else if (this.isPointInside(mouseX, mouseY, state.caliperPosition.x2, state.caliperPosition.y2, 10))
-                Object.assign(state, { isDraggingCaliperPoint: true, draggingCaliperPointIndex: 2 });
-            else if (this.isPointInsideCaliper(mouseX, mouseY))
-                Object.assign(state, { isDraggingCaliper: true, dragStartX: mouseX, dragStartY: mouseY });
-        } else if (this.isPointInsideLens(mouseX, mouseY, state.convergingLens) && !(state.showBothLenses && state.lockLensMovement))
+        } else if (state.showRuler && this.isPointInsideRuler(mouseX, mouseY)) {
+            Object.assign(state, { isDraggingRuler: true, dragStartX: mouseX, dragStartY: mouseY });
+        } else if (this.isPointInsideLens(mouseX, mouseY, state.convergingLens) && !(state.showBothLenses && state.lockLensMovement)) {
             Object.assign(state, { isDraggingLens: true, draggingLensType: 'converging', dragStartX: mouseX });
-        else if (state.showBothLenses && this.isPointInsideLens(mouseX, mouseY, state.divergingLens) && !state.lockLensMovement)
+        } else if (state.showBothLenses && this.isPointInsideLens(mouseX, mouseY, state.divergingLens) && !state.lockLensMovement) {
             Object.assign(state, { isDraggingLens: true, draggingLensType: 'diverging', dragStartX: mouseX });
+        }
         
-        state.isDraggingScreen || state.isDraggingCaliper || state.isDraggingCaliperPoint || state.isDraggingLens && state.canvas.classList.add('dragging');
+        if (state.isDraggingScreen || state.isDraggingRuler || state.isDraggingLens) {
+            state.canvas.classList.add('dragging');
+        }
     },
 
     handleMouseMove(event) {
@@ -190,21 +244,21 @@ const experimentFunctions = {
             needsRedraw = true;
         } else if (state.isDraggingLens) {
             const deltaX = mouseX - state.dragStartX;
-            const lens = state.draggingLensType === 'converging' ? state.convergingLens : state.divergingLens;
-            lens.x = Math.max(50, Math.min(state.canvas.width - 150, lens.x + deltaX));
+            
+            if (state.draggingLensType === 'converging') {
+                state.convergingLens.x = Math.max(50, Math.min(state.canvas.width - 150 - state.lensDistance, state.convergingLens.x + deltaX));
+                state.divergingLens.x = state.convergingLens.x + state.lensDistance;
+            } else {
+                state.divergingLens.x = Math.max(50 + state.lensDistance, Math.min(state.canvas.width - 150, state.divergingLens.x + deltaX));
+                state.convergingLens.x = state.divergingLens.x - state.lensDistance;
+            }
+            
             state.dragStartX = mouseX;
             needsRedraw = true;
-        } else if (state.isDraggingCaliperPoint) {
-            const point = state.draggingCaliperPointIndex === 1 ? 'x1' : 'x2';
-            const pointY = state.draggingCaliperPointIndex === 1 ? 'y1' : 'y2';
-            state.caliperPosition[point] = mouseX;
-            state.caliperPosition[pointY] = mouseY;
-            needsRedraw = true;
-        } else if (state.isDraggingCaliper) {
+        } else if (state.isDraggingRuler) {
             const [deltaX, deltaY] = [mouseX - state.dragStartX, mouseY - state.dragStartY];
-            ['x1', 'y1', 'x2', 'y2'].forEach(coord => {
-                state.caliperPosition[coord] += coord.includes('x') ? deltaX : deltaY;
-            });
+            state.rulerPosition.x = Math.max(0, Math.min(state.canvas.width - state.rulerPosition.width, state.rulerPosition.x + deltaX));
+            state.rulerPosition.y = Math.max(0, Math.min(state.canvas.height - state.rulerPosition.height, state.rulerPosition.y + deltaY));
             Object.assign(state, { dragStartX: mouseX, dragStartY: mouseY });
             needsRedraw = true;
         }
@@ -222,17 +276,17 @@ const experimentFunctions = {
         const state = this.experimentState;
         state.canvas.classList.remove('dragging');
         Object.assign(state, {
-            isDraggingScreen: false, isDraggingCaliper: false, isDraggingCaliperPoint: false,
+            isDraggingScreen: false, isDraggingRuler: false,
             isDraggingLens: false, draggingLensType: null
         });
         state.animationFrameId && cancelAnimationFrame(state.animationFrameId);
         this.drawSimulation();
     },
 
-    checkValue(userValue, actualValue, tolerance, checkElement) {
+    checkValue(userValue, checkElement) {
         if (!checkElement) return;
         
-        const isCorrect = Math.abs(userValue - actualValue) <= tolerance;
+        const isCorrect = userValue <= 5;
         const newClassName = `check-mark ${isCorrect ? 'correct' : 'incorrect'}`;
         
         checkElement.className = newClassName;
@@ -260,7 +314,7 @@ const experimentFunctions = {
         
         this.updateMeasurementDisplay();
         this.drawLine(state.screenX, 50, state.screenX, state.canvas.height - 50, '#00008B', [], state.isDraggingScreen ? 4 : 2);
-        state.showCaliper && this.drawCaliper();
+        state.showRuler && this.drawRuler();
     },
 
     drawLine(x1, y1, x2, y2, color, dash = [], width = 1) {
@@ -419,7 +473,7 @@ const experimentFunctions = {
             return {x: curX, y: curY};
         };
         
-        for (let rayY = centerY - state.halfDiameter + 20; rayY <= centerY + state.halfDiameter - 20; rayY += 30) {
+        for (let rayY = centerY - state.halfDiameter + 50; rayY <= centerY + state.halfDiameter - 50; rayY += 30) {
             const isCentralRay = Math.abs(rayY - centerY) < 15;
             const entryPoint = findExactIntersection(0, rayY, 1, 0, true);
             
@@ -452,15 +506,26 @@ const experimentFunctions = {
                 this.drawLine(exitPoint.x, exitPoint.y, state.screenX, screenY, 'red');
                 
                 if (Math.abs(refractedExit.y) > 0.001) {
-                    const intersectionX = lens.isConverging ?
-                        exitPoint.x - refractedExit.x * (exitPoint.y - centerY) / refractedExit.y :
-                        exitPoint.x + refractedExit.x * (exitPoint.y - centerY) / refractedExit.y;
-                    
-                    if ((lens.isConverging && intersectionX > centerX && intersectionX < state.canvas.width) ||
-                        (!lens.isConverging && intersectionX > 0 && intersectionX < centerX))
-                        intersectionPointsX.push(intersectionX);
+                    const intersectionX = exitPoint.x - refractedExit.x * (exitPoint.y - centerY) / refractedExit.y;
+                    intersectionX > centerX && intersectionX < state.canvas.width && intersectionPointsX.push(intersectionX);
                 }
             }
+        }
+        
+        if (intersectionPointsX.length > 0) {
+            const actualFocalX = intersectionPointsX.reduce((sum, x) => sum + x, 0) / intersectionPointsX.length;
+            const actualFocalLength = actualFocalX - centerX;
+            
+            state.singleLensFocalPoint = { x: actualFocalX, y: centerY };
+            
+            this.drawCircle(actualFocalX, centerY, 6, 'rgba(0, 255, 0, 0.8)');
+            state.ctx.strokeStyle = 'green';
+            state.ctx.lineWidth = 2;
+            state.ctx.stroke();
+            
+            this.drawLine(actualFocalX, centerY - 30, actualFocalX, centerY + 30, 'rgba(0, 150, 0, 0.6)', [3, 3]);
+            
+            window.actualF = actualFocalLength;
         }
     },
 
@@ -486,7 +551,7 @@ const experimentFunctions = {
             return { x: startX + t * dirX, y: startY + t * dirY, withinBounds: t > 0 };
         };
         
-        for (let rayY = centerY - state.halfDiameter + 20; rayY <= centerY + state.halfDiameter - 20; rayY += 30) {
+        for (let rayY = centerY - state.halfDiameter + 50; rayY <= centerY + state.halfDiameter - 50; rayY += 30) {
             const isCentralRay = Math.abs(rayY - centerY) < 15;
             
             if (isCentralRay) {
@@ -559,9 +624,7 @@ const experimentFunctions = {
             
             if (Math.abs(refracted2Exit.y) > 0.001) {
                 const intersectionX = exit2.x - refracted2Exit.x * (exit2.y - centerY) / refracted2Exit.y;
-                if (intersectionX > rightLens.x && intersectionX < state.canvas.width) {
-                    intersectionPointsX.push(intersectionX);
-                }
+                intersectionX > rightLens.x && intersectionX < state.canvas.width && intersectionPointsX.push(intersectionX);
             }
             
             const screenT = (state.screenX - exit2.x) / refracted2Exit.x;
@@ -571,140 +634,189 @@ const experimentFunctions = {
         }
         
         if (intersectionPointsX.length > 0) {
-            const measuredFocalX = intersectionPointsX.reduce((sum, x) => sum + x, 0) / intersectionPointsX.length;
-            const systemFocalLength = measuredFocalX - rightLens.x;
+            const systemFocalX = intersectionPointsX.reduce((sum, x) => sum + x, 0) / intersectionPointsX.length;
+            const systemFocalLength = systemFocalX - rightLens.x;
             
-            this.drawCircle(measuredFocalX, centerY, 6, 'rgba(0, 255, 0, 0.8)');
+            if (state.singleLensFocalPoint) {
+                this.drawCircle(systemFocalX, centerY, 6, 'rgba(0, 255, 0, 0.8)');
+                this.drawCircle(state.singleLensFocalPoint.x, centerY, 4, 'rgba(255, 255, 0, 0.8)');
+            } else {
+                this.drawCircle(systemFocalX, centerY, 6, 'rgba(0, 255, 0, 0.8)');
+            }
+            
             state.ctx.strokeStyle = 'green';
             state.ctx.lineWidth = 2;
             state.ctx.stroke();
             
             window.actualF = systemFocalLength;
-            this.drawLine(measuredFocalX, centerY - 30, measuredFocalX, centerY + 30, 'rgba(0, 150, 0, 0.6)', [3, 3]);
-        }
-        
-        const rightTheoreticalFocalX = rightLens.isConverging ? 
-            rightLens.x + Math.abs(rightLensProps.focalLength) : 
-            rightLens.x - Math.abs(rightLensProps.focalLength);
-        
-        if (rightTheoreticalFocalX > 0 && rightTheoreticalFocalX < state.canvas.width) {
-            this.drawCircle(rightTheoreticalFocalX, centerY, 6, 'blue');
-            state.ctx.strokeStyle = '#0000FF';
-            state.ctx.lineWidth = 2;
-            state.ctx.stroke();
-            
-            this.drawLine(rightTheoreticalFocalX, centerY - 25, rightTheoreticalFocalX, centerY + 25, 'blue', [2, 2]);
+            this.drawLine(systemFocalX, centerY - 30, systemFocalX, centerY + 30, 'rgba(0, 150, 0, 0.6)', [3, 3]);
         }
     },
 
-    drawCaliper() {
+    drawRuler() {
         const state = this.experimentState;
-        const { x1, y1, x2, y2 } = state.caliperPosition;
-        const [angle, distance, midX, midY] = [
-            Math.atan2(y2 - y1, x2 - x1),
-            Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2),
-            (x1 + x2) / 2,
-            (y1 + y2) / 2
-        ];
+        const { x, y, width, height } = state.rulerPosition;
         
-        state.ctx.save();
-        state.ctx.translate(midX, midY);
-        state.ctx.rotate(angle);
-        
-        const caliperHeight = 30;
-        
-        ['#d1d1d1', '#808080'].forEach((color, i) => {
-            state.ctx[i ? 'strokeStyle' : 'fillStyle'] = color;
-            state.ctx[i ? 'strokeRect' : 'fillRect'](-distance/2, -caliperHeight/2, distance, caliperHeight);
-        });
-        
-        state.ctx.fillStyle = '#808080';
-        [[-distance/2 - 5, distance/2]].forEach(([left, right]) => {
-            state.ctx.fillRect(left, -caliperHeight/2 - 20, 5, caliperHeight + 40);
-            state.ctx.fillRect(right, -caliperHeight/2 - 20, 5, caliperHeight + 40);
-        });
-        
+        state.ctx.fillStyle = '#f0f0f0';
+        state.ctx.fillRect(x, y, width, height);
+        state.ctx.strokeStyle = '#333';
+        state.ctx.lineWidth = 2;
+        state.ctx.strokeRect(x, y, width, height);
+        state.ctx.strokeStyle = '#000';
+        state.ctx.lineWidth = 1;
+        state.ctx.font = '10px Arial';
         state.ctx.fillStyle = '#000';
-        const markCount = Math.floor(distance / 10);
-        for (let i = 0; i <= markCount; i++) {
-            const x = -distance/2 + i * 10;
-            const height = i % 10 === 0 ? 15 : 10;
-            state.ctx.fillRect(x, -caliperHeight/2, 1, height);
+        state.ctx.textAlign = 'center';
+        
+        const markSpacing = 10;
+        const numMarks = Math.floor(width / markSpacing);
+        
+        for (let i = 0; i <= numMarks; i++) {
+            const markX = x + i * markSpacing;
+            const markHeight = i % 5 === 0 ? height * 0.6 : height * 0.3;
             
-            if (i % 10 === 0) {
-                state.ctx.save();
-                state.ctx.translate(x, -caliperHeight/2 - 5);
-                state.ctx.rotate(-angle);
-                state.ctx.font = '8px Arial';
-                state.ctx.textAlign = 'center';
-                state.ctx.fillText((i * 10).toString(), 0, 0);
-                state.ctx.restore();
+            state.ctx.beginPath();
+            state.ctx.moveTo(markX, y + height - markHeight);
+            state.ctx.lineTo(markX, y + height);
+            state.ctx.stroke();
+            
+            i % 10 === 0 && state.ctx.fillText((i * markSpacing).toString(), markX, y + height - markHeight - 5);
+        }
+        
+        this.checkRulerIntersections();
+    },
+
+    checkRulerIntersections() {
+        const state = this.experimentState;
+        const { x: rulerX, y: rulerY, width, height } = state.rulerPosition;
+        const rulerCenterY = rulerY + height / 2;
+        
+        const importantPoints = [];
+        
+        importantPoints.push({
+            x: state.convergingLens.x,
+            y: state.convergingLens.y,
+            label: 'Собирающая линза',
+            color: '#0066cc'
+        });
+        
+        if (state.showBothLenses) {
+            importantPoints.push({
+                x: state.divergingLens.x,
+                y: state.divergingLens.y,
+                label: 'Рассеивающая линза',
+                color: '#cc6600'
+            });
+        }
+        
+        if (!state.showBothLenses && state.storedOneLensDistance > 0) {
+            importantPoints.push({
+                x: state.screenX,
+                y: state.convergingLens.y,
+                label: 'Экран',
+                value: `d = ${state.storedOneLensDistance.toFixed(1)}`,
+                measurementType: 'd',
+                color: '#000088'
+            });
+        }
+        
+        if (state.showBothLenses && state.singleLensFocalPoint) {
+            const d = state.storedOneLensDistance;
+            if (d > 0) {
+                importantPoints.push({
+                    x: state.singleLensFocalPoint.x,
+                    y: state.singleLensFocalPoint.y,
+                    label: 'Фокус одной линзы (желтая точка)',
+                    value: `d = ${d.toFixed(1)}`,
+                    measurementType: 'd',
+                    color: '#ffaa00'
+                });
             }
         }
         
-        state.ctx.fillStyle = '#b8b8b8';
-        state.ctx.fillRect(-distance/2, caliperHeight/2 - 10, 20, 10);
-        state.ctx.save();
-        state.ctx.translate(0, caliperHeight/2 + 15);
-        state.ctx.rotate(-angle);
+        if (state.showBothLenses && state.singleLensFocalPoint && state.storedOneLensDistance > 0) {
+            const d = state.storedOneLensDistance;
+            const targetF = state.convergingFocus;
+            const calculatedF = (targetF * d) / (d + targetF);
+            const isValidSetup = d > calculatedF;
+            
+            if (window.actualF !== undefined && calculatedF > 0 && isValidSetup) {
+                const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
+                const systemFocalX = rightLens.x + window.actualF;
+                
+                if (systemFocalX > 0 && systemFocalX < state.canvas.width) {
+                    importantPoints.push({
+                        x: systemFocalX,
+                        y: state.convergingLens.y,
+                        label: 'Фокус системы',
+                        value: `f = ${calculatedF.toFixed(1)}`,
+                        measurementType: 'f',
+                        color: '#00aa00'
+                    });
+                }
+            }
+        }
         
-        ['white', 'black'].forEach((color, i) => {
-            state.ctx[i ? 'strokeStyle' : 'fillStyle'] = color;
-            state.ctx[i ? 'strokeRect' : 'fillRect'](-40, -10, 80, 20);
-        });
+        const tolerance = 25;
+        const intersections = [];
         
-        state.ctx.fillStyle = 'black';
+        for (const point of importantPoints) {
+            if (point.x >= rulerX - tolerance && point.x <= rulerX + width + tolerance &&
+                Math.abs(point.y - rulerCenterY) <= tolerance + height / 2) {
+                intersections.push(point);
+            }
+        }
+        
         state.ctx.font = '12px Arial';
         state.ctx.textAlign = 'center';
-        state.ctx.fillText(`${distance.toFixed(1)} пикс`, 0, 5);
-        state.ctx.restore();
-        state.ctx.restore();
         
-        this.drawDragPoint(x1, y1, '#FF4444');
-        this.drawDragPoint(x2, y2, '#4444FF');
-    },
-
-    drawDragPoint(x, y, color) {
-        this.drawCircle(x, y, 8, color);
-        const state = this.experimentState;
-        state.ctx.strokeStyle = '#000';
-        state.ctx.lineWidth = 2;
-        state.ctx.stroke();
+        intersections.forEach((intersection, index) => {
+            const labelY = rulerY - 20 - (index * 30);
+            
+            if (!intersection.value || !intersection.measurementType) return;
+            
+            const displayText = intersection.value;
+            const textWidth = state.ctx.measureText(displayText).width;
+            
+            state.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            state.ctx.fillRect(intersection.x - textWidth/2 - 8, labelY - 18, textWidth + 16, 24);
+            state.ctx.strokeStyle = intersection.color;
+            state.ctx.lineWidth = 2;
+            state.ctx.strokeRect(intersection.x - textWidth/2 - 8, labelY - 18, textWidth + 16, 24);
+            state.ctx.fillStyle = intersection.color;
+            state.ctx.font = 'bold 14px Arial';
+            state.ctx.fillText(displayText, intersection.x, labelY - 2);
+            state.ctx.strokeStyle = intersection.color;
+            state.ctx.lineWidth = 3;
+            state.ctx.setLineDash([5, 5]);
+            state.ctx.beginPath();
+            state.ctx.moveTo(intersection.x, intersection.y);
+            state.ctx.lineTo(intersection.x, rulerY);
+            state.ctx.stroke();
+            state.ctx.setLineDash([]);
+            state.ctx.font = '12px Arial';
+        });
     },
 
     checkMeasurementInputs() {
         const state = this.experimentState;
+
+        if(!state.showBothLenses) return;
+        const oneLensDistance = state.storedOneLensDistance;
+        const twoLensDistance = state.storedTwoLensDistance;
         this.updateMeasurementDisplay();
         
-        const oneLensDistance = state.storedOneLensDistance || 0;
-        const twoLensDistance = state.storedTwoLensDistance || 0;
-        const currentOneLens = state.showBothLenses ? oneLensDistance : (oneLensDistance || state.measuredFocus);
-        const currentTwoLens = state.showBothLenses ? (twoLensDistance || state.measuredFocus) : twoLensDistance;
-        
-        let calculatedFocus = 0;
-        if (currentOneLens > 0 && currentTwoLens > 0)
-            calculatedFocus = this.calculateDivergingLensFocus(currentOneLens, currentTwoLens);
-        
-        const userOneLens = parseFloat(document.getElementById('user-one-lens').value) || 0;
-        const userTwoLens = parseFloat(document.getElementById('user-two-lens').value) || 0;
-        const userFocus = parseFloat(document.getElementById('user-focus-distance').value) || 0;
+        let userOneLens = parseFloat(document.getElementById('user-one-lens').value) || 0;
+        let userTwoLens = parseFloat(document.getElementById('user-two-lens').value) || 0;
+        let userFocus = parseFloat(document.getElementById('user-focus-distance').value) || 0;
     
-        console.log('Correct values:', { 
-            oneLens: currentOneLens, 
-            twoLens: currentTwoLens, 
-            focus: Math.abs(calculatedFocus) 
-        });
+        userOneLens = Math.abs(twoLensDistance - userOneLens);
+        userTwoLens = Math.abs(oneLensDistance - userTwoLens);
+        userFocus = Math.abs(state.convergingFocus - userFocus);
     
-        this.checkValue(userOneLens, currentOneLens, 10, document.getElementById('one-lens-check'));
-        this.checkValue(userTwoLens, currentTwoLens, 10, document.getElementById('two-lens-check'));
-        calculatedFocus !== 0 ?
-            this.checkValue(userFocus, Math.abs(calculatedFocus), 10, document.getElementById('focus-distance-check')) :
-            this.checkValue(userFocus, -999, 10, document.getElementById('focus-distance-check'));
-    },
-
-    calculateDivergingLensFocus(f, d) {
-        if (f === 0 || d === 0 || d === f) return 0;
-        return (f * d) / (d - f);
+        this.checkValue(userOneLens, document.getElementById('one-lens-check'));
+        this.checkValue(userTwoLens, document.getElementById('two-lens-check'));
+        this.checkValue(userFocus, document.getElementById('focus-distance-check'));
     },
 
     updateMeasurementDisplay() {
@@ -713,17 +825,17 @@ const experimentFunctions = {
         if (state.showBothLenses) {
             const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
             state.measuredFocus = Math.abs(state.screenX - rightLens.x);
+            state.storedTwoLensDistance = state.measuredFocus;
         } else {
             state.measuredFocus = Math.abs(state.screenX - state.convergingLens.x);
+            state.storedOneLensDistance = state.measuredFocus;
         }
         
-        state.currentOneLensDistance = state.showBothLenses ? 0 : state.measuredFocus;
-        state.currentTwoLensDistance = state.showBothLenses ? state.measuredFocus : 0;
-        state.currentCalculatedFocus = this.calculateDivergingLensFocus(
-            state.currentOneLensDistance, 
-            state.currentTwoLensDistance
-        );
-    },
+        if (state.storedOneLensDistance === 0 && !state.showBothLenses)
+            state.storedOneLensDistance = state.measuredFocus;
+        if (state.storedTwoLensDistance === 0 && state.showBothLenses)
+            state.storedTwoLensDistance = state.measuredFocus;
+    }
 };
 
 export default experimentFunctions;
