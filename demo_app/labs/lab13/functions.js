@@ -13,9 +13,9 @@ const experimentFunctions = {
         H: 120, D: 250, h0: 70, n: 1.8,
         
         lockLensMovement: true,
-        convergingFocus: 350, 
-        divergingFocus: -700,
-        lensDistance: 150,
+        convergingFocus: 180, 
+        divergingFocus: 220,
+        lensDistance: 180,
         
         showBothLenses: false, 
         convergingLens: null, 
@@ -27,6 +27,7 @@ const experimentFunctions = {
         dragStartX: 0, dragStartY: 0, initialScreenX: 0, measuredFocus: 0, animationFrameId: null,
         storedOneLensDistance: 0, storedTwoLensDistance: 0,
         singleLensFocalPoint: null,
+        cachedConvergingLensProps: null,
         get R() { return ((this.D * this.D / 4) + Math.pow(this.H - this.h0, 2)) / (2 * (this.H - this.h0)); },
         get bulgeAtCenter() { return (this.H - this.h0) / 2; },
         get halfDiameter() { return this.D / 2; },
@@ -45,6 +46,8 @@ const experimentFunctions = {
 
     init() {
         const canvas = this.experimentState.canvas;
+        
+        this.experimentState.originalConvergingN = this.experimentState.n;
         this.experimentState.convergingLens = { x: 200, y: canvas.height / 2, isConverging: false };
         this.experimentState.divergingLens = { 
             x: this.experimentState.convergingLens.x + this.experimentState.lensDistance, 
@@ -52,7 +55,8 @@ const experimentFunctions = {
             isConverging: true 
         };
         
-        this.experimentState.screenX = this.experimentState.convergingLens.x + this.experimentState.F * 1.5;
+        this.experimentState.cachedConvergingLensProps = this.calculateConvergingLensProperties();
+        this.experimentState.screenX = canvas.width - 50;
         this.experimentState.storedOneLensDistance = Math.abs(this.experimentState.screenX - this.experimentState.convergingLens.x);
         
         const checkButton = document.getElementById('check-measurements');
@@ -68,47 +72,47 @@ const experimentFunctions = {
         );
     },
 
+    calculateConvergingLensProperties() {
+        const state = this.experimentState;
+        const focalLength = state.convergingFocus;
+        const halfDiam = state.D / 2;
+        const bulge = (state.H - state.h0) / 2;
+        const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
+        
+        return {
+            focalLength: focalLength,
+            refractiveIndex: state.n,
+            adjustedR: adjR
+        };
+    },
+
     getLensProperties(isConverging) {
         const state = this.experimentState;
         
         if (isConverging) {
-            const focalLength = state.convergingFocus;
-            const halfDiam = state.D / 2;
-            const bulge = (state.H - state.h0) / 2;
-            const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
-            const requiredN = (adjR / (2 * Math.abs(focalLength))) + 1;
-            
-            return {
-                focalLength: focalLength,
-                refractiveIndex: requiredN,
-                adjustedR: adjR
-            };
+            return state.cachedConvergingLensProps;
         } else {
             const halfDiam = state.D / 2;
             const bulge = (state.H - state.h0) / 2;
             const adjR = (halfDiam * halfDiam + bulge * bulge) / (2 * bulge);
+            const sphericalWidth = Math.sqrt(Math.max(0, state.adjustedR ** 2 - halfDiam ** 2));
+            const formulaF = state.divergingFocus - state.lensDistance - state.h0 - 2 * sphericalWidth;
+            const targetF = state.convergingFocus;
+            const targetf = formulaF;
+            const calculatedD = (targetF * targetf) / (targetF - targetf);
             
-            let calculatedF = Math.abs(state.divergingFocus);
+            state.calculatedSystemD = calculatedD;
             
-            const d = state.storedOneLensDistance > 0 ? 
-                state.storedOneLensDistance : 
-                Math.abs(state.screenX - state.convergingLens.x);
-                
-            if (d > 0) {
-                const targetF = state.convergingFocus;
-                calculatedF = Math.abs((targetF * d) / (d + targetF));
-            }
-            
-            const requiredN = (adjR / (2 * calculatedF)) + 1;
+            const requiredN = (adjR / (2 * state.divergingFocus)) + 1;
             
             return {
-                focalLength: -calculatedF,
+                focalLength: -state.divergingFocus,
                 refractiveIndex: requiredN,
                 adjustedR: adjR
             };
         }
     },
-
+    
     toggleBothLenses() {
         const state = experimentFunctions.experimentState;
         
@@ -117,29 +121,13 @@ const experimentFunctions = {
                 state.storedOneLensDistance = Math.abs(state.screenX - state.convergingLens.x);
             
             state.divergingLens.x = state.convergingLens.x + state.lensDistance;
-            
-            if (state.singleLensFocalPoint) {
-                const d = state.storedOneLensDistance;
-                const targetF = state.convergingFocus;
-                const calculatedF = Math.abs((targetF * d) / (d + targetF));
-                state.screenX = state.divergingLens.x + calculatedF;
-            } else {
-                state.screenX = state.divergingLens.x + 250;
-            }
-            
             const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
             state.storedTwoLensDistance = Math.abs(state.screenX - rightLens.x);
             
         } else {
             const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
             state.storedTwoLensDistance = Math.abs(state.screenX - rightLens.x);
-            
-            if (state.storedOneLensDistance > 0) {
-                state.screenX = state.convergingLens.x + state.storedOneLensDistance;
-            } else {
-                state.screenX = state.convergingLens.x + state.F * 1.5;
-                state.storedOneLensDistance = Math.abs(state.screenX - state.convergingLens.x);
-            }
+            state.storedOneLensDistance = Math.abs(state.screenX - state.convergingLens.x);
         }
         
         state.showBothLenses = !state.showBothLenses;
@@ -174,7 +162,7 @@ const experimentFunctions = {
         state.toggleLensTypeButton.textContent = 'Обе линзы';
         state.convergingLens.x = 250;
         state.divergingLens.x = state.convergingLens.x + state.lensDistance;
-        state.screenX = state.convergingLens.x + state.F * 1.5;
+        state.screenX = state.canvas.width - 50;
         state.storedOneLensDistance = Math.abs(state.screenX - state.convergingLens.x);
         
         [state.userOneLensInput, state.userTwoLensInput, state.userFocusDistanceInput]
@@ -538,8 +526,15 @@ const experimentFunctions = {
         const [leftLens, rightLens] = state.convergingLens.x < state.divergingLens.x ? 
             [state.convergingLens, state.divergingLens] : [state.divergingLens, state.convergingLens];
         
-        const leftLensProps = this.getLensProperties(leftLens.isConverging);
-        const rightLensProps = this.getLensProperties(rightLens.isConverging);
+        const convergingProps = {
+            focalLength: state.convergingFocus,
+            refractiveIndex: state.n,
+            adjustedR: state.adjustedR
+        };
+        
+        const divergingProps = this.getLensProperties(false);
+        const leftLensProps = leftLens === state.convergingLens ? convergingProps : divergingProps;
+        const rightLensProps = rightLens === state.convergingLens ? convergingProps : divergingProps;
         
         let intersectionPointsX = [];
         
@@ -679,8 +674,6 @@ const experimentFunctions = {
             state.ctx.moveTo(markX, y + height - markHeight);
             state.ctx.lineTo(markX, y + height);
             state.ctx.stroke();
-            
-            i % 10 === 0 && state.ctx.fillText((i * markSpacing).toString(), markX, y + height - markHeight - 5);
         }
         
         this.checkRulerIntersections();
@@ -721,26 +714,21 @@ const experimentFunctions = {
         }
         
         if (state.showBothLenses && state.singleLensFocalPoint) {
-            const d = state.storedOneLensDistance;
-            if (d > 0) {
-                importantPoints.push({
-                    x: state.singleLensFocalPoint.x,
-                    y: state.singleLensFocalPoint.y,
-                    label: 'Фокус одной линзы (желтая точка)',
-                    value: `d = ${d.toFixed(1)}`,
-                    measurementType: 'd',
-                    color: '#ffaa00'
-                });
-            }
-        }
-        
-        if (state.showBothLenses && state.singleLensFocalPoint && state.storedOneLensDistance > 0) {
-            const d = state.storedOneLensDistance;
-            const targetF = state.convergingFocus;
-            const calculatedF = (targetF * d) / (d + targetF);
-            const isValidSetup = d > calculatedF;
+            const real_f_distance = Math.abs(state.singleLensFocalPoint.x - state.divergingLens.x);
+            const F = state.convergingFocus;
+            const f = real_f_distance;
+            const calculated_d = (F * f) / (F - f);
             
-            if (window.actualF !== undefined && calculatedF > 0 && isValidSetup) {
+            importantPoints.push({
+                x: state.singleLensFocalPoint.x,
+                y: state.singleLensFocalPoint.y,
+                label: 'Фокус одной линзы (желтая точка)',
+                value: `f = ${f.toFixed(1)}`,
+                measurementType: 'f',
+                color: '#ffaa00'
+            });
+            
+            if (window.actualF !== undefined) {
                 const rightLens = state.convergingLens.x > state.divergingLens.x ? state.convergingLens : state.divergingLens;
                 const systemFocalX = rightLens.x + window.actualF;
                 
@@ -749,8 +737,8 @@ const experimentFunctions = {
                         x: systemFocalX,
                         y: state.convergingLens.y,
                         label: 'Фокус системы',
-                        value: `f = ${calculatedF.toFixed(1)}`,
-                        measurementType: 'f',
+                        value: `d = ${Math.abs(calculated_d).toFixed(1)}`,
+                        measurementType: 'd',
                         color: '#00aa00'
                     });
                 }
@@ -800,19 +788,26 @@ const experimentFunctions = {
 
     checkMeasurementInputs() {
         const state = this.experimentState;
-
+    
         if(!state.showBothLenses) return;
-        const oneLensDistance = state.storedOneLensDistance;
-        const twoLensDistance = state.storedTwoLensDistance;
+        
         this.updateMeasurementDisplay();
+        
+        const real_f_distance = Math.abs(state.singleLensFocalPoint.x - state.divergingLens.x);
+        const real_d_distance = 1/(1/real_f_distance - 1/state.convergingFocus);
+        const correctOneLens = real_d_distance;
+        const correctTwoLens = real_f_distance;
+        const correctFocus = state.convergingFocus;
+
+        console.log(`Correct values: One Lens = ${correctOneLens}, Two Lenses = ${correctTwoLens}, Focus = ${correctFocus}`);
         
         let userOneLens = parseFloat(document.getElementById('user-one-lens').value) || 0;
         let userTwoLens = parseFloat(document.getElementById('user-two-lens').value) || 0;
         let userFocus = parseFloat(document.getElementById('user-focus-distance').value) || 0;
     
-        userOneLens = Math.abs(twoLensDistance - userOneLens);
-        userTwoLens = Math.abs(oneLensDistance - userTwoLens);
-        userFocus = Math.abs(state.convergingFocus - userFocus);
+        userOneLens = Math.abs(correctTwoLens - userOneLens);
+        userTwoLens = Math.abs(correctOneLens - userTwoLens);
+        userFocus = Math.abs(correctFocus - userFocus);
     
         this.checkValue(userOneLens, document.getElementById('one-lens-check'));
         this.checkValue(userTwoLens, document.getElementById('two-lens-check'));
