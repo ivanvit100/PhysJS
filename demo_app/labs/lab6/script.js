@@ -23,6 +23,58 @@ class InteractiveGasExperiment {
         this.updateInstructions();
         this.initCorkDoubleClick();
         this.updateThermometerReading(20);
+        this.initThermometerHover();
+        this.initRulerDrag();
+    }
+
+    initThermometerHover() {
+        const thermometer = document.getElementById('thermometer');
+        const hotContainer = document.getElementById('hotContainer');
+        const coldContainer = document.getElementById('coldContainer');
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!thermometer) return;
+            
+            const thermRect = thermometer.getBoundingClientRect();
+            const hotRect = hotContainer.getBoundingClientRect();
+            const coldRect = coldContainer.getBoundingClientRect();
+            
+            if (this.isColliding(thermRect, hotRect)) {
+                this.updateThermometerReading(this.T1_celsius);
+                !document.querySelector('.thermometer-zone') && this.addThermometerZone(hotContainer, 'hot');
+                this.thermometerInWater = true;
+            } else if (this.isColliding(thermRect, coldRect)) {
+                this.updateThermometerReading(this.T2_celsius);
+                !document.querySelector('.thermometer-zone') && this.addThermometerZone(coldContainer, 'cold');
+                this.thermometerInWater = true;
+            } else {
+                this.updateThermometerReading(20);
+                document.querySelectorAll('.thermometer-zone').forEach(zone => zone.remove());
+                this.thermometerInWater = false;
+            }
+        });
+    }
+    
+    initRulerDrag() {
+        const ruler = document.getElementById('ruler');
+        const tube = document.getElementById('dragTube');
+        
+        this.setupDragAndDrop(ruler, (ruler, e) => {
+            return true;
+        }, (ruler) => {
+            const rulerRect = ruler.getBoundingClientRect();
+            const tubeRect = tube.getBoundingClientRect();
+            
+            this.removeLengthDisplay();
+            
+            if (this.isColliding(rulerRect, tubeRect) && (this.currentStep === 6 || this.currentStep === 2))
+                this.displayTubeLength(tube, ruler);
+        }, (ruler) => {
+            const rulerRect = ruler.getBoundingClientRect();
+            const tubeRect = tube.getBoundingClientRect();
+            
+            !this.isColliding(rulerRect, tubeRect) && this.removeLengthDisplay();
+        });
     }
     
     calculateDeltaL() {
@@ -34,13 +86,14 @@ class InteractiveGasExperiment {
     }
     
     initCorkDoubleClick() {
-        const cork = document.getElementById('dragCork');
-        
-        cork.addEventListener('dblclick', (e) => {
+        document.addEventListener('dblclick', (e) => {
             if (this.currentStep === 5 && this.tubeInCold && this.tubeCorked) {
-                this.removeCorkFromTube();
-                e.preventDefault();
-                e.stopPropagation();
+                const cork = document.querySelector('.cork-body');
+                if (cork && cork.contains(e.target)) {
+                    this.removeCorkFromTube();
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             }
         });
     }
@@ -58,7 +111,6 @@ class InteractiveGasExperiment {
         
         this.setupDragAndDrop(tube, (tube, e) => {
             if (this.currentStep === 1 || this.currentStep === 4) return true;
-            if (this.currentStep === 6 && this.corkRemoved) return true;
             return false;
         }, (tube) => {
             const tubeRect = tube.getBoundingClientRect();
@@ -68,29 +120,67 @@ class InteractiveGasExperiment {
             hotZone.classList.remove('highlight');
             coldZone.classList.remove('highlight');
             
-            if (this.isColliding(tubeRect, hotRect) && this.currentStep === 1) {
-                hotZone.classList.add('highlight');
-            }
-            
-            if (this.isColliding(tubeRect, coldRect) && this.currentStep === 4) {
-                coldZone.classList.add('highlight');
-            }
+            this.isColliding(tubeRect, hotRect) && this.currentStep === 1 && hotZone.classList.add('highlight');
+            this.isColliding(tubeRect, coldRect) && this.currentStep === 4 && coldZone.classList.add('highlight');
         }, (tube) => {
             const tubeRect = tube.getBoundingClientRect();
             const hotRect = hotZone.getBoundingClientRect();
             const coldRect = coldZone.getBoundingClientRect();
             
-            if (this.currentStep === 1 && this.isColliding(tubeRect, hotRect)) {
-                this.placeTubeInHot(tube);
-            } else if (this.currentStep === 4 && this.isColliding(tubeRect, coldRect) && this.tubeCorked) {
-                this.placeTubeInCold(tube);
-            } else {
-                this.resetTubePosition(tube);
-            }
+            this.currentStep === 1 && this.isColliding(tubeRect, hotRect) ? 
+                this.placeTubeInHot(tube) :
+                this.currentStep === 4 && this.isColliding(tubeRect, coldRect) && this.tubeCorked ?
+                this.placeTubeInCold(tube) : this.resetTubePosition(tube);
             
             hotZone.classList.remove('highlight');
             coldZone.classList.remove('highlight');
         });
+    }
+    
+    displayTubeLength(tube, ruler) {
+        this.removeLengthDisplay();
+        
+        const lengthDisplay = document.createElement('div');
+        lengthDisplay.id = 'tube-length-display';
+        lengthDisplay.className = 'measurement-display';
+        
+        const tubeLengthCm = (this.tubeLength * 100).toFixed(1);
+        
+        if (this.currentStep === 6 && this.corkRemoved) {
+            const deltaLCm = (this.deltaL * 100).toFixed(1);
+            lengthDisplay.innerHTML = `
+                <div>Длина трубки: ${tubeLengthCm} см</div>
+                <div>Высота столба воды: ${deltaLCm} см</div>
+            `;
+            lengthDisplay.style.width = '220px';
+        } else {
+            lengthDisplay.textContent = `Длина: ${tubeLengthCm} см`;
+        }
+        
+        lengthDisplay.style.position = 'absolute';
+        lengthDisplay.style.backgroundColor = 'rgba(52, 152, 219, 0.9)';
+        lengthDisplay.style.color = 'white';
+        lengthDisplay.style.padding = '4px 8px';
+        lengthDisplay.style.borderRadius = '4px';
+        lengthDisplay.style.fontSize = '14px';
+        lengthDisplay.style.fontWeight = 'bold';
+        lengthDisplay.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        lengthDisplay.style.zIndex = '100';
+        
+        const rulerRect = ruler.getBoundingClientRect();
+        const experimentRect = document.querySelector('.experiment-area').getBoundingClientRect();
+        const topPosition = rulerRect.top - experimentRect.top - 30;
+        const leftPosition = rulerRect.left - experimentRect.left + (rulerRect.width / 2) - 30;
+        
+        lengthDisplay.style.top = topPosition + 'px';
+        lengthDisplay.style.left = leftPosition + 'px';
+        
+        document.querySelector('.experiment-area').appendChild(lengthDisplay);
+    }
+    
+    removeLengthDisplay() {
+        const lengthDisplay = document.getElementById('tube-length-display');
+        lengthDisplay && lengthDisplay.remove();
     }
     
     initCorkDrag() {
@@ -98,7 +188,7 @@ class InteractiveGasExperiment {
         const tube = document.getElementById('dragTube');
         
         this.setupDragAndDrop(cork, (cork, e) => {
-            return this.currentStep === 3 && this.tubeInHot;
+            return this.currentStep === 3 && this.tubeInHot && !this.tubeCorked;
         }, (cork) => {
             if (this.currentStep === 3) {
                 const corkRect = cork.getBoundingClientRect();
@@ -107,9 +197,7 @@ class InteractiveGasExperiment {
                 const corkZone = document.querySelector('.cork-zone');
                 if (corkZone) corkZone.remove();
                 
-                if (this.isNearTubeEnd(corkRect, tubeRect)) {
-                    this.addCorkZoneToTube(tube);
-                }
+                this.isNearTubeEnd(corkRect, tubeRect) && this.addCorkZoneToTube(tube);
             }
         }, (cork) => {
             if (this.currentStep === 3) {
@@ -124,13 +212,13 @@ class InteractiveGasExperiment {
                 }
                 
                 const corkZone = document.querySelector('.cork-zone');
-                if (corkZone) corkZone.remove();
+                corkZone && corkZone.remove();
             }
         });
     }
     
     initThermometerDrag() {
-        const thermometer = document.getElementById('dragThermometer');
+        const thermometer = document.getElementById('thermometer');
         const hotContainer = document.getElementById('hotContainer');
         const coldContainer = document.getElementById('coldContainer');
         
@@ -146,11 +234,14 @@ class InteractiveGasExperiment {
             if (this.isColliding(thermRect, hotRect) && this.currentStep === 2) {
                 this.addThermometerZone(hotContainer, 'hot');
                 this.updateThermometerReading(this.T1_celsius);
+                this.thermometerInWater = true;
             } else if (this.isColliding(thermRect, coldRect) && this.currentStep === 6) {
                 this.addThermometerZone(coldContainer, 'cold');
                 this.updateThermometerReading(this.T2_celsius);
+                this.thermometerInWater = true;
             } else {
                 this.updateThermometerReading(20);
+                this.thermometerInWater = false;
             }
         }, (thermometer) => {
             document.querySelectorAll('.thermometer-zone').forEach(zone => zone.remove());
@@ -165,10 +256,60 @@ class InteractiveGasExperiment {
     
     updateThermometerReading(temperature) {
         this.currentTemperature = temperature;
-        const mercuryFill = document.getElementById('mercuryFill');
+        const mercury = document.querySelector('.thermometer-tube .thermometer-mercury');
         
-        const fillPercent = Math.max(0, Math.min(100, (temperature / 100) * 100)) * 0.8 + 0.2;
-        mercuryFill.style.height = fillPercent + '%';
+        if (mercury) {
+            const fillPercent = Math.max(5, Math.min(95, (temperature / 100) * 90 + 5)) + 5 + '%';
+            mercury.style.height = fillPercent;
+        }
+    }
+
+    initRulerDrag() {
+        const ruler = document.getElementById('ruler');
+        const tube = document.getElementById('dragTube');
+        let isDragging = false;
+        let startX, startY;
+        let initialLeft, initialTop;
+        
+        ruler.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            ruler.classList.add('dragging');
+            
+            startX = e.clientX;
+            startY = e.clientY;
+            initialLeft = parseInt(getComputedStyle(ruler).left) || 0;
+            initialTop = parseInt(getComputedStyle(ruler).top) || 0;
+            
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            ruler.style.left = (initialLeft + deltaX) + 'px';
+            ruler.style.top = (initialTop + deltaY) + 'px';
+            
+            const rulerRect = ruler.getBoundingClientRect();
+            const tubeRect = tube.getBoundingClientRect();
+            
+            this.removeLengthDisplay();
+            this.isColliding(rulerRect, tubeRect) && (this.currentStep === 6 || this.currentStep === 2) && this.displayTubeLength(tube, ruler);
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            ruler.classList.remove('dragging');
+            
+            const rulerRect = ruler.getBoundingClientRect();
+            const tubeRect = tube.getBoundingClientRect();
+            
+            !this.isColliding(rulerRect, tubeRect) && this.removeLengthDisplay();
+        });
     }
     
     setupDragAndDrop(element, canDragCheck, onDragMove, onDrop) {
@@ -192,13 +333,12 @@ class InteractiveGasExperiment {
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
             
-            const containerRect = element.offsetParent.getBoundingClientRect();
-            const newX = e.clientX - containerRect.left - offsetX;
-            const newY = e.clientY - containerRect.top - offsetY;
-            
-            const maxX = containerRect.width - element.offsetWidth;
-            const maxY = containerRect.height - element.offsetHeight;
-            
+            const experimentArea = document.querySelector('.experiment-area');
+            const experimentRect = experimentArea.getBoundingClientRect();
+            const newX = e.clientX - experimentRect.left - offsetX;
+            const newY = e.clientY - experimentRect.top - offsetY;
+            const maxX = experimentRect.width - element.offsetWidth;
+            const maxY = experimentRect.height - element.offsetHeight;
             const boundedX = Math.max(0, Math.min(newX, maxX));
             const boundedY = Math.max(0, Math.min(newY, maxY));
             
@@ -240,8 +380,25 @@ class InteractiveGasExperiment {
     }
     
     attachCorkToTube(cork, tube) {
-        cork.classList.add('cork-on-tube');
-        tube.appendChild(cork);
+        cork.style.display = 'none';
+        
+        const attachedCork = document.createElement('div');
+        attachedCork.className = 'cork-on-tube';
+        attachedCork.id = 'attachedCork';
+        
+        const corkBody = document.createElement('div');
+        corkBody.className = 'cork-body';
+        attachedCork.appendChild(corkBody);
+        
+        attachedCork.style.position = 'absolute';
+        attachedCork.style.bottom = '0px';
+        attachedCork.style.left = '2px';
+        attachedCork.style.width = '36px';
+        attachedCork.style.height = '30px';
+        attachedCork.style.zIndex = '10';
+        
+        const openEnd = tube.querySelector('.open-end');
+        openEnd.appendChild(attachedCork);
         
         this.tubeCorked = true;
         this.nextStep();
@@ -257,17 +414,14 @@ class InteractiveGasExperiment {
     placeTubeInHot(tube) {
         const hotContainer = document.getElementById('hotContainer');
         const experimentArea = document.querySelector('.experiment-area');
-        
         const containerRect = hotContainer.getBoundingClientRect();
         const experimentRect = experimentArea.getBoundingClientRect();
-        
-        const relativeX = containerRect.left - experimentRect.left + 20;
-        const relativeY = containerRect.top - experimentRect.top + 30;
+        const relativeX = containerRect.left - experimentRect.left + 63;
+        const relativeY = containerRect.top - experimentRect.top - 10;
         
         tube.style.left = relativeX + 'px';
         tube.style.top = relativeY + 'px';
         tube.classList.add('tube-in-container', 'tube-in-hot');
-        
         this.tubeInHot = true;
         this.nextStep();
     }
@@ -275,19 +429,16 @@ class InteractiveGasExperiment {
     placeTubeInCold(tube) {
         const coldContainer = document.getElementById('coldContainer');
         const experimentArea = document.querySelector('.experiment-area');
-        
         const containerRect = coldContainer.getBoundingClientRect();
         const experimentRect = experimentArea.getBoundingClientRect();
-        
-        const relativeX = containerRect.left - experimentRect.left + 20;
-        const relativeY = containerRect.top - experimentRect.top + 30;
+        const relativeX = containerRect.left - experimentRect.left + 63;
+        const relativeY = containerRect.top - experimentRect.top - 10;
         
         tube.style.left = relativeX + 'px';
         tube.style.top = relativeY + 'px';
         tube.classList.remove('tube-in-hot');
         tube.classList.add('tube-in-cold');
         tube.style.transform = 'rotate(180deg)';
-        
         this.simulateWaterEntry();
         this.tubeInCold = true;
         this.nextStep();
@@ -295,26 +446,16 @@ class InteractiveGasExperiment {
     
     simulateWaterEntry() {
         setTimeout(() => {
-            const cork = document.getElementById('dragCork');
-
-            setTimeout(() => {
-                if (cork) {
-                    cork.classList.add('cork-ready-to-remove');
-                }
-            }, 1000);
-        }, 500);
+            const attachedCork = document.getElementById('attachedCork');
+            attachedCork && attachedCork.classList.add('cork-ready-to-remove');
+        }, 1000);
     }
     
     removeCorkFromTube() {
-        const cork = document.getElementById('dragCork');
         const tube = document.getElementById('dragTube');
-
-        cork.remove();
-        
-        tube.classList.remove('tube-ready-to-uncork');
-        tube.classList.add('tube-movable');
-        tube.style.transform = 'rotate(0deg)';
-        
+        const attachedCork = document.getElementById('attachedCork');
+    
+        attachedCork && attachedCork.remove();
         this.corkRemoved = true;
         
         const resultDiv = document.getElementById('corkRemovalResult');
@@ -325,27 +466,35 @@ class InteractiveGasExperiment {
             document.getElementById('corkRemovalStep').style.display = 'none';
             this.nextStep();
         }, 1500);
-
+    
         const airSpace = document.getElementById('airSpace');
         const newHeight = 180 * (1 - this.deltaL / this.tubeLength);
-
-        airSpace.style.height = newHeight + 'px';
-            
+        const waterHeight = (180 - newHeight);
+    
         const existingWater = document.querySelector('.water-in-tube');
-        if (existingWater) {
-            existingWater.remove();
-        }
-
+        existingWater && existingWater.remove();
+    
+        tube.classList.remove('tube-ready-to-uncork');
+        tube.classList.add('tube-movable');
+        
+        airSpace.style.height = newHeight + 'px';
+        airSpace.style.top = 'auto';
+        airSpace.style.bottom = waterHeight + 'px';
+        airSpace.style.transform = 'rotate(180deg)';
+        airSpace.style.borderRadius = '0';
+        
         const waterInTube = document.createElement('div');
         waterInTube.className = 'water-in-tube';
         waterInTube.style.position = 'absolute';
-        waterInTube.style.bottom = '5px';
+        waterInTube.style.top = 'auto'; 
+        waterInTube.style.bottom = '0';
         waterInTube.style.left = '2px';
         waterInTube.style.right = '2px';
-        waterInTube.style.height = (180 - newHeight) + 'px';
-        waterInTube.style.background = 'linear-gradient(to top, #4ecdc4, #7fdbda)';
+        waterInTube.style.height = waterHeight + 'px';
+        waterInTube.style.background = 'linear-gradient(to bottom, #7fdbda, #4ecdc4)';
         waterInTube.style.borderRadius = '0 0 8px 8px';
         waterInTube.style.transition = 'height 0.5s ease';
+        waterInTube.style.zIndex = '5';
         
         document.querySelector('.tube-body').appendChild(waterInTube);
     }
@@ -360,54 +509,72 @@ class InteractiveGasExperiment {
             document.getElementById(`step-${this.currentStep}`).classList.add('active');
             this.updateInstructions();
         }
-        
-        if (this.currentStep === 2) {
-            document.getElementById('measurementPanel').style.display = 'block';
-            document.getElementById('tempMeasurement').style.display = 'block';
-        } else if (this.currentStep === 3) {
-            document.getElementById('dragCork').style.display = 'block';
-        } else if (this.currentStep === 5) {
-            document.getElementById('corkRemovalStep').style.display = 'block';
-        } else if (this.currentStep === 6) {
-            document.getElementById('tubeLengthMeasurement').style.display = 'block';
+
+        switch (this.currentStep) {
+            case 2:
+                document.getElementById('measurementPanel').style.display = 'block';
+                document.getElementById('tempMeasurement').style.display = 'block';
+                break;
+            case 3:
+                document.getElementById('dragCork').style.display = 'block';
+                break;
+            case 5:
+                document.getElementById('corkRemovalStep').style.display = 'block';
+                break;
+            case 6:
+                document.getElementById('measurementPanel').style.display = 'block';
+                document.getElementById('tubeLengthMeasurement').style.display = 'block';
+                break
         }
     }
     
     updateInstructions() {
-        const title = document.getElementById('instruction-title');
-        const text = document.getElementById('instruction-text');
+        const text = document.getElementById('current-instruction');
         
-        const instructions = {
-            1: {
-                title: "Шаг 1: Нагревание трубки",
-                text: "Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз"
-            },
-            2: {
-                title: "Шаг 2: Измерение температуры T₁",
-                text: "Опустите термометр в горячую воду для измерения температуры"
-            },
-            3: {
-                title: "Шаг 3: Закрытие трубки пробкой",
-                text: "Перетащите пробку к открытому концу трубки, чтобы заткнуть её"
-            },
-            4: {
-                title: "Шаг 4: Перенос в холодную воду",
-                text: "Перенесите закрытую трубку в сосуд с холодной водой открытым концом вниз"
-            },
-            5: {
-                title: "Шаг 5: Извлечение пробки",
-                text: "Сделайте двойной клик по пробке, чтобы вынуть её под водой"
-            },
-            6: {
-                title: "Шаг 6: Измерения и вычисления",
-                text: "Измерьте длину трубки (перетащите к линейке), температуру холодной воды и высоту столба воды"
+        const baseInstructions = [
+            "Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз",
+            "Опустите термометр в горячую воду для измерения температуры",
+            "Перетащите пробку к открытому концу трубки, чтобы заткнуть её",
+            "Перенесите закрытую трубку в сосуд с холодной водой открытым концом вниз",
+            "Сделайте двойной клик по пробке, чтобы вынуть её из трубки под водой",
+            "Перетащите линейку к трубке, измерьте длину трубки и высоту столба воды"
+        ];
+
+        if (this.currentStep === 2) {
+            const tempPanel = document.getElementById('tempMeasurement');
+            if (tempPanel && tempPanel.style.display !== 'none') {
+                text.textContent = "Опустите термометр в горячую воду и измерьте температуру T₁";
+                return;
             }
-        };
-        
-        if (instructions[this.currentStep]) {
-            title.textContent = instructions[this.currentStep].title;
-            text.textContent = instructions[this.currentStep].text;
+        } else if (this.currentStep === 6) {
+            const tubeLengthPanel = document.getElementById('tubeLengthMeasurement');
+            const coldTempPanel = document.getElementById('coldTempMeasurement');
+            const pressurePanel = document.getElementById('pressureCalc');
+            const ratioPanel = document.getElementById('ratioCalc');
+            
+            if (tubeLengthPanel && tubeLengthPanel.style.display !== 'none') {
+                text.textContent = "Перетащите линейку к трубке и измерьте её длину l";
+                return;
+            } else if (coldTempPanel && coldTempPanel.style.display !== 'none') {
+                text.textContent = "Измерьте температуру холодной воды T₂ и высоту столба воды в трубке Δl";
+                return;
+            } else if (pressurePanel && pressurePanel.style.display !== 'none') {
+                text.textContent = "Вычислите давление p₂ во втором состоянии по формуле: p₂ = p₁ + ρgh";
+                return;
+            } else if (ratioPanel && ratioPanel.style.display !== 'none') {
+                text.textContent = "Вычислите значения дробей p₁l/T₁ и p₂(l-Δl)/T₂ и сравните их";
+                return;
+            }
+        } else if (this.currentStep === 5) {
+            const corkPanel = document.getElementById('corkRemovalStep');
+            if (corkPanel && corkPanel.style.display !== 'none') {
+                text.textContent = "Сделайте двойной клик по пробке, чтобы вынуть её из трубки под водой";
+                return;
+            }
         }
+        
+        if (baseInstructions[this.currentStep - 1])
+            text.textContent = baseInstructions[this.currentStep - 1];
     }
 }
 
@@ -416,7 +583,6 @@ function validateTemperature(tempNum) {
     const userInput = parseFloat(document.getElementById('userT1').value);
     const expected = experiment.T1_celsius;
     const tolerance = 2;
-    
     const resultDiv = document.getElementById('t1Result');
     
     if (Math.abs(userInput - expected) <= tolerance) {
@@ -426,6 +592,7 @@ function validateTemperature(tempNum) {
         
         setTimeout(() => {
             document.getElementById('tempMeasurement').style.display = 'none';
+            document.getElementById('measurementPanel').style.display = 'none';
             experiment.nextStep();
         }, 1500);
     } else {
@@ -439,7 +606,6 @@ function validateTubeLength() {
     const userInput = parseFloat(document.getElementById('userLength').value);
     const expected = experiment.tubeLength * 100;
     const tolerance = 1;
-    
     const resultDiv = document.getElementById('lengthResult');
     
     if (Math.abs(userInput - expected) <= tolerance) {
@@ -450,6 +616,7 @@ function validateTubeLength() {
         setTimeout(() => {
             document.getElementById('tubeLengthMeasurement').style.display = 'none';
             document.getElementById('coldTempMeasurement').style.display = 'block';
+            experiment.updateInstructions();
         }, 1500);
     } else {
         resultDiv.className = 'validation-result incorrect';
@@ -461,15 +628,11 @@ function validateColdMeasurements() {
     const experiment = window.gasExperiment;
     const userT2 = parseFloat(document.getElementById('userT2').value);
     const userDeltaL = parseFloat(document.getElementById('userDeltaL').value);
-    
     const expectedT2 = experiment.T2_celsius;
     const expectedDeltaL = experiment.deltaL * 100;
-    
     const tempTolerance = 2;
     const lengthTolerance = 0.5;
-    
     const resultDiv = document.getElementById('coldResult');
-    
     const tempCorrect = Math.abs(userT2 - expectedT2) <= tempTolerance;
     const lengthCorrect = Math.abs(userDeltaL - expectedDeltaL) <= lengthTolerance;
     
@@ -482,6 +645,7 @@ function validateColdMeasurements() {
         setTimeout(() => {
             document.getElementById('coldTempMeasurement').style.display = 'none';
             document.getElementById('pressureCalc').style.display = 'block';
+            experiment.updateInstructions();
         }, 1500);
     } else {
         resultDiv.className = 'validation-result incorrect';
@@ -495,14 +659,10 @@ function validateColdMeasurements() {
 function validatePressure() {
     const experiment = window.gasExperiment;
     const userP2 = parseFloat(document.getElementById('userP2').value);
-    
     const expectedP2 = experiment.pressure + experiment.rho * experiment.g * experiment.measurements.deltaL;
     const tolerance = 50;
-    
     const resultDiv = document.getElementById('p2Result');
 
-    console.log(expectedP2);
-    
     if (Math.abs(userP2 - expectedP2) <= tolerance) {
         resultDiv.className = 'validation-result correct';
         resultDiv.textContent = 'Правильно! Давление вычислено верно.';
@@ -511,6 +671,7 @@ function validatePressure() {
         setTimeout(() => {
             document.getElementById('pressureCalc').style.display = 'none';
             document.getElementById('ratioCalc').style.display = 'block';
+            experiment.updateInstructions();
         }, 1500);
     } else {
         resultDiv.className = 'validation-result incorrect';
@@ -522,34 +683,28 @@ function validateRatios() {
     const experiment = window.gasExperiment;
     const userC1 = parseFloat(document.getElementById('userC1').value);
     const userC2 = parseFloat(document.getElementById('userC2').value);
-    
     const T1_K = experiment.measurements.T1 + 273.15;
     const T2_K = experiment.measurements.T2 + 273.15;
     const l = experiment.measurements.length;
     const deltaL = experiment.measurements.deltaL;
     const p1 = experiment.pressure;
     const p2 = experiment.measurements.p2;
-    
     const expectedC1 = (p1 * l) / T1_K;
     const expectedC2 = (p2 * (l - deltaL)) / T2_K;
-    
     const tolerance = 1;
-    
     const resultDiv = document.getElementById('ratioResult');
-    
     const c1Correct = Math.abs(userC1 - expectedC1) <= tolerance;
     const c2Correct = Math.abs(userC2 - expectedC2) <= tolerance;
-
-    console.log(expectedC1, expectedC2);
     
     if (c1Correct && c2Correct) {
         resultDiv.className = 'validation-result correct';
         resultDiv.textContent = 'Отлично! Все вычисления выполнены правильно.';
         
-        addToResultsTable(experiment, userC1, userC2);
-        
         setTimeout(() => {
-            document.getElementById('resultsTable').style.display = 'block';
+            document.getElementById('measurementPanel').style.display = 'none';
+            document.getElementById('ratioCalc').style.display = 'none';
+            document.getElementById('current-instruction').textContent = 
+                'Эксперимент завершен! Все вычисления выполнены правильно.';
         }, 1500);
     } else {
         resultDiv.className = 'validation-result incorrect';
@@ -561,7 +716,6 @@ function validateRatios() {
 function addToResultsTable(experiment, c1, c2) {
     const tbody = document.getElementById('resultsBody');
     const row = document.createElement('tr');
-    
     const T1_K = experiment.measurements.T1 + 273.15;
     const T2_K = experiment.measurements.T2 + 273.15;
     
@@ -582,4 +736,57 @@ function addToResultsTable(experiment, c1, c2) {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.gasExperiment = new InteractiveGasExperiment();
+
+    const tabsContent = intro.createTabContent([
+      'status-panel',
+      'theory-panel',
+    ], 'tabs-container');
+      
+    const tabButtons = tabsContent.querySelectorAll('.info-content-buttons button');
+    tabButtons[0].textContent = 'Порядок';
+    tabButtons[1].textContent = 'Формулы';
+    
+    intro.init([
+      {
+        title: 'Информация',
+        description: 'Здесь вы можете ознакомиться с порядком выполнения лабораторной работы, теоретической моделью, и результатами эксперимента.',
+        element: '#tabs-container'
+      },
+      {
+        title: 'Инструкция',
+        description: 'Здесь показывается, что нужно сделать на текущем шаге эксперимента.',
+        element: '#steps-vis'
+      },
+      {
+        title: 'Рабочая область',
+        description: 'В этой области расположено оборудование, которое используется для проведения лабораторной работы.',
+        element: '#experiment-area'
+      },
+      {
+        title: 'Подсказки',
+        description: 'Здесь вы можете ознакомиться с краткими подсказками по управлению в эксперименте.',
+        element: '#help-text'
+      },
+      {
+        title: 'Панель управления',
+        description: 'Здесь расположены кнопки управления экспериментом. Кнопка "Сбросить" начинает эксперимент заново.',
+        element: '.buttons-container'
+      }
+    ]);
+    
+    document.getElementById('guide-btn').addEventListener('click', () => {
+      intro.start();
+    });
+    document.getElementById('back-btn').addEventListener('click', () => {
+        window.location.href = window.location.origin;
+    });
+    document.getElementById('reset-btn').addEventListener('click', () => {
+        window.location.reload();
+    });
+
+    window.validateTemperature = validateTemperature;
+    window.validateTubeLength = validateTubeLength;
+    window.validateColdMeasurements = validateColdMeasurements;
+    window.validatePressure = validatePressure;
+    window.validateRatios = validateRatios;
 });

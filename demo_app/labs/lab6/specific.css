@@ -1,0 +1,382 @@
+/* Gas State Equation Experiment - Specific Styles */
+
+/* ---------- Layout & Container Styles ---------- */
+.container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding-top: 60px;
+}
+
+.experiment-area {
+    position: absolute;
+    top: 70px;
+    left: 0;
+    right: 0;
+    height: calc(100% - 70px);
+    min-height: 300px;
+    display: flex;
+    justify-content: center;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+    overflow: hidden;
+}
+
+#steps-vis {
+    z-index: 999;
+}
+
+/* ---------- Equipment Styles ---------- */
+/* Glass tube */
+.tube-draggable, .cork-draggable, .thermometer-draggable, #ruler {
+    position: absolute;
+    cursor: move;
+    z-index: 100;
+}
+
+.tube-draggable {
+    top: 120px;
+    left: 80px;
+}
+
+.cork-draggable {
+    top: 150px;
+    left: 150px;
+}
+
+#thermometer {
+    top: 120px;
+    left: 120px;
+}
+
+.tube-draggable:hover, .cork-draggable:hover, .thermometer-draggable:hover {
+    transform: scale(1.05);
+}
+
+.tube-draggable.dragging, .cork-draggable.dragging, .thermometer-draggable.dragging {
+    z-index: 200;
+}
+
+.tube-body {
+    width: 25px;
+    height: 200px;
+    background: linear-gradient(to right, rgba(200,220,255,0.8), rgba(255,255,255,0.9));
+    border: 2px solid rgba(0, 0, 0, .2);
+    border-radius: 12px;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, .2);
+    rotate: 180deg;
+}
+
+.closed-end {
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    height: 15px;
+    background: rgba(0, 0, 0, .2);
+    border-radius: 12px 12px 0 0;
+}
+
+.air-space {
+    position: absolute;
+    bottom: 5px;
+    left: 2px;
+    right: 2px;
+    height: 180px;
+    background: linear-gradient(to bottom, rgba(135,206,250,0.6), rgba(173,216,230,0.8));
+    border-radius: 0 0 8px 8px;
+    transition: height 0.5s ease;
+}
+
+.cork-body {
+    width: 30px;
+    height: 25px;
+    background: linear-gradient(to bottom, #8B4513, #A0522D);
+    border: 2px solid #654321;
+    border-radius: 15px 15px 5px 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    position: relative;
+    transform: rotate(180deg) translate(7px, -10px);
+}
+
+.cork-body::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 2px;
+    background: #654321;
+    border-radius: 1px;
+}
+
+.cork-ready-to-remove {
+    cursor: pointer !important;
+    animation: readyToDoubleClick 2s infinite;
+}
+
+@keyframes readyToDoubleClick {
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 152, 0, 0.5)); }
+    50% { filter: drop-shadow(0 0 20px rgba(255, 152, 0, 0.8)); }
+}
+
+#ruler {
+    top: 250px;
+    left: -105px;
+    transform: rotate(90deg);
+}
+
+/* Water containers */
+.water-container {
+    position: absolute;
+    width: 150px;
+    height: 200px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.4);
+    border: 3px solid rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.hot-container {
+    top: 50%;
+    left: 50%;
+    transform: translate(calc(-50% - 80px), -50%);
+}
+
+.cold-container {
+    top: 50%;
+    left: 50%;
+    transform: translate(calc(-50% + 80px), -50%);
+}
+
+.water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 75%;
+    transition: all 0.5s ease;
+}
+
+.hot-water {
+    background: linear-gradient(to bottom, #d59b9587, #8cbfcede);
+    animation: bubble 3s infinite;
+}
+
+.cold-water {
+    background: linear-gradient(to bottom, #45a0dd87, #8cbfcede);
+}
+
+.container-label {
+    position: absolute;
+    top: 5px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-weight: bold;
+    color: var(--color-secondary);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.drop-zone {
+    position: absolute;
+    width: 80%;
+    height: 80%;
+    top: 10%;
+    left: 10%;
+    z-index: 2;
+}
+
+/* ---------- Measurement Panel ---------- */
+.measurement-panel {
+    position: absolute;
+    bottom: 70px;
+    left: 20px;
+    width: 320px;
+    background-color: var(--transparency-light);
+    backdrop-filter: var(--blur-effect);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    z-index: 10;
+}
+
+.measurement-panel h3 {
+    background-color: var(--color-primary);
+    color: white;
+    margin: 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.measurement-step {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.measurement-step:last-child {
+    border-bottom: none;
+}
+
+.measurement-step p {
+    margin-top: 0;
+}
+
+.measurement-step input {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid var(--color-gray);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+}
+
+.measurement-step button {
+    padding: 8px 16px;
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.measurement-step button:hover {
+    background-color: var(--color-primary-dark);
+}
+
+.validation-result {
+    margin-top: 8px;
+    padding: 5px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9em;
+}
+
+.validation-result.correct {
+    background-color: rgba(46, 204, 113, 0.1);
+    color: var(--color-success-dark);
+}
+
+.validation-result.incorrect {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: var(--color-error-dark);
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.input-group input {
+    flex: 1;
+}
+
+.calc-inputs {
+    margin: 10px 0;
+}
+
+.calc-inputs > div {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.calc-inputs label {
+    flex: 0 0 120px;
+    font-family: var(--font-mono);
+}
+
+.calc-inputs input {
+    flex: 1;
+}
+
+/* ---------- Results Table ---------- */
+.results-table {
+    position: absolute;
+    right: 20px;
+    bottom: 70px;
+    width: 600px;
+    background-color: var(--transparency-light);
+    backdrop-filter: var(--blur-effect);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    z-index: 10;
+    overflow: hidden;
+}
+
+.results-table h3 {
+    background-color: var(--color-primary);
+    color: white;
+    margin: 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.results-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.results-table th, 
+.results-table td {
+    padding: 8px 12px;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 0.9em;
+}
+
+.results-table th {
+    background-color: rgba(44, 62, 80, 0.05);
+    font-weight: bold;
+    color: var(--color-secondary);
+}
+
+.results-table tr:last-child td {
+    border-bottom: none;
+}
+
+.results-table tr:hover td {
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+/* ---------- Animations ---------- */
+@keyframes bubble {
+    0%, 100% {
+        background-position: 0% 0%;
+    }
+    25% {
+        background-position: 5% 10%;
+    }
+    50% {
+        background-position: -5% 5%;
+    }
+    75% {
+        background-position: 3% -5%;
+    }
+}
+
+/* ---------- Responsive Adjustments ---------- */
+@media (max-width: 1024px) {
+    .results-table {
+        width: 450px;
+    }
+    
+    .results-table th, 
+    .results-table td {
+        padding: 6px 8px;
+        font-size: 0.8em;
+    }
+}
+
+@media (max-width: 768px) {
+    .measurement-panel,
+    .results-table {
+        position: static;
+        width: calc(100% - 40px);
+        margin: 10px auto;
+    }
+    
+    .experiment-area {
+        height: 400px;
+    }
+}

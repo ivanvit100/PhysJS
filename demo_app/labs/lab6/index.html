@@ -3,25 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Интерактивная лабораторная работа - Уравнение состояния газа</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Уравнение состояния газа</title>
+    <link rel="stylesheet" href="../../static/css/styles.css">
+    <link rel="stylesheet" href="./specific.css">
 </head>
 <body>
     <div class="container">
-        <h1>Проверка уравнения состояния газа</h1>
+        <header>
+            <h1>Проверка уравнения состояния газа</h1>
+        </header>
         
-        <div class="step-indicator">
-            <div class="step active" id="step-1">1</div>
-            <div class="step" id="step-2">2</div>
-            <div class="step" id="step-3">3</div>
-            <div class="step" id="step-4">4</div>
-            <div class="step" id="step-5">5</div>
-            <div class="step" id="step-6">6</div>
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок выполнения</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step-1" class="step active">Соедините сосуды резиновой трубкой</li>
+                    <li id="step-2" class="step ">Установите начальный уровень воды и измерьте длину воздушного столба</li>
+                    <li id="step-3" class="step ">Закройте отверстие трубки пробкой</li>
+                    <li id="step-4" class="step ">Опустите воронку примерно на 30 см ниже</li>
+                    <li id="step-5" class="step ">Измерьте новую длину воздушного столба и разность уровней</li>
+                    <li id="step-6" class="step ">Вычислите атмосферное давление</li>
+                </ol>
+            </div>
         </div>
 
-        <div class="instruction-panel">
-            <h3 id="instruction-title">Шаг 1: Подготовка эксперимента</h3>
-            <p id="instruction-text">Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз</p>
+        <div id="steps-vis" class="info-box info-box-primary mb-0 instruction-panel">
+            <p id="current-instruction" class="mb-0">Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз</p>
         </div>
 
         <div class="experiment-area">
@@ -37,42 +46,29 @@
                 <div class="cork-body"></div>
             </div>
 
-            <div class="thermometer-draggable" id="dragThermometer">
+            <div id="thermometer" class="thermometer-draggable" data-type="thermometer" data-name="Термометр">
                 <div class="thermometer-body">
                     <div class="thermometer-scale">
-                        <div class="scale-mark" style="top: 8%;">100</div>
-                        <div class="scale-mark" style="top: 16%;">90</div>
-                        <div class="scale-mark" style="top: 24%;">80</div>
-                        <div class="scale-mark" style="top: 32%;">70</div>
-                        <div class="scale-mark" style="top: 40%;">60</div>
-                        <div class="scale-mark" style="top: 48%;">50</div>
-                        <div class="scale-mark" style="top: 56%;">40</div>
-                        <div class="scale-mark" style="top: 64%;">30</div>
-                        <div class="scale-mark" style="top: 72%;">20</div>
-                        <div class="scale-mark" style="top: 80%;">10</div>
+                        <span class="temp-mark">100°</span>
+                        <span class="temp-mark">80°</span>
+                        <span class="temp-mark">60°</span>
+                        <span class="temp-mark">40°</span>
+                        <span class="temp-mark">20°</span>
+                        <span class="temp-mark">0°</span>
                     </div>
-                    <div class="mercury-fill" id="mercuryFill"></div>
-                    <div class="thermometer-bulb"></div>
+                    <div class="thermometer-tube">
+                        <div class="thermometer-mercury"></div>
+                    </div>
+                    <div class="thermometer-markers"></div>
                 </div>
+                <div class="thermometer-neck"></div>
+                <div class="thermometer-bulb"></div>
             </div>
 
-            <div class="ruler" id="ruler">
-                <div class="ruler-body">
-                    <div class="ruler-marks">
-                        <div class="ruler-mark big" style="left: 0%;" data-value="0"></div>
-                        <div class="ruler-mark" style="left: 10%;"></div>
-                        <div class="ruler-mark big" style="left: 20%;" data-value="5"></div>
-                        <div class="ruler-mark" style="left: 30%;"></div>
-                        <div class="ruler-mark big" style="left: 40%;" data-value="10"></div>
-                        <div class="ruler-mark" style="left: 50%;"></div>
-                        <div class="ruler-mark big" style="left: 60%;" data-value="15"></div>
-                        <div class="ruler-mark" style="left: 70%;"></div>
-                        <div class="ruler-mark big" style="left: 80%;" data-value="20"></div>
-                        <div class="ruler-mark" style="left: 90%;"></div>
-                        <div class="ruler-mark big" style="left: 100%;" data-value="25"></div>
-                    </div>
-                </div>
+            <div id="ruler" class="phys phys-attachable equipment" data-name="Линейка" data-type="ruler">
+                <div class="ruler-body"></div>
             </div>
+
             <div class="water-container hot-container" id="hotContainer">
                 <div class="water hot-water"></div>
                 <div class="container-label">Горячая вода</div>
@@ -84,6 +80,11 @@
                 <div class="container-label">Холодная вода</div>
                 <div class="drop-zone cold-zone" id="coldZone"></div>
             </div>
+        </div>
+
+        <div id="help-text">
+            <div class="help-item"><span class="key-indicator">ЛКМ</span> перемещать объекты</div>
+            <div class="help-item"><span class="key-indicator">2х ЛКМ</span> открепить объект</div>
         </div>
 
         <div class="measurement-panel" id="measurementPanel" style="display: none;">
@@ -118,10 +119,18 @@
                 <div class="validation-result" id="coldResult"></div>
             </div>
 
+            <div class="panel ui-panel" id="theory-panel">
+                <div class="panel-header">
+                    <h3>Формулы</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="formula">p₂ = p₁ + ρgh</div>
+                    <p>где p₁ = 101325 Па, ρ = 1000 кг/м³, g = 9.81 м/с²</p>
+                </div>
+            </div>
+
             <div class="measurement-step" id="pressureCalc" style="display: none;">
                 <p>Вычислите давление p₂ во втором состоянии:</p>
-                <p>Формула: p₂ = p₁ + ρgh</p>
-                <p>где ρ = 1000 кг/м³, g = 9.81 м/с²</p>
                 <input type="number" id="userP2" placeholder="Введите p₂ (Па)" step="1">
                 <button onclick="validatePressure()">Проверить</button>
                 <div class="validation-result" id="p2Result"></div>
@@ -144,28 +153,47 @@
             </div>
         </div>
 
-        <div class="results-table" id="resultsTable" style="display: none;">
-            <h3>Таблица результатов</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>№</th>
-                        <th>T₁, K</th>
-                        <th>l, м</th>
-                        <th>T₂, K</th>
-                        <th>Δl, м</th>
-                        <th>p₁, Па</th>
-                        <th>p₂, Па</th>
-                        <th>p₁l/T₁</th>
-                        <th>p₂(l-Δl)/T₂</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsBody">
-                </tbody>
-            </table>
+        <div class="buttons-container">
+            <button id="guide-btn" class="btn btn-info">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+                Гайд
+            </button>
+
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <div class="small-screen-alert">
+        <div class="alert-container">
+            <div class="content">
+                <div class="text">
+                    <h2>Хьюстон, у нас проблемы!</h2>
+                    <p>Сайт не адаптирован для вашего устройства</p>
+                    <p>Попробуйте зайти с компьютера или другого устройства с большим экраном</p>
+                </div>
+                <div class="image">
+                    <img src="../../static/images/frog.png" alt="Houston, we have a problem!">
+                </div>
+            </div>
+            <div class="ps">«Если не изучать магию, то весь мир будет казаться физикой» ©Жабка</div>
+        </div>
+    </div>
+
+    <script src="../../static/intro-wrapper.js"></script>
+    <script type="module" src="script.js" defer></script>
 </body>
 </html>
