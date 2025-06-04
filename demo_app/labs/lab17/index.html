@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Уравнение состояния газа</title>
+    <link rel="stylesheet" href="../../static/css/styles.css">
+    <link rel="stylesheet" href="./specific.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Проверка уравнения состояния газа</h1>
+        </header>
+        
+        <div class="panel ui-panel" id="status-panel">
+            <div class="panel-header">
+                <h3>Порядок выполнения</h3>
+            </div>
+            <div class="panel-content">
+                <ol class="list-spaced">
+                    <li id="step-1" class="step active">Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз</li>
+                    <li id="step-2" class="step">Опустите термометр в горячую воду для измерения температуры</li>
+                    <li id="step-3" class="step">Перетащите пробку к открытому концу трубки, чтобы заткнуть её</li>
+                    <li id="step-4" class="step">Перенесите закрытую трубку в сосуд с холодной водой открытым концом вниз</li>
+                    <li id="step-5" class="step">Сделайте двойной клик по пробке, чтобы вынуть её из трубки под водой</li>
+                    <li id="step-6" class="step">Перетащите трубку вниз, чтобы уровни воды в трубке и сосуде сравнялись</li>
+                    <li id="step-7" class="step">Вычислите отношения l₁/l₂ и T₁/T₂ для проверки закона Бойля-Мариотта</li>
+                </ol>
+            </div>
+        </div>
+
+        <div id="steps-vis" class="info-box info-box-primary mb-0 instruction-panel">
+            <p id="current-instruction" class="mb-0">Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз</p>
+        </div>
+
+        <div class="experiment-area">
+            <div class="tube-draggable" id="dragTube">
+                <div class="tube-body">
+                    <div class="closed-end"></div>
+                    <div class="air-space" id="airSpace"></div>
+                    <div class="open-end"></div>
+                </div>
+            </div>
+
+            <div class="cork-draggable" id="dragCork" style="display: none;">
+                <div class="cork-body"></div>
+            </div>
+
+            <div id="thermometer" class="thermometer-draggable" data-type="thermometer" data-name="Термометр">
+                <div class="thermometer-body">
+                    <div class="thermometer-scale">
+                        <span class="temp-mark">100°</span>
+                        <span class="temp-mark">80°</span>
+                        <span class="temp-mark">60°</span>
+                        <span class="temp-mark">40°</span>
+                        <span class="temp-mark">20°</span>
+                        <span class="temp-mark">0°</span>
+                    </div>
+                    <div class="thermometer-tube">
+                        <div class="thermometer-mercury"></div>
+                    </div>
+                    <div class="thermometer-markers"></div>
+                </div>
+                <div class="thermometer-neck"></div>
+                <div class="thermometer-bulb"></div>
+            </div>
+
+            <div id="ruler" class="phys phys-attachable equipment" data-name="Линейка" data-type="ruler">
+                <div class="ruler-body"></div>
+            </div>
+
+            <div class="water-container hot-container" id="hotContainer">
+                <div class="water hot-water"></div>
+                <div class="container-label">Горячая вода</div>
+                <div class="drop-zone hot-zone" id="hotZone"></div>
+            </div>
+
+            <div class="water-container cold-container" id="coldContainer">
+                <div class="water cold-water"></div>
+                <div class="container-label">Холодная вода</div>
+                <div class="drop-zone cold-zone" id="coldZone"></div>
+            </div>
+        </div>
+
+        <div id="help-text">
+            <div class="help-item"><span class="key-indicator">ЛКМ</span> перемещать объекты</div>
+            <div class="help-item"><span class="key-indicator">2х ЛКМ</span> открепить объект</div>
+        </div>
+
+        <div class="measurement-panel" id="measurementPanel" style="display: none;">
+            <h3>Измерения и вычисления</h3>
+            
+            <div class="measurement-step" id="tempMeasurement" style="display: none;">
+                <p>Опустите термометр в горячую воду и измерьте температуру T₁:</p>
+                <input type="number" id="userT1" placeholder="Введите T₁ (°C)" step="0.1">
+                <button onclick="validateTemperature(1)">Проверить</button>
+                <div class="validation-result" id="t1Result"></div>
+            </div>
+
+            <div class="measurement-step" id="tubeLengthMeasurement" style="display: none;">
+                <p>Перетащите трубку к линейке и измерьте её длину l:</p>
+                <input type="number" id="userLength" placeholder="Введите l (см)" step="0.1">
+                <button onclick="validateTubeLength()">Проверить</button>
+                <div class="validation-result" id="lengthResult"></div>
+            </div>
+
+            <div class="measurement-step" id="corkRemovalStep" style="display: none;">
+                <p>Сделайте двойной клик по пробке, чтобы вынуть её из трубки:</p>
+                <div class="validation-result" id="corkRemovalResult"></div>
+            </div>
+
+            <div class="measurement-step" id="coldTempMeasurement" style="display: none;">
+                <p>Измерьте температуру холодной воды T₂ и высоту столба воды в трубке Δl:</p>
+                <div class="input-group">
+                    <input type="number" id="userT2" placeholder="Введите T₂ (°C)" step="0.1">
+                    <input type="number" id="userDeltaL" placeholder="Введите Δl (см)" step="0.1">
+                </div>
+                <button onclick="validateColdMeasurements()">Проверить</button>
+                <div class="validation-result" id="coldResult"></div>
+            </div>
+
+            <div class="panel ui-panel" id="theory-panel">
+                <div class="panel-header">
+                    <h3>Формулы</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="formula">p₂ = p₁ + ρgh</div>
+                    <p>где p₁ = 101325 Па, ρ = 1000 кг/м³, g = 9.81 м/с²</p>
+                </div>
+            </div>
+
+            <div class="measurement-step" id="pressureCalc" style="display: none;">
+                <p>Вычислите давление p₂ во втором состоянии:</p>
+                <input type="number" id="userP2" placeholder="Введите p₂ (Па)" step="1">
+                <button onclick="validatePressure()">Проверить</button>
+                <div class="validation-result" id="p2Result"></div>
+            </div>
+
+            <div class="measurement-step" id="ratioCalc" style="display: none;">
+                <p>Вычислите значения дробей:</p>
+                <div class="calc-inputs">
+                    <div>
+                        <label>p₁l/T₁ =</label>
+                        <input type="number" id="userC1" placeholder="Результат" step="0.0001">
+                    </div>
+                    <div>
+                        <label>p₂(l-Δl)/T₂ =</label>
+                        <input type="number" id="userC2" placeholder="Результат" step="0.0001">
+                    </div>
+                </div>
+                <button onclick="validateRatios()">Проверить вычисления</button>
+                <div class="validation-result" id="ratioResult"></div>
+            </div>
+        </div>
+
+        <div class="buttons-container">
+            <button id="guide-btn" class="btn btn-info">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
+                </svg>
+                Гайд
+            </button>
+
+            <button id="back-btn" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
+                </svg>
+                Назад
+            </button>
+
+            <button id="reset-btn" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </svg>
+                Сбросить
+            </button>
+        </div>
+    </div>
+
+    <div class="small-screen-alert">
+        <div class="alert-container">
+            <div class="content">
+                <div class="text">
+                    <h2>Хьюстон, у нас проблемы!</h2>
+                    <p>Сайт не адаптирован для вашего устройства</p>
+                    <p>Попробуйте зайти с компьютера или другого устройства с большим экраном</p>
+                </div>
+                <div class="image">
+                    <img src="../../static/images/frog.png" alt="Houston, we have a problem!">
+                </div>
+            </div>
+            <div class="ps">«Если не изучать магию, то весь мир будет казаться физикой» ©Жабка</div>
+        </div>
+    </div>
+
+    <script src="../../static/intro-wrapper.js"></script>
+    <script type="module" src="script.js" defer></script>
+</body>
+</html>

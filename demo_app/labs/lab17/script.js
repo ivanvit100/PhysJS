@@ -17,6 +17,8 @@ class InteractiveGasExperiment {
         this.thermometerInWater = false;
         this.currentTemperature = 20;
         this.deltaL = 0;
+        this.tubeInUpperPosition = false;
+        this.tubeInLowerPosition = false;
         
         this.initializeDragAndDrop();
         this.calculateDeltaL();
@@ -67,7 +69,7 @@ class InteractiveGasExperiment {
             
             this.removeLengthDisplay();
             
-            if (this.isColliding(rulerRect, tubeRect) && (this.currentStep === 6 || this.currentStep === 2))
+            if (this.isColliding(rulerRect, tubeRect) && (this.currentStep === 7 || this.currentStep === 2))
                 this.displayTubeLength(tube, ruler);
         }, (ruler) => {
             const rulerRect = ruler.getBoundingClientRect();
@@ -110,7 +112,7 @@ class InteractiveGasExperiment {
         const coldZone = document.getElementById('coldZone');
         
         this.setupDragAndDrop(tube, (tube, e) => {
-            if (this.currentStep === 1 || this.currentStep === 4) return true;
+            if (this.currentStep === 1 || this.currentStep === 4 || this.currentStep === 6) return true;
             return false;
         }, (tube) => {
             const tubeRect = tube.getBoundingClientRect();
@@ -120,24 +122,33 @@ class InteractiveGasExperiment {
             hotZone.classList.remove('highlight');
             coldZone.classList.remove('highlight');
             
-            this.isColliding(tubeRect, hotRect) && this.currentStep === 1 && hotZone.classList.add('highlight');
-            this.isColliding(tubeRect, coldRect) && this.currentStep === 4 && coldZone.classList.add('highlight');
+            if (this.isColliding(tubeRect, hotRect) && this.currentStep === 1) {
+                hotZone.classList.add('highlight');
+            } else if (this.isColliding(tubeRect, coldRect) && this.currentStep === 4) {
+                coldZone.classList.add('highlight');
+            } else if (this.isColliding(tubeRect, coldRect) && this.currentStep === 6 && this.tubeInUpperPosition) {
+                coldZone.classList.add('highlight');
+            }
         }, (tube) => {
             const tubeRect = tube.getBoundingClientRect();
             const hotRect = hotZone.getBoundingClientRect();
             const coldRect = coldZone.getBoundingClientRect();
             
-            this.currentStep === 1 && this.isColliding(tubeRect, hotRect) ? 
-                this.placeTubeInHot(tube) :
-                this.currentStep === 4 && this.isColliding(tubeRect, coldRect) && this.tubeCorked ?
-                this.placeTubeInCold(tube) : this.resetTubePosition(tube);
+            if (this.currentStep === 1 && this.isColliding(tubeRect, hotRect))
+                this.placeTubeInHot(tube);
+            else if (this.currentStep === 4 && this.isColliding(tubeRect, coldRect) && this.tubeCorked)
+                this.placeTubeInColdUpper(tube);
+            else if (this.currentStep === 6 && this.isColliding(tubeRect, coldRect) && this.tubeInUpperPosition)
+                this.placeTubeInColdLower(tube);
+            else if (!tube.classList.contains('tube-in-container'))
+                this.resetTubePosition(tube);
             
             hotZone.classList.remove('highlight');
             coldZone.classList.remove('highlight');
         });
     }
     
-    displayTubeLength(tube, ruler) {
+        displayTubeLength(tube, ruler) {
         this.removeLengthDisplay();
         
         const lengthDisplay = document.createElement('div');
@@ -146,13 +157,20 @@ class InteractiveGasExperiment {
         
         const tubeLengthCm = (this.tubeLength * 100).toFixed(1);
         
-        if (this.currentStep === 6 && this.corkRemoved) {
-            const deltaLCm = (this.deltaL * 100).toFixed(1);
+        if (this.currentStep === 7 && this.corkRemoved && !this.tubeInLowerPosition) {
             lengthDisplay.innerHTML = `
                 <div>Длина трубки: ${tubeLengthCm} см</div>
-                <div>Высота столба воды: ${deltaLCm} см</div>
+                <div>Высота столба воды: 12.0 см</div>
+                <div>Длина столба воздуха l₁: 6.0 см</div>
             `;
-            lengthDisplay.style.width = '220px';
+            lengthDisplay.style.width = '280px';
+        } else if (this.currentStep === 7 && this.tubeInLowerPosition) {
+            lengthDisplay.innerHTML = `
+                <div>Уровни воды равны</div>
+                <div>Длина трубки: ${tubeLengthCm} см</div>
+                <div>Длина столба воздуха l₂: 4.5 см</div>
+            `;
+            lengthDisplay.style.width = '250px';
         } else {
             lengthDisplay.textContent = `Длина: ${tubeLengthCm} см`;
         }
@@ -223,7 +241,7 @@ class InteractiveGasExperiment {
         const coldContainer = document.getElementById('coldContainer');
         
         this.setupDragAndDrop(thermometer, (therm, e) => {
-            return this.currentStep === 2 || this.currentStep === 6;
+            return this.currentStep === 2;
         }, (thermometer) => {
             const thermRect = thermometer.getBoundingClientRect();
             const hotRect = hotContainer.getBoundingClientRect();
@@ -234,10 +252,6 @@ class InteractiveGasExperiment {
             if (this.isColliding(thermRect, hotRect) && this.currentStep === 2) {
                 this.addThermometerZone(hotContainer, 'hot');
                 this.updateThermometerReading(this.T1_celsius);
-                this.thermometerInWater = true;
-            } else if (this.isColliding(thermRect, coldRect) && this.currentStep === 6) {
-                this.addThermometerZone(coldContainer, 'cold');
-                this.updateThermometerReading(this.T2_celsius);
                 this.thermometerInWater = true;
             } else {
                 this.updateThermometerReading(20);
@@ -263,59 +277,13 @@ class InteractiveGasExperiment {
             mercury.style.height = fillPercent;
         }
     }
-
-    initRulerDrag() {
-        const ruler = document.getElementById('ruler');
-        const tube = document.getElementById('dragTube');
-        let isDragging = false;
-        let startX, startY;
-        let initialLeft, initialTop;
-        
-        ruler.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            ruler.classList.add('dragging');
-            
-            startX = e.clientX;
-            startY = e.clientY;
-            initialLeft = parseInt(getComputedStyle(ruler).left) || 0;
-            initialTop = parseInt(getComputedStyle(ruler).top) || 0;
-            
-            e.preventDefault();
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            
-            const deltaX = e.clientX - startX;
-            const deltaY = e.clientY - startY;
-            
-            ruler.style.left = (initialLeft + deltaX) + 'px';
-            ruler.style.top = (initialTop + deltaY) + 'px';
-            
-            const rulerRect = ruler.getBoundingClientRect();
-            const tubeRect = tube.getBoundingClientRect();
-            
-            this.removeLengthDisplay();
-            this.isColliding(rulerRect, tubeRect) && (this.currentStep === 6 || this.currentStep === 2) && this.displayTubeLength(tube, ruler);
-        });
-        
-        document.addEventListener('mouseup', () => {
-            if (!isDragging) return;
-            
-            isDragging = false;
-            ruler.classList.remove('dragging');
-            
-            const rulerRect = ruler.getBoundingClientRect();
-            const tubeRect = tube.getBoundingClientRect();
-            
-            !this.isColliding(rulerRect, tubeRect) && this.removeLengthDisplay();
-        });
-    }
     
-    setupDragAndDrop(element, canDragCheck, onDragMove, onDrop) {
+        setupDragAndDrop(element, canDragCheck, onDragMove, onDrop) {
         let isDragging = false;
         let offsetX = 0;
         let offsetY = 0;
+        let startX = 0;
+        let startY = 0;
         
         element.addEventListener('mousedown', (e) => {
             if (!canDragCheck(element, e)) return;
@@ -323,9 +291,18 @@ class InteractiveGasExperiment {
             isDragging = true;
             element.classList.add('dragging');
             
-            const elementRect = element.getBoundingClientRect();
-            offsetX = e.clientX - elementRect.left;
-            offsetY = e.clientY - elementRect.top;
+            if (element.id === 'ruler') {
+                startX = e.clientX;
+                startY = e.clientY;
+                const currentLeft = parseInt(window.getComputedStyle(element).left) || 0;
+                const currentTop = parseInt(window.getComputedStyle(element).top) || 0;
+                offsetX = currentLeft;
+                offsetY = currentTop;
+            } else {
+                const elementRect = element.getBoundingClientRect();
+                offsetX = e.clientX - elementRect.left;
+                offsetY = e.clientY - elementRect.top;
+            }
             
             e.preventDefault();
         });
@@ -334,16 +311,27 @@ class InteractiveGasExperiment {
             if (!isDragging) return;
             
             const experimentArea = document.querySelector('.experiment-area');
-            const experimentRect = experimentArea.getBoundingClientRect();
-            const newX = e.clientX - experimentRect.left - offsetX;
-            const newY = e.clientY - experimentRect.top - offsetY;
-            const maxX = experimentRect.width - element.offsetWidth;
-            const maxY = experimentRect.height - element.offsetHeight;
-            const boundedX = Math.max(0, Math.min(newX, maxX));
-            const boundedY = Math.max(0, Math.min(newY, maxY));
             
-            element.style.left = boundedX + 'px';
-            element.style.top = boundedY + 'px';
+            if (element.id === 'ruler') {
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                const newX = offsetX + deltaX;
+                const newY = offsetY + deltaY;
+                
+                element.style.left = newX + 'px';
+                element.style.top = newY + 'px';
+            } else {
+                const experimentRect = experimentArea.getBoundingClientRect();
+                const newX = e.clientX - experimentRect.left - offsetX;
+                const newY = e.clientY - experimentRect.top - offsetY;
+                const maxX = experimentRect.width - element.offsetWidth;
+                const maxY = experimentRect.height - element.offsetHeight;
+                const boundedX = Math.max(0, Math.min(newX, maxX));
+                const boundedY = Math.max(0, Math.min(newY, maxY));
+                
+                element.style.left = boundedX + 'px';
+                element.style.top = boundedY + 'px';
+            }
             
             if (onDragMove) onDragMove(element);
         });
@@ -426,7 +414,26 @@ class InteractiveGasExperiment {
         this.nextStep();
     }
     
-    placeTubeInCold(tube) {
+    placeTubeInColdUpper(tube) {
+        const coldContainer = document.getElementById('coldContainer');
+        const experimentArea = document.querySelector('.experiment-area');
+        const containerRect = coldContainer.getBoundingClientRect();
+        const experimentRect = experimentArea.getBoundingClientRect();
+        const relativeX = containerRect.left - experimentRect.left + 63;
+        const relativeY = containerRect.top - experimentRect.top - 40;
+        
+        tube.style.left = relativeX + 'px';
+        tube.style.top = relativeY + 'px';
+        tube.classList.remove('tube-in-hot');
+        tube.classList.add('tube-in-cold', 'tube-in-upper');
+        tube.style.transform = 'rotate(180deg)';
+        this.simulateWaterEntryUpper();
+        this.tubeInCold = true;
+        this.tubeInUpperPosition = true;
+        this.nextStep();
+    }
+
+    placeTubeInColdLower(tube) {
         const coldContainer = document.getElementById('coldContainer');
         const experimentArea = document.querySelector('.experiment-area');
         const containerRect = coldContainer.getBoundingClientRect();
@@ -436,19 +443,33 @@ class InteractiveGasExperiment {
         
         tube.style.left = relativeX + 'px';
         tube.style.top = relativeY + 'px';
-        tube.classList.remove('tube-in-hot');
-        tube.classList.add('tube-in-cold');
-        tube.style.transform = 'rotate(180deg)';
-        this.simulateWaterEntry();
-        this.tubeInCold = true;
+        tube.classList.remove('tube-in-upper');
+        tube.classList.add('tube-in-lower');
+        this.simulateWaterLevelEqualization();
+        this.tubeInLowerPosition = true;
         this.nextStep();
     }
     
-    simulateWaterEntry() {
+    simulateWaterEntryUpper() {
         setTimeout(() => {
             const attachedCork = document.getElementById('attachedCork');
-            attachedCork && attachedCork.classList.add('cork-ready-to-remove');
+            if (attachedCork) {
+                attachedCork.classList.add('cork-ready-to-remove');
+            }
         }, 1000);
+    }
+
+    simulateWaterLevelEqualization() {
+        const airSpace = document.getElementById('airSpace');
+        const waterInTube = document.querySelector('.water-in-tube');
+        
+        if (waterInTube && airSpace) {
+            waterInTube.style.height = '135px';
+            waterInTube.style.bottom = '0px';
+            airSpace.style.height = '160px';
+            airSpace.style.bottom = '20px';
+            airSpace.style.top = 'auto';
+        }
     }
     
     removeCorkFromTube() {
@@ -468,8 +489,8 @@ class InteractiveGasExperiment {
         }, 1500);
     
         const airSpace = document.getElementById('airSpace');
-        const newHeight = 180 * (1 - this.deltaL / this.tubeLength);
-        const waterHeight = (180 - newHeight);
+        const newHeight = 60;
+        const waterHeight = 120;
     
         const existingWater = document.querySelector('.water-in-tube');
         existingWater && existingWater.remove();
@@ -505,7 +526,7 @@ class InteractiveGasExperiment {
         
         this.currentStep++;
         
-        if (this.currentStep <= 6) {
+        if (this.currentStep <= 7) {
             document.getElementById(`step-${this.currentStep}`).classList.add('active');
             this.updateInstructions();
         }
@@ -521,10 +542,10 @@ class InteractiveGasExperiment {
             case 5:
                 document.getElementById('corkRemovalStep').style.display = 'block';
                 break;
-            case 6:
+            case 7:
                 document.getElementById('measurementPanel').style.display = 'block';
-                document.getElementById('tubeLengthMeasurement').style.display = 'block';
-                break
+                document.getElementById('ratioCalc').style.display = 'block';
+                break;
         }
     }
     
@@ -535,9 +556,10 @@ class InteractiveGasExperiment {
             "Перетащите стеклянную трубку к сосуду с горячей водой запаянным концом вниз",
             "Опустите термометр в горячую воду для измерения температуры",
             "Перетащите пробку к открытому концу трубки, чтобы заткнуть её",
-            "Перенесите закрытую трубку в сосуд с холодной водой открытым концом вниз",
+            "Перенесите закрытую трубку в сосуд с холодной водой открытым концом вниз (верхнее положение)",
             "Сделайте двойной клик по пробке, чтобы вынуть её из трубки под водой",
-            "Перетащите линейку к трубке, измерьте длину трубки и высоту столба воды"
+            "Перетащите трубку вниз, чтобы уровни воды в трубке и сосуде сравнялись",
+            "Вычислите отношения l₁/l₂ и T₁/T₂ для проверки закона Бойля-Мариотта"
         ];
 
         if (this.currentStep === 2) {
@@ -546,23 +568,10 @@ class InteractiveGasExperiment {
                 text.textContent = "Опустите термометр в горячую воду и измерьте температуру T₁";
                 return;
             }
-        } else if (this.currentStep === 6) {
-            const tubeLengthPanel = document.getElementById('tubeLengthMeasurement');
-            const coldTempPanel = document.getElementById('coldTempMeasurement');
-            const pressurePanel = document.getElementById('pressureCalc');
+        } else if (this.currentStep === 7) {
             const ratioPanel = document.getElementById('ratioCalc');
-            
-            if (tubeLengthPanel && tubeLengthPanel.style.display !== 'none') {
-                text.textContent = "Перетащите линейку к трубке и измерьте её длину l";
-                return;
-            } else if (coldTempPanel && coldTempPanel.style.display !== 'none') {
-                text.textContent = "Измерьте температуру холодной воды T₂ и высоту столба воды в трубке Δl";
-                return;
-            } else if (pressurePanel && pressurePanel.style.display !== 'none') {
-                text.textContent = "Вычислите давление p₂ во втором состоянии по формуле: p₂ = p₁ + ρgh";
-                return;
-            } else if (ratioPanel && ratioPanel.style.display !== 'none') {
-                text.textContent = "Вычислите значения дробей p₁l/T₁ и p₂(l-Δl)/T₂ и сравните их";
+            if (ratioPanel && ratioPanel.style.display !== 'none') {
+                text.textContent = "Вычислите отношения l₁/l₂ и T₁/T₂";
                 return;
             }
         } else if (this.currentStep === 5) {
@@ -573,8 +582,9 @@ class InteractiveGasExperiment {
             }
         }
         
-        if (baseInstructions[this.currentStep - 1])
+        if (baseInstructions[this.currentStep - 1]) {
             text.textContent = baseInstructions[this.currentStep - 1];
+        }
     }
 }
 
@@ -601,137 +611,43 @@ function validateTemperature(tempNum) {
     }
 }
 
-function validateTubeLength() {
-    const experiment = window.gasExperiment;
-    const userInput = parseFloat(document.getElementById('userLength').value);
-    const expected = experiment.tubeLength * 100;
-    const tolerance = 1;
-    const resultDiv = document.getElementById('lengthResult');
-    
-    if (Math.abs(userInput - expected) <= tolerance) {
-        resultDiv.className = 'validation-result correct';
-        resultDiv.textContent = 'Правильно! Длина измерена верно.';
-        experiment.measurements.length = userInput / 100;
-        
-        setTimeout(() => {
-            document.getElementById('tubeLengthMeasurement').style.display = 'none';
-            document.getElementById('coldTempMeasurement').style.display = 'block';
-            experiment.updateInstructions();
-        }, 1500);
-    } else {
-        resultDiv.className = 'validation-result incorrect';
-        resultDiv.textContent = `Неверно. Измерьте длину трубки при помощи линейки.`;
-    }
-}
-
-function validateColdMeasurements() {
-    const experiment = window.gasExperiment;
-    const userT2 = parseFloat(document.getElementById('userT2').value);
-    const userDeltaL = parseFloat(document.getElementById('userDeltaL').value);
-    const expectedT2 = experiment.T2_celsius;
-    const expectedDeltaL = experiment.deltaL * 100;
-    const tempTolerance = 2;
-    const lengthTolerance = 0.5;
-    const resultDiv = document.getElementById('coldResult');
-    const tempCorrect = Math.abs(userT2 - expectedT2) <= tempTolerance;
-    const lengthCorrect = Math.abs(userDeltaL - expectedDeltaL) <= lengthTolerance;
-    
-    if (tempCorrect && lengthCorrect) {
-        resultDiv.className = 'validation-result correct';
-        resultDiv.textContent = 'Правильно! Все измерения выполнены верно.';
-        experiment.measurements.T2 = userT2;
-        experiment.measurements.deltaL = userDeltaL / 100;
-        
-        setTimeout(() => {
-            document.getElementById('coldTempMeasurement').style.display = 'none';
-            document.getElementById('pressureCalc').style.display = 'block';
-            experiment.updateInstructions();
-        }, 1500);
-    } else {
-        resultDiv.className = 'validation-result incorrect';
-        let message = 'Ошибки в измерениях: ';
-        if (!tempCorrect) message += `Проверьте температуру термометром. `;
-        if (!lengthCorrect) message += `Проверьте измерение высоты столба воды.`;
-        resultDiv.textContent = message;
-    }
-}
-
-function validatePressure() {
-    const experiment = window.gasExperiment;
-    const userP2 = parseFloat(document.getElementById('userP2').value);
-    const expectedP2 = experiment.pressure + experiment.rho * experiment.g * experiment.measurements.deltaL;
-    const tolerance = 50;
-    const resultDiv = document.getElementById('p2Result');
-
-    if (Math.abs(userP2 - expectedP2) <= tolerance) {
-        resultDiv.className = 'validation-result correct';
-        resultDiv.textContent = 'Правильно! Давление вычислено верно.';
-        experiment.measurements.p2 = userP2;
-        
-        setTimeout(() => {
-            document.getElementById('pressureCalc').style.display = 'none';
-            document.getElementById('ratioCalc').style.display = 'block';
-            experiment.updateInstructions();
-        }, 1500);
-    } else {
-        resultDiv.className = 'validation-result incorrect';
-        resultDiv.textContent = `Неверно. Проверьте вычисления по формуле p₂ = p₁ + ρgh`;
-    }
-}
-
 function validateRatios() {
     const experiment = window.gasExperiment;
-    const userC1 = parseFloat(document.getElementById('userC1').value);
-    const userC2 = parseFloat(document.getElementById('userC2').value);
-    const T1_K = experiment.measurements.T1 + 273.15;
-    const T2_K = experiment.measurements.T2 + 273.15;
-    const l = experiment.measurements.length;
-    const deltaL = experiment.measurements.deltaL;
-    const p1 = experiment.pressure;
-    const p2 = experiment.measurements.p2;
-    const expectedC1 = (p1 * l) / T1_K;
-    const expectedC2 = (p2 * (l - deltaL)) / T2_K;
-    const tolerance = 1;
-    const resultDiv = document.getElementById('ratioResult');
-    const c1Correct = Math.abs(userC1 - expectedC1) <= tolerance;
-    const c2Correct = Math.abs(userC2 - expectedC2) <= tolerance;
+    const userLengthRatio = parseFloat(document.getElementById('userLengthRatio').value);
+    const userTempRatio = parseFloat(document.getElementById('userTempRatio').value);
     
-    if (c1Correct && c2Correct) {
+    const T1_K = experiment.T1_celsius;
+    const T2_K = experiment.T2_celsius;
+    
+    const l1 = 18.0;
+    const l2 = 4.5; 
+    
+    const expectedLengthRatio = l1 / l2;
+    const expectedTempRatio = T1_K / T2_K;
+    
+    const tolerance = 0.05;
+    const resultDiv = document.getElementById('ratioResult');
+    
+    const lengthCorrect = Math.abs(userLengthRatio - expectedLengthRatio) <= tolerance;
+    const tempCorrect = Math.abs(userTempRatio - expectedTempRatio) <= tolerance;
+    
+    if (lengthCorrect && tempCorrect) {
         resultDiv.className = 'validation-result correct';
-        resultDiv.textContent = 'Отлично! Все вычисления выполнены правильно.';
+        resultDiv.textContent = `Отлично! Отношения вычислены правильно. l₁/l₂ ≈ ${expectedLengthRatio.toFixed(3)}, T₁/T₂ ≈ ${expectedTempRatio.toFixed(2)}`;
         
         setTimeout(() => {
             document.getElementById('measurementPanel').style.display = 'none';
             document.getElementById('ratioCalc').style.display = 'none';
             document.getElementById('current-instruction').textContent = 
-                'Эксперимент завершен! Все вычисления выполнены правильно.';
+                'Эксперимент завершен! Закон Бойля-Мариотта подтвержден экспериментально.';
         }, 1500);
     } else {
         resultDiv.className = 'validation-result incorrect';
-        let message = 'Ошибки в вычислениях. Проверьте формулы и подставленные значения.';
+        let message = 'Ошибки в вычислениях. ';
+        if (!lengthCorrect) message += `Проверьте отношение длин l₁/l₂ (ожидается ${expectedLengthRatio.toFixed(3)}). `;
+        if (!tempCorrect) message += `Проверьте отношение температур T₁/T₂ (ожидается ${expectedTempRatio.toFixed(2)}).`;
         resultDiv.textContent = message;
     }
-}
-
-function addToResultsTable(experiment, c1, c2) {
-    const tbody = document.getElementById('resultsBody');
-    const row = document.createElement('tr');
-    const T1_K = experiment.measurements.T1 + 273.15;
-    const T2_K = experiment.measurements.T2 + 273.15;
-    
-    row.innerHTML = `
-        <td>1</td>
-        <td>${T1_K.toFixed(2)}</td>
-        <td>${experiment.measurements.length.toFixed(3)}</td>
-        <td>${T2_K.toFixed(2)}</td>
-        <td>${experiment.measurements.deltaL.toFixed(4)}</td>
-        <td>${experiment.pressure}</td>
-        <td>${experiment.measurements.p2.toFixed(0)}</td>
-        <td>${c1.toFixed(4)}</td>
-        <td>${c2.toFixed(4)}</td>
-    `;
-    
-    tbody.appendChild(row);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -785,8 +701,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.validateTemperature = validateTemperature;
-    window.validateTubeLength = validateTubeLength;
-    window.validateColdMeasurements = validateColdMeasurements;
-    window.validatePressure = validatePressure;
     window.validateRatios = validateRatios;
 });
